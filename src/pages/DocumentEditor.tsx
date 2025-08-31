@@ -1183,7 +1183,7 @@ const DocumentEditor: React.FC = () => {
                     </div>
                   ) : field.value ? (
                     // 일반 필드 - 값이 있는 경우
-                    <div className="text-gray-900 p-1 truncate bg-white bg-opacity-80 rounded text-center"
+                    <div className="text-gray-900 p-1 truncate text-center"
                       style={{
                         fontSize: `${field.fontSize || 14}px !important`,
                         fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
@@ -1382,6 +1382,15 @@ const DocumentEditor: React.FC = () => {
           onClose={() => setShowPreviewModal(false)}
           pdfImageUrl={`/uploads/pdf-templates/${currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || ''}`}
           coordinateFields={coordinateFields}
+          signatureFields={(() => {
+            const docSignatureFields = currentDocument.data?.signatureFields || [];
+            const docSignatures = currentDocument.data?.signatures || {};
+            
+            return docSignatureFields.map((field: any) => ({
+              ...field,
+              signatureData: docSignatures[field.reviewerEmail]
+            }));
+          })()}
           documentTitle={currentDocument.template.name || '문서'}
         />
       )}

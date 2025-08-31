@@ -22,11 +22,23 @@ interface CoordinateField {
   };
 }
 
+interface SignatureField {
+  id: string;
+  reviewerEmail: string;
+  reviewerName: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  signatureData?: string; // 실제 서명 데이터 (base64 이미지)
+}
+
 interface DocumentPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   pdfImageUrl: string;
   coordinateFields: CoordinateField[];
+  signatureFields?: SignatureField[];
   documentTitle?: string;
 }
 
@@ -35,6 +47,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   onClose,
   pdfImageUrl,
   coordinateFields,
+  signatureFields = [],
   documentTitle = "문서 미리보기"
 }) => {
   // Hook들을 항상 호출 (조건문 이전에)
@@ -417,6 +430,53 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                     ))}
                 </>
               )}
+
+              {/* 서명 필드 렌더링 - 서명이 있는 경우만 표시 */}
+              {signatureFields
+                .filter(signatureField => signatureField.signatureData) // 서명 데이터가 있는 경우만 필터링
+                .map((signatureField) => {
+                  console.log('🖋️ 미리보기 모달 - 서명 필드 렌더링:', {
+                    id: signatureField.id,
+                    reviewerName: signatureField.reviewerName,
+                    x: signatureField.x,
+                    y: signatureField.y,
+                    width: signatureField.width,
+                    height: signatureField.height,
+                    hasSignatureData: !!signatureField.signatureData
+                  });
+
+                  // 퍼센트 기반 위치 계산
+                  const leftPercent = (signatureField.x / 1240) * 100;
+                  const topPercent = (signatureField.y / 1754) * 100;
+                  const widthPercent = (signatureField.width / 1240) * 100;
+                  const heightPercent = (signatureField.height / 1754) * 100;
+
+                  return (
+                    <div
+                      key={signatureField.id}
+                      className="absolute"
+                      style={{
+                        left: `${leftPercent}%`,
+                        top: `${topPercent}%`,
+                        width: `${widthPercent}%`,
+                        height: `${heightPercent}%`,
+                        background: 'transparent',
+                      }}
+                    >
+                      {/* 서명 이미지 표시 (완전히 투명한 배경) */}
+                      <img
+                        src={signatureField.signatureData}
+                        alt={`${signatureField.reviewerName}의 서명`}
+                        className="w-full h-full object-contain"
+                        style={{ 
+                          maxWidth: '100%', 
+                          maxHeight: '100%',
+                          background: 'transparent'
+                        }}
+                      />
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
@@ -424,8 +484,11 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         {/* 모달 푸터 */}
         <div className="p-4 border-t bg-gray-50">
           <div className="flex justify-between items-center mb-2">
-            <div className="text-sm text-gray-600">
-              입력된 필드: {coordinateFields.filter(f => f.value?.trim()).length} / {coordinateFields.length}
+            <div className="text-sm text-gray-600 space-y-1">
+              <div>입력된 필드: {coordinateFields.filter(f => f.value?.trim()).length} / {coordinateFields.length}</div>
+              {signatureFields.length > 0 && (
+                <div>서명 필드: {signatureFields.filter(f => f.signatureData).length} / {signatureFields.length}</div>
+              )}
             </div>
             <div className="flex gap-2">
               <button
