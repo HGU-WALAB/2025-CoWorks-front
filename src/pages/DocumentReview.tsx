@@ -412,6 +412,9 @@ const DocumentReview: React.FC = () => {
         allSignatures: response.data.data?.signatures
       });
       
+      // 서명 모달 닫기
+      setShowSignatureModal(false);
+      
       // 서명 저장 후 문서를 다시 로드하여 서명이 표시되도록 함
       const updatedDocument = await getDocument(Number(id));
       
@@ -876,7 +879,7 @@ const DocumentReview: React.FC = () => {
                               return (
                                 <div 
                                   key={`${rowIndex}-${colIndex}`}
-                                  className="bg-white bg-opacity-70 border border-purple-200 flex items-center justify-center p-1"
+                                  className="border border-purple-200 flex items-center justify-center p-1"
                                   style={{ 
                                     minHeight: '20px',
                                     fontSize: `${field.fontSize || 14}px !important`,
@@ -907,7 +910,7 @@ const DocumentReview: React.FC = () => {
                       </div>
                     ) : field.value ? (
                       // 일반 필드 - 값이 있는 경우
-                      <div className="text-gray-900 p-1 truncate bg-white bg-opacity-80 rounded text-center"
+                      <div className="text-gray-900 p-1 truncate text-center"
                         style={{
                           fontSize: `${field.fontSize || 14}px !important`,
                           fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
@@ -938,7 +941,7 @@ const DocumentReview: React.FC = () => {
                   return (
                     <div
                       key={`existing-signature-${field.id}`}
-                      className="absolute border-2 bg-green-100 bg-opacity-30 border-green-500 flex flex-col justify-center items-center p-1"
+                      className="absolute border-2 border-green-500 flex flex-col justify-center items-center p-1"
                       style={{
                         left: `${field.x}px`,
                         top: `${field.y}px`,
@@ -966,7 +969,7 @@ const DocumentReview: React.FC = () => {
               {signatureFields.map((field) => (
                 <div
                   key={field.id}
-                  className={`absolute border-2 bg-orange-100 bg-opacity-50 border-orange-500 flex flex-col justify-center items-center p-1 cursor-move ${
+                  className={`absolute border-2 border-orange-500 flex flex-col justify-center items-center p-1 cursor-move ${
                     activeFieldId === field.id ? 'ring-2 ring-blue-500' : ''
                   }`}
                   style={{

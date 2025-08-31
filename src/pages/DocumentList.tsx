@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useDocumentStore, type Document } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
-import PdfViewer from '../components/PdfViewer';
+import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import axios from 'axios';
 
 interface User {
@@ -28,6 +28,7 @@ const DocumentList: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
   const [coordinateFields, setCoordinateFields] = useState<any[]>([]);
+  const [signatureFields, setSignatureFields] = useState<any[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
   const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
@@ -62,6 +63,23 @@ const DocumentList: React.FC = () => {
         allFields = [...allFields, ...savedFields];
         
         setCoordinateFields(allFields);
+
+        // 서명 필드 처리
+        const docSignatureFields = document.data?.signatureFields || [];
+        const docSignatures = document.data?.signatures || {};
+        
+        const processedSignatureFields = docSignatureFields.map((field: any) => ({
+          ...field,
+          signatureData: docSignatures[field.reviewerEmail]
+        }));
+        
+        console.log('🖋️ DocumentList - 서명 필드 처리:', {
+          originalSignatureFields: docSignatureFields,
+          signatures: docSignatures,
+          processedSignatureFields
+        });
+        
+        setSignatureFields(processedSignatureFields);
         setShowPreview(true);
       }
     } catch (error) {
@@ -103,8 +121,8 @@ const DocumentList: React.FC = () => {
       return '';
     }
     
-    const filename = doc.template.pdfImagePath.split('/').pop();
-    const url = `http://localhost:8080/api/files/pdf-template-images/${filename}`;
+    const filename = doc.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
+    const url = `/uploads/pdf-templates/${filename}`;
     
     console.log('📄 DocumentList - 생성된 PDF 이미지 URL:', {
       originalPath: doc.template.pdfImagePath,
@@ -365,54 +383,15 @@ const DocumentList: React.FC = () => {
       )}
 
       {/* 미리보기 모달 */}
-      {showPreview && previewDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">📄 문서 미리보기</h2>
-              </div>
-              <div className="flex space-x-2">
-                {previewDocument.status !== 'COMPLETED' && (
-                  <Link
-                    to={`/documents/${previewDocument.id}/edit`}
-                    className="btn btn-secondary text-sm"
-                    onClick={() => setShowPreview(false)}
-                  >
-                    편집하기
-                  </Link>
-                )}
-                <button
-                  onClick={() => setShowPreview(false)}
-                  className="btn btn-primary text-sm"
-                >
-                  닫기
-                </button>
-              </div>
-            </div>
-            <div className="p-8">
-              <div className="flex justify-center">
-                <PdfViewer
-                  pdfImageUrl={getPdfImageUrl(previewDocument)}
-                  coordinateFields={coordinateFields}
-                  onCoordinateFieldsChange={() => {}}
-                  editable={false}
-                  showFieldUI={false} // 미리보기에서는 일반 필드 UI 숨김
-                  scale={1}
-                  signatureFields={(() => {
-                    const signatureFields = previewDocument.data?.signatureFields || [];
-                    const signatures = previewDocument.data?.signatures || {};
-                    
-                    return signatureFields.map(field => ({
-                      ...field,
-                      signatureData: signatures[field.reviewerEmail]
-                    }));
-                  })()}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+      {showPreview && previewDocument && previewDocument.template?.pdfImagePath && (
+        <DocumentPreviewModal
+          isOpen={showPreview}
+          onClose={() => setShowPreview(false)}
+          pdfImageUrl={getPdfImageUrl(previewDocument)}
+          coordinateFields={coordinateFields}
+          signatureFields={signatureFields}
+          documentTitle={previewDocument.template.name || '문서'}
+        />
       )}
     </div>
   );
