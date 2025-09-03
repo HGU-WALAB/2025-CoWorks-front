@@ -126,14 +126,13 @@ const DocumentNew: React.FC = () => {
     }
 
     try {
-      const document = await createDocument({
+      await createDocument({
         templateId: parseInt(selectedTemplateId),
         editorEmail: selectedEditors.length > 0 ? selectedEditors[0].email : undefined,
       });
 
       alert('문서가 생성되었습니다.');
-      // PDF 기반 템플릿은 편집 화면으로 바로 이동
-      navigate(`/documents/${document.id}`);
+      navigate(`/documents`);
     } catch (error) {
       console.error('Document creation error:', error);
       alert('문서 생성에 실패했습니다.');
