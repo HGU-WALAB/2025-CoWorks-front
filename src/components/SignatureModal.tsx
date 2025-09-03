@@ -28,9 +28,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         canvas.width = rect.width;
         canvas.height = rect.height;
         
-        // 캔버스 초기화
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = '#000000';
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
@@ -105,8 +103,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
     
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   };
 
