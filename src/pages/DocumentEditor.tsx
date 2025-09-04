@@ -5,90 +5,98 @@ import { useAuthStore } from '../stores/authStore';
 import axios from 'axios';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 
-// 테이블 셀 편집 모달 컴포넌트
-interface TableCellEditModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (text: string) => void;
-  currentText: string;
-  cellPosition: { row: number; col: number };
-  tableName: string;
+// 테이블 편집 컴포넌트
+interface TableEditComponentProps {
+  tableInfo: { rows: number; cols: number; columnWidths?: number[] };
+  tableData: any;
+  onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
 }
 
-const TableCellEditModal: React.FC<TableCellEditModalProps> = ({
-  isOpen,
-  onClose,
-  onSave,
-  currentText,
-  cellPosition,
-  tableName
+const TableEditComponent: React.FC<TableEditComponentProps> = ({
+  tableInfo,
+  tableData,
+  onCellChange
 }) => {
-  const [text, setText] = useState(currentText);
-
-  React.useEffect(() => {
-    if (isOpen) {
-      setText(currentText);
-    }
-  }, [isOpen, currentText]);
-
-  if (!isOpen) return null;
-
-  const handleSave = () => {
-    onSave(text);
-    onClose();
-  };
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96 max-w-full mx-4">
-        <h3 className="text-lg font-semibold mb-4">테이블 셀 편집</h3>
-        
-        <div className="space-y-4">
-          <div className="text-sm text-gray-600">
-            <div><strong>테이블:</strong> {tableName}</div>
-            <div><strong>위치:</strong> {cellPosition.row + 1}행 {cellPosition.col + 1}열</div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              셀 내용
-            </label>
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 resize-none"
-              placeholder="셀에 표시할 텍스트를 입력하세요"
-              rows={3}
-              autoFocus
-              style={{
-                fontSize: '14px', // 편집 모달에서는 가독성을 위해 고정 크기 사용
-                fontFamily: 'inherit'
-              }}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              * 실제 문서에서는 설정된 폰트와 크기가 적용됩니다.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex space-x-3 mt-6">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-          >
-            취소
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            저장
-          </button>
-        </div>
+    <div className="space-y-2">
+      <div className="text-xs text-gray-500 mb-2">
+        {tableInfo.rows}행 × {tableInfo.cols}열 표
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border border-gray-300">
+          <tbody>
+            {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
+              <tr key={rowIndex}>
+                {Array(tableInfo.cols).fill(null).map((_, colIndex) => {
+                  let cellValue = '';
+                  try {
+                    if (tableData && tableData.cells) {
+                      cellValue = tableData.cells[rowIndex]?.[colIndex] || '';
+                    }
+                  } catch (e) {
+                    console.error('테이블 셀 값 파싱 실패:', e);
+                  }
+                  
+                  return (
+                    <TableCell
+                      key={`${rowIndex}-${colIndex}`}
+                      initialValue={cellValue}
+                      rowIndex={rowIndex}
+                      colIndex={colIndex}
+                      onCellChange={onCellChange}
+                    />
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 };
+
+// 개별 테이블 셀 컴포넌트 - 독립적인 상태 관리
+interface TableCellProps {
+  initialValue: string;
+  rowIndex: number;
+  colIndex: number;
+  onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
+}
+
+const TableCell: React.FC<TableCellProps> = ({
+  initialValue,
+  rowIndex,
+  colIndex,
+  onCellChange
+}) => {
+  const [value, setValue] = useState(initialValue);
+  
+  // initialValue가 변경될 때만 상태 업데이트
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setValue(newValue); // 즉시 로컬 상태 업데이트
+    onCellChange(rowIndex, colIndex, newValue); // 부모로 변경사항 전달
+  };
+  
+  return (
+    <td className="border border-gray-300 p-1" style={{ minWidth: '120px', minHeight: '36px' }}>
+      <input
+        type="text"
+        value={value}
+        onChange={handleChange}
+        className="w-full h-full px-2 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
+        placeholder={`${rowIndex + 1}-${colIndex + 1}`}
+        style={{ minHeight: '28px' }}
+      />
+    </td>
+  );
+};
+
 
 // 간단한 debounce 유틸 함수
 const createDebounce = <T extends (...args: any[]) => any>(
@@ -171,13 +179,6 @@ const DocumentEditor: React.FC = () => {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  // 테이블 셀 편집 상태
-  const [isTableCellEditOpen, setIsTableCellEditOpen] = useState(false);
-  const [editingCell, setEditingCell] = useState<{
-    fieldKey: string;
-    row: number;
-    col: number;
-  } | null>(null);
 
   // 저장 관련 refs
   const pendingSaves = useRef<Map<number, string>>(new Map());
@@ -508,90 +509,6 @@ const DocumentEditor: React.FC = () => {
     stableHandlersRef.current.debouncedUpdateDocument(parseInt(id!), { data: updatedData });
   }, [id, currentDocument, templateFields, coordinateFields]);
 
-  // 테이블 셀 편집 핸들러
-  const handleTableCellClick = useCallback((fieldKey: string, row: number, col: number, event: React.MouseEvent) => {
-    event.stopPropagation();
-    event.preventDefault();
-    
-    setEditingCell({ fieldKey, row, col });
-    setIsTableCellEditOpen(true);
-  }, []);
-
-  const handleTableCellSave = useCallback((text: string) => {
-    if (!editingCell) return;
-    
-    // coordinateFields에서 해당 테이블 필드 찾기
-    setCoordinateFields(prev => prev.map(field => {
-      if (field.id === editingCell.fieldKey) {
-        // 기존 값을 JSON으로 파싱하여 테이블 데이터 추출
-        try {
-          const currentValue = field.value || '{}';
-          const tableData = JSON.parse(currentValue);
-          
-          // cells 배열이 없으면 초기화
-          if (!tableData.cells) {
-            tableData.cells = [];
-          }
-          
-          // columnWidths가 없으면 기본값 설정
-          if (!tableData.columnWidths && tableData.cols) {
-            tableData.columnWidths = Array(tableData.cols).fill(1 / tableData.cols);
-          }
-          
-          // 해당 행이 없으면 생성
-          while (tableData.cells.length <= editingCell.row) {
-            tableData.cells.push([]);
-          }
-          
-          // 해당 열이 없으면 생성
-          while (tableData.cells[editingCell.row].length <= editingCell.col) {
-            tableData.cells[editingCell.row].push('');
-          }
-          
-          // 셀 값 업데이트
-          tableData.cells[editingCell.row][editingCell.col] = text;
-          
-          // JSON 문자열로 변환하여 저장
-          const updatedValue = JSON.stringify(tableData);
-          
-          console.log('🔧 테이블 셀 업데이트:', {
-            fieldKey: editingCell.fieldKey,
-            row: editingCell.row,
-            col: editingCell.col,
-            text,
-            updatedValue
-          });
-          
-          // 서버에도 저장 - coordinateFields 전체 업데이트
-          const updatedFields = prev.map(f => 
-            f.id === editingCell.fieldKey 
-              ? { ...f, value: updatedValue }
-              : f
-          );
-          
-          // 문서 데이터 저장
-          const updatedData = {
-            coordinateFields: updatedFields
-          };
-          
-          console.log('💾 테이블 데이터 서버 저장:', {
-            documentId: id,
-            fieldKey: editingCell.fieldKey,
-            updatedData
-          });
-          
-          // 디바운스된 업데이트로 서버에 저장
-          stableHandlersRef.current.debouncedUpdateDocument(parseInt(id!), { data: updatedData });
-          
-          return { ...field, value: updatedValue };
-        } catch (error) {
-          console.error('테이블 데이터 파싱 실패:', error);
-          return field;
-        }
-      }
-      return field;
-    }));
-  }, [editingCell, handleCoordinateFieldChange]);
 
   // 템플릿 필드 로드
   const loadTemplateFields = useCallback(async () => {
@@ -1158,7 +1075,6 @@ const DocumentEditor: React.FC = () => {
                                   color: '#6b21a8', // text-purple-700 색상을 직접 적용
                                   fontWeight: '500'
                                 }}
-                                onClick={(e) => handleTableCellClick(field.id, rowIndex, colIndex, e)}
                                 title={cellText || '클릭하여 편집'}
                               >
                                 <span 
@@ -1339,32 +1255,120 @@ const DocumentEditor: React.FC = () => {
           </div>
           
           <div className="p-4 space-y-4">
-            {coordinateFields.map((field) => (
-              <div key={field.id} className="border rounded-lg p-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {field.label}
-                  {field.required && <span className="text-red-500 ml-1">*</span>}
-                </label>
-                {field.type === 'date' ? (
-                  <input
-                    type="date"
-                    value={field.value || ''}
-                    data-field-id={field.id}
-                    onChange={(e) => handleCoordinateFieldChange(field.id, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={field.value || ''}
-                    data-field-id={field.id}
-                    onChange={(e) => handleCoordinateFieldChange(field.id, e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder={`${field.label} 입력`}
-                  />
-                )}
-              </div>
-            ))}
+            {coordinateFields.map((field) => {
+              // 테이블 필드인지 확인
+              let isTableField = false;
+              let tableInfo = null;
+              let tableData = null;
+              
+              // 1. tableData 속성으로 확인
+              if (field.tableData) {
+                isTableField = true;
+                tableInfo = field.tableData;
+              } else {
+                // 2. value를 파싱해서 테이블 데이터 확인
+                try {
+                  if (field.value && typeof field.value === 'string') {
+                    const parsedValue = JSON.parse(field.value);
+                    if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
+                      isTableField = true;
+                      tableInfo = {
+                        rows: parsedValue.rows,
+                        cols: parsedValue.cols,
+                        columnWidths: parsedValue.columnWidths
+                      };
+                      tableData = parsedValue;
+                    }
+                  }
+                } catch (e) {
+                  // JSON 파싱 실패 시 일반 필드로 처리
+                }
+              }
+
+              return (
+                <div key={field.id} className="border rounded-lg p-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {field.label}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                    {isTableField && <span className="text-purple-600 text-xs ml-1">(표)</span>}
+                  </label>
+                  
+                  {isTableField && tableInfo ? (
+                    // 테이블 편집 UI
+                    <TableEditComponent 
+                      tableInfo={tableInfo}
+                      tableData={tableData}
+                      onCellChange={(rowIndex, colIndex, newValue) => {
+                        // coordinateFields 상태 업데이트
+                        setCoordinateFields(prev => {
+                          return prev.map(f => {
+                            if (f.id === field.id) {
+                              try {
+                                const currentValue = f.value || '{}';
+                                const currentTableData = JSON.parse(currentValue);
+                                
+                                // cells 배열이 없으면 초기화
+                                if (!currentTableData.cells) {
+                                  currentTableData.cells = [];
+                                }
+                                
+                                // 해당 행이 없으면 생성
+                                while (currentTableData.cells.length <= rowIndex) {
+                                  currentTableData.cells.push([]);
+                                }
+                                
+                                // 해당 열이 없으면 생성
+                                while (currentTableData.cells[rowIndex].length <= colIndex) {
+                                  currentTableData.cells[rowIndex].push('');
+                                }
+                                
+                                // 셀 값 업데이트
+                                currentTableData.cells[rowIndex][colIndex] = newValue;
+                                
+                                const updatedValue = JSON.stringify(currentTableData);
+                                
+                                // 서버 저장
+                                const updatedData = {
+                                  coordinateFields: prev.map(prevField => 
+                                    prevField.id === field.id 
+                                      ? { ...prevField, value: updatedValue }
+                                      : prevField
+                                  )
+                                };
+                                stableHandlersRef.current.debouncedUpdateDocument(parseInt(id!), { data: updatedData });
+                                
+                                return { ...f, value: updatedValue };
+                              } catch (error) {
+                                console.error('테이블 데이터 업데이트 실패:', error);
+                                return f;
+                              }
+                            }
+                            return f;
+                          });
+                        });
+                      }}
+                    />
+                  ) : field.type === 'date' ? (
+                    <input
+                      type="date"
+                      value={field.value || ''}
+                      data-field-id={field.id}
+                      onChange={(e) => handleCoordinateFieldChange(field.id, e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={field.value || ''}
+                      data-field-id={field.id}
+                      onChange={(e) => handleCoordinateFieldChange(field.id, e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder={`${field.label} 입력`}
+                    />
+                  )}
+                </div>
+              );
+            })}
             
             {coordinateFields.length === 0 && (
               <div className="text-center py-8 text-gray-500">
@@ -1451,33 +1455,6 @@ const DocumentEditor: React.FC = () => {
         </div>
       )}
 
-      {/* 테이블 셀 편집 모달 */}
-      <TableCellEditModal
-        isOpen={isTableCellEditOpen}
-        onClose={() => {
-          setIsTableCellEditOpen(false);
-          setEditingCell(null);
-        }}
-        onSave={handleTableCellSave}
-        currentText={
-          editingCell ? (() => {
-            try {
-              const field = coordinateFields.find(f => f.id === editingCell.fieldKey);
-              if (field?.value) {
-                const tableData = JSON.parse(field.value);
-                return tableData.cells?.[editingCell.row]?.[editingCell.col] || '';
-              }
-            } catch {
-              // JSON 파싱 실패 시 빈 문자열 반환
-            }
-            return '';
-          })() : ''
-        }
-        cellPosition={editingCell ? { row: editingCell.row, col: editingCell.col } : { row: 0, col: 0 }}
-        tableName={
-          editingCell ? coordinateFields.find(f => f.id === editingCell.fieldKey)?.label || '' : ''
-        }
-      />
     </div>
   );
 };
