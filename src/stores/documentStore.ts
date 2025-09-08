@@ -1,60 +1,16 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { 
+  Document, 
+  DocumentData, 
+  DocumentCreateRequest, 
+  DocumentUpdateRequest,
+  TaskInfo,
+  TemplateInfo
+} from '../types/document';
 
-export interface DocumentData {
-  // 기본 필드
-  title?: string;
-  content?: string;
-  createdAt?: string;
-  signatures?: Record<string, string>; // 검토자별 서명 데이터 (email -> base64)
-  // 필드 정의와 데이터
-  coordinateFields?: any[]; // 사용자가 추가한 필드들
-  signatureFields?: any[]; // 서명 필드들
-}
-
-export interface TaskInfo {
-  id: number;
-  role: string;
-  assignedUserName: string;
-  assignedUserEmail: string;
-  canAssignReviewer?: boolean; // 검토자 지정 권한
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TemplateInfo {
-  id: number;
-  name: string;
-  description?: string;
-  isPublic?: boolean;
-  pdfFilePath?: string;
-  pdfImagePath?: string;
-  coordinateFields?: string; // JSON 형태로 저장된 좌표 필드 정보
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Document {
-  id: number;
-  templateId: number;
-  templateName?: string;
-  data?: DocumentData;
-  status: 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
-  createdAt: string;
-  updatedAt: string;
-  deadline?: string;
-  tasks?: TaskInfo[];
-  template?: TemplateInfo;
-}
-
-export interface DocumentCreateRequest {
-  templateId: number;
-  editorEmail?: string;
-}
-
-export interface DocumentUpdateRequest {
-  data: DocumentData;
-}
+// Re-export types for other components
+export type { Document, DocumentData, TaskInfo, TemplateInfo };
 
 interface DocumentStore {
   documents: Document[];
@@ -77,7 +33,7 @@ interface DocumentStore {
   clearError: () => void;
 }
 
-const API_BASE_URL = 'http://localhost:8080/api';
+import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
 
 export const useDocumentStore = create<DocumentStore>((set, get) => ({
   documents: [],

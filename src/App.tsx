@@ -2,9 +2,9 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import TemplateList from './pages/TemplateList';
-import TemplateUploadPdf from './pages/TemplateUploadPdf';
+import TemplateUpload from './pages/TemplateUpload';
 import DocumentList from './pages/DocumentList';
-import DocumentEditor from './pages/DocumentEditor';
+import DocumentEditor from './pages/DocumentEditor.tsx';
 import DocumentReview from './pages/DocumentReview';
 import DocumentNew from './pages/DocumentNew';
 import TaskDashboard from './pages/TaskDashboard';
@@ -24,7 +24,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 function App() {
-  const { initialize, isAuthenticated } = useAuthStore();
+  const { initialize } = useAuthStore();
 
   // 앱 시작 시 저장된 토큰 복원 및 Authorization 헤더 설정
   useEffect(() => {
@@ -65,7 +65,7 @@ function App() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TemplateUploadPdf />
+                <TemplateUpload />
               </Layout>
             </ProtectedRoute>
           } 
@@ -75,7 +75,7 @@ function App() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TemplateUploadPdf />
+                <TemplateUpload />
               </Layout>
             </ProtectedRoute>
           } 

@@ -583,7 +583,7 @@ const DocumentReview: React.FC = () => {
   }
 
   // 디버깅 정보 표시 (개발용)
-  const showDebugInfo = process.env.NODE_ENV === 'development';
+  const showDebugInfo = import.meta.env.DEV;
 
   if (!isReviewer() && !canAssignReviewer()) {
     return (

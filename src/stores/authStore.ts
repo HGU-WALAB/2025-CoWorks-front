@@ -1,35 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
+import { LoginRequest, SignupRequest, AuthResponse, User } from '../types/auth';
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface SignupRequest {
-  email: string;
-  password: string;
-  name: string;
-  position: string;
-}
-
-export interface AuthResponse {
-  id: string;
-  email: string;
-  name: string;
-  position: string;
-  role: string;
-  token: string;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  position: string;
-  role: string;
-}
+// Re-export types for other components
+export type { LoginRequest, SignupRequest, AuthResponse, User };
 
 interface AuthStore {
   user: User | null;
@@ -47,7 +22,7 @@ interface AuthStore {
   setAuthHeader: () => void;
 }
 
-const API_BASE_URL = 'http://localhost:8080/api';
+import { API_BASE_URL } from '../config/api';
 
 // axios 인터셉터 추가 (디버깅용)
 axios.interceptors.request.use(

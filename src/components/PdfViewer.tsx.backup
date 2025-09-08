@@ -991,4 +991,4 @@ const PdfViewer: React.FC<PdfViewerProps> = ({
   );
 };
 
-export default PdfViewer; 
+export default PdfViewer;
