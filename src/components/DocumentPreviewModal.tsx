@@ -1,26 +1,5 @@
 import React from 'react';
-
-interface CoordinateField {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  label: string;
-  type: 'text' | 'textarea' | 'date' | 'number';
-  value?: string;
-  required?: boolean;
-  // 폰트 설정 추가
-  fontSize?: number;
-  fontFamily?: string;
-  // 테이블 정보 추가
-  tableData?: {
-    rows: number;
-    cols: number;
-    cells: string[][];
-    columnWidths?: number[];
-  };
-}
+import { CoordinateField } from '../types/field';
 
 interface SignatureField {
   id: string;
@@ -116,6 +95,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       onClose();
     }
   };
+
 
   return (
     <div 

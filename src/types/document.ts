@@ -1,0 +1,76 @@
+import { TemplateField } from './field';
+
+export interface DocumentData {
+  title?: string;
+  content?: string;
+  createdAt?: string;
+  signatures?: Record<string, string>;
+  coordinateFields?: CoordinateField[];
+  signatureFields?: SignatureField[];
+}
+
+export interface CoordinateField extends TemplateField {
+  value?: string;
+}
+
+export interface SignatureField {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  reviewerEmail: string;
+  signatureData?: string;
+}
+
+export interface TaskInfo {
+  id: number;
+  role: string;
+  assignedUserName: string;
+  assignedUserEmail: string;
+  canAssignReviewer?: boolean;
+  status?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateInfo {
+  id: number;
+  name: string;
+  description?: string;
+  isPublic?: boolean;
+  pdfFilePath?: string;
+  pdfImagePath?: string;
+  coordinateFields?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Document {
+  id: number;
+  templateId: number;
+  templateName?: string;
+  data?: DocumentData;
+  status: 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
+  createdAt: string;
+  updatedAt: string;
+  deadline?: string;
+  tasks?: TaskInfo[];
+  template?: TemplateInfo;
+}
+
+export interface DocumentCreateRequest {
+  templateId: number;
+  editorEmail?: string;
+}
+
+export interface DocumentUpdateRequest {
+  data: DocumentData;
+}
+
+export interface TableData {
+  rows: number;
+  cols: number;
+  cells: string[][];
+  columnWidths?: number[];
+}

@@ -8,6 +8,13 @@ export interface User {
   position: string;
 }
 
+export interface UserSearchResult {
+  id: string;
+  email: string;
+  name: string;
+  position: string;
+}
+
 interface UserStore {
   users: User[];
   loading: boolean;

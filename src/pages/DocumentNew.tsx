@@ -52,7 +52,7 @@ const DocumentNew: React.FC = () => {
       setSearchResults([]);
       
       // 개발 모드에서 더 자세한 오류 정보 표시
-      if (process.env.NODE_ENV === 'development') {
+      if (import.meta.env.DEV) {
         console.error('검색 오류 상세:', {
           message: error instanceof Error ? error.message : '알 수 없는 오류',
           response: axios.isAxiosError(error) ? error.response?.data : null,

@@ -1,26 +1,6 @@
 import { create } from 'zustand';
 import axios from 'axios';
-
-export interface Template {
-  id: number;
-  name: string;
-  description?: string;
-  isPublic?: boolean;
-  pdfFilePath?: string;
-  pdfImagePath?: string;
-  createdById: string;
-  createdByName: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TemplateCreateRequest {
-  name: string;
-  description?: string;
-  isPublic?: boolean;
-  pdfFilePath?: string;
-  pdfImagePath?: string;
-}
+import { Template, TemplateCreateRequest } from '../types/template';
 
 interface TemplateStore {
   templates: Template[];
@@ -36,7 +16,7 @@ interface TemplateStore {
   clearError: () => void;
 }
 
-const API_BASE_URL = 'http://localhost:8080/api';
+import { API_BASE_URL } from '../config/api';
 
 export const useTemplateStore = create<TemplateStore>((set, get) => ({
   templates: [],
