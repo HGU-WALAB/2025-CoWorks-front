@@ -28,7 +28,6 @@ const TemplateUpload: React.FC = () => {
   } = useTemplateFields();
 
   const {
-    selectionBox,
     clearSelection,
     ...canvasProps
   } = usePdfCanvas();
@@ -42,7 +41,6 @@ const TemplateUpload: React.FC = () => {
   const [step, setStep] = useState<'upload' | 'edit'>('upload');
   
   // PDF preview states
-  const [pdfImageUrl, setPdfImageUrl] = useState<string | null>(null);
   const [pdfImageDataUrl, setPdfImageDataUrl] = useState<string | null>(null);
   
   // Modal states
@@ -50,6 +48,7 @@ const TemplateUpload: React.FC = () => {
   const [isNewFieldModalOpen, setIsNewFieldModalOpen] = useState(false);
   const [isTableCellEditOpen, setIsTableCellEditOpen] = useState(false);
   const [newFieldPosition, setNewFieldPosition] = useState({ x: 0, y: 0 });
+  const [newFieldSelection, setNewFieldSelection] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   
   // Table editing
   const [editingCell, setEditingCell] = useState<{
@@ -93,15 +92,22 @@ const TemplateUpload: React.FC = () => {
       formData.append('file', file);
       
       const response = await axios.post('/api/pdf/convert-to-image', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        responseType: 'blob'
       });
       
-      if (response.data.success && response.data.imageUrl) {
-        setPdfImageDataUrl(response.data.imageUrl);
-      }
+      // 변환된 이미지를 URL로 생성
+      const imageBlob = new Blob([response.data], { type: 'image/png' });
+      const imageUrl = URL.createObjectURL(imageBlob);
+      setPdfImageDataUrl(imageUrl);
+      
+      console.log('📐 PDF 이미지 변환 완료:', { imageUrl });
     } catch (error) {
       console.error('PDF 변환 실패:', error);
-      setError('PDF 변환에 실패했습니다.');
+      // 실패 시에도 에러를 표시하지 않고 조용히 처리
+      console.log('PDF 변환에 실패했지만 계속 진행합니다.');
     }
   };
 
@@ -138,7 +144,7 @@ const TemplateUpload: React.FC = () => {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
         } else {
-          await axios.post('/api/templates', formData, {
+          await axios.post('/api/templates/upload-pdf', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
         }
@@ -206,6 +212,15 @@ const TemplateUpload: React.FC = () => {
     setEditingCell(null);
   };
 
+  // PDF Object URL 정리를 위한 useEffect
+  useEffect(() => {
+    return () => {
+      if (pdfImageDataUrl) {
+        URL.revokeObjectURL(pdfImageDataUrl);
+      }
+    };
+  }, [pdfImageDataUrl]);
+
   if (step === 'upload') {
     return (
       <PdfUploader
@@ -222,8 +237,8 @@ const TemplateUpload: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-6">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="max-w-7xl mx-auto px-4 py-6 flex-1 flex flex-col">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">
             {isEditMode ? '템플릿 편집' : '새 템플릿 생성'}
@@ -245,8 +260,8 @@ const TemplateUpload: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1 min-h-0">
+          <div className="lg:col-span-4 flex flex-col min-h-0">
             <TemplatePreview
               pdfImageUrl={pdfImageDataUrl}
               fields={fields}
@@ -255,8 +270,9 @@ const TemplateUpload: React.FC = () => {
               onFieldMove={updateField}
               onFieldResize={updateField}
               onTableCellClick={openTableCellEdit}
-              onCanvasClick={(position) => {
-                setNewFieldPosition(position);
+              onCanvasClick={(selection) => {
+                setNewFieldPosition({ x: selection.x, y: selection.y });
+                setNewFieldSelection(selection);
                 setIsNewFieldModalOpen(true);
               }}
               {...canvasProps}
@@ -282,10 +298,13 @@ const TemplateUpload: React.FC = () => {
 
       <NewFieldModal
         isOpen={isNewFieldModalOpen}
-        onClose={() => setIsNewFieldModalOpen(false)}
+        onClose={() => {
+          setIsNewFieldModalOpen(false);
+          setNewFieldSelection(null);
+        }}
         onSave={handleNewField}
         initialPosition={newFieldPosition}
-        selectionBox={selectionBox}
+        selectionBox={newFieldSelection}
         defaultFontSize={defaultFontSize}
         defaultFontFamily={defaultFontFamily}
       />

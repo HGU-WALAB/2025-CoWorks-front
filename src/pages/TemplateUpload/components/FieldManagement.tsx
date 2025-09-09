@@ -87,29 +87,17 @@ const FieldManagement: React.FC<FieldManagementProps> = ({
                   }`}
                   onClick={() => onFieldSelect(field.id)}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
+                        <span className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                          field.type === 'table' ? 'bg-purple-500' : 'bg-blue-500'
+                        }`}></span>
                         <p className="font-medium text-gray-800 truncate">
                           {field.label}
                         </p>
-                        <span className={`px-2 py-1 text-xs font-medium rounded ${
-                          field.type === 'table' 
-                            ? 'bg-purple-100 text-purple-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {field.type === 'table' ? '테이블' : '필드'}
-                        </span>
                         {field.required && (
-                          <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">
-                            필수
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        위치: ({field.x}, {field.y}) • 크기: {field.width}×{field.height}
-                        {field.type === 'table' && field.tableData && (
-                          <span> • {field.tableData.rows}×{field.tableData.cols}</span>
+                          <span className="text-red-500 text-xs">*</span>
                         )}
                       </div>
                     </div>
