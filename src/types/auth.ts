@@ -19,6 +19,13 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface HisnetAuthResponse {
+  token: string;
+  userId: string;
+  userName: string;
+  department: string;
+}
+
 export interface User {
   id: string;
   email: string;

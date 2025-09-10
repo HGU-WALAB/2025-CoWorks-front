@@ -45,6 +45,15 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleHisnetLogin = () => {
+    const hisnetLoginUrl = import.meta.env.VITE_HISNET_LOGIN_URL;
+    if (hisnetLoginUrl) {
+      window.location.href = hisnetLoginUrl;
+    } else {
+      alert('히즈넷 로그인 URL이 설정되지 않았습니다.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -131,7 +140,14 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
+              <button
+                onClick={handleHisnetLogin}
+                className="w-full flex justify-center py-2 px-4 border border-blue-300 rounded-md shadow-sm bg-blue-50 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+              >
+                히즈넷 로그인
+              </button>
+              
               <Link
                 to="/"
                 className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
