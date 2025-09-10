@@ -10,6 +10,7 @@ import DocumentNew from './pages/DocumentNew';
 import TaskDashboard from './pages/TaskDashboard';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import HisnetCallback from './pages/HisnetCallback';
 import { useAuthStore } from './stores/authStore';
 
 // 인증이 필요한 페이지들을 감싸는 컴포넌트
@@ -37,6 +38,7 @@ function App() {
         {/* 공개 라우트 */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/hiswork/callback" element={<HisnetCallback />} />
         
         {/* 보호된 라우트 */}
         <Route path="/" element={<Navigate to="/tasks" replace />} />
