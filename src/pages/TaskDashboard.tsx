@@ -17,7 +17,7 @@ const TaskDashboard: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<'all' | 'creator' | 'editor' | 'reviewer'>('all');
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [currentReviewDocument, setCurrentReviewDocument] = useState<Document | null>(null);
-  
+
   // 실제 인증된 사용자 이메일 사용
   const currentUserEmail = user?.email || '';
 
@@ -32,8 +32,8 @@ const TaskDashboard: React.FC = () => {
 
   // 디버깅을 위한 로그
   useEffect(() => {
-    console.log('TaskDashboard: Documents updated', { 
-      documentsCount: documents.length, 
+    console.log('TaskDashboard: Documents updated', {
+      documentsCount: documents.length,
       currentUserEmail,
       documents: documents.map(d => ({
         id: d.id,
@@ -73,12 +73,12 @@ const TaskDashboard: React.FC = () => {
   const getUserTask = (doc: Document) => {
     return doc.tasks?.find(task => task.assignedUserEmail === currentUserEmail);
   };
-  
+
   const getUserRole = (doc: Document) => {
     const task = getUserTask(doc);
     return task?.role || '';
   };
-  
+
   const getTaskStatus = (doc: Document) => {
     const task = getUserTask(doc);
     return task?.status || 'PENDING';
@@ -86,20 +86,20 @@ const TaskDashboard: React.FC = () => {
 
   // 사용자별 작업 분류
   const getUserTasks = () => {
-    const createdByMe = documents.filter(doc => 
-      doc.tasks?.some(task => 
+    const createdByMe = documents.filter(doc =>
+      doc.tasks?.some(task =>
         task.role === 'CREATOR' && task.assignedUserEmail === currentUserEmail
       ) || false
     );
 
     const assignedToEdit = documents.filter(doc =>
-      doc.tasks?.some(task => 
+      doc.tasks?.some(task =>
         task.role === 'EDITOR' && task.assignedUserEmail === currentUserEmail
       ) || false
     );
 
     const assignedToReview = documents.filter(doc =>
-      doc.tasks?.some(task => 
+      doc.tasks?.some(task =>
         task.role === 'REVIEWER' && task.assignedUserEmail === currentUserEmail
       ) || false
     );
@@ -160,7 +160,7 @@ const TaskDashboard: React.FC = () => {
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.DRAFT;
-    
+
     return (
       <span className={`px-2 py-1 text-xs font-medium rounded-full ${config.color}`}>
         {config.label}
@@ -171,7 +171,7 @@ const TaskDashboard: React.FC = () => {
   const getRoleBadge = (doc: Document) => {
     const userTasks = doc.tasks?.filter(task => task.assignedUserEmail === currentUserEmail) || [];
     const roles = userTasks.map(task => task.role);
-    
+
     const roleLabels = {
       CREATOR: '생성자',
       EDITOR: '편집자',
@@ -207,9 +207,9 @@ const TaskDashboard: React.FC = () => {
       );
     }
 
-    const statusIcon = task.status === 'COMPLETED' ? '✓' : 
+    const statusIcon = task.status === 'COMPLETED' ? '✓' :
                       task.status === 'PENDING' ? '⏳' : '●';
-    
+
     return (
       <div className="flex items-center text-xs">
         <span className={`w-2 h-2 rounded-full ${colorClass} mr-2`}></span>
@@ -244,11 +244,11 @@ const TaskDashboard: React.FC = () => {
   // 서명 저장 핸들러
   const handleSignatureSave = async (signatureData: string) => {
     if (!currentReviewDocument || !user) return;
-    
+
     try {
       // authStore에서 토큰 가져오기
       const { token } = useAuthStore.getState();
-      
+
       // 서명 데이터와 함께 승인 요청
       await axios.post(
         `http://localhost:8080/api/documents/${currentReviewDocument.id}/approve`,
@@ -262,12 +262,12 @@ const TaskDashboard: React.FC = () => {
           }
         }
       );
-      
+
       alert('✅ 문서가 승인되었습니다!');
-      
+
       // 목록 새로고침
       fetchDocuments();
-      
+
       setCurrentReviewDocument(null);
     } catch (error) {
       console.error('승인 실패:', error);
@@ -279,11 +279,11 @@ const TaskDashboard: React.FC = () => {
   const handleRejectReview = async (document: Document) => {
     const reason = prompt('거부 사유를 입력해주세요:');
     if (!reason || !user) return;
-    
+
     try {
       // authStore에서 토큰 가져오기
       const { token } = useAuthStore.getState();
-      
+
       await axios.post(
         `http://localhost:8080/api/documents/${document.id}/reject`,
         {
@@ -296,9 +296,9 @@ const TaskDashboard: React.FC = () => {
           }
         }
       );
-      
+
       alert('❌ 문서가 거부되었습니다.');
-      
+
       // 목록 새로고침
       fetchDocuments();
     } catch (error) {
@@ -435,7 +435,7 @@ const TaskDashboard: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-lg font-medium text-gray-900">
-                          <Link 
+                          <Link
                             to={`/documents/${doc.id}/edit`}
                             className="hover:text-blue-600"
                           >
@@ -447,7 +447,7 @@ const TaskDashboard: React.FC = () => {
                           {urgency.label}
                         </span>
                       </div>
-                      
+
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
                         <span>문서 ID: {doc.id}</span>
                         <span>생성일: {new Date(doc.createdAt).toLocaleDateString('ko-KR')}</span>
@@ -485,8 +485,8 @@ const TaskDashboard: React.FC = () => {
                         보기
                       </Link>
                       {/* 편집 버튼: 작업이 완료되지 않고, 문서가 편집 가능한 상태이며, 사용자가 편집 권한이 있는 경우에만 표시 */}
-                      {getTaskStatus(doc) !== 'COMPLETED' && 
-                       doc.status !== 'COMPLETED' && 
+                      {getTaskStatus(doc) !== 'COMPLETED' &&
+                       doc.status !== 'COMPLETED' &&
                        doc.status !== 'REJECTED' &&
                        (getUserRole(doc) === 'CREATOR' || getUserRole(doc) === 'EDITOR') && (
                         <Link
@@ -496,7 +496,7 @@ const TaskDashboard: React.FC = () => {
                           편집
                         </Link>
                       )}
-                      
+
                       {/* 검토자를 위한 검토 페이지 링크 */}
                       {getUserRole(doc) === 'REVIEWER' && doc.status === 'REVIEWING' && getTaskStatus(doc) === 'PENDING' && (
                         <Link
@@ -516,7 +516,7 @@ const TaskDashboard: React.FC = () => {
               <div className="text-gray-400 text-4xl mb-4">📋</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">표시할 작업이 없습니다</h3>
               <p className="text-gray-600">
-                {filter === 'all' && roleFilter === 'all' 
+                {filter === 'all' && roleFilter === 'all'
                   ? '아직 할당된 작업이 없습니다.'
                   : '선택한 필터 조건에 맞는 작업이 없습니다.'
                 }
@@ -584,4 +584,4 @@ const TaskDashboard: React.FC = () => {
   );
 };
 
-export default TaskDashboard; 
+export default TaskDashboard;

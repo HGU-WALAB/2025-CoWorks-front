@@ -51,21 +51,7 @@ const PdfUploader: React.FC<PdfUploaderProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-gray-800">새 템플릿 생성</h1>
-            <button
-              onClick={onBack}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
-            >
-              ← 목록으로
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 flex items-center justify-center p-6">
+      <div className="flex items-center justify-center p-6">
         <div className="max-w-2xl w-full space-y-6">
           <div
             className={`relative border-2 border-dashed rounded-lg p-12 text-center transition-colors ${

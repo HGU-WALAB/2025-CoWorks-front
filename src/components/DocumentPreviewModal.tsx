@@ -1,5 +1,6 @@
 import React from 'react';
 import { CoordinateField } from '../types/field';
+import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
 
 interface SignatureField {
   id: string;
@@ -33,6 +34,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   const [scale, setScale] = React.useState(1);
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0, initialScale: 1 });
+  const [isPrinting, setIsPrinting] = React.useState(false);
 
   // ESC 키로 모달 닫기
   React.useEffect(() => {
@@ -96,6 +98,34 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
     }
   };
 
+  // 인쇄 기능 - printUtils의 공통 함수 사용
+  const handlePrint = React.useCallback(async () => {
+    setIsPrinting(true);
+    
+    try {
+      // 타입 변환: CoordinateField[] → PrintField[]
+      const printFields = coordinateFields.map(field => ({
+        ...field,
+        value: field.value || ''
+      }));
+
+      // printUtils의 공통 함수 사용
+      const printOptions: PrintOptions = {
+        pdfImageUrl,
+        coordinateFields: printFields,
+        signatureFields,
+        signatures: {},
+        documentTitle: documentTitle
+      };
+      
+      await printDocument(printOptions);
+      setIsPrinting(false);
+    } catch (error) {
+      console.error('인쇄 실패:', error);
+      setIsPrinting(false);
+    }
+  }, [pdfImageUrl, coordinateFields, signatureFields, documentTitle]);
+
 
   return (
     <div 
@@ -142,13 +172,32 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               </button>
             </div>
             <button
-              onClick={() => window.print()}
-              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1"
+              onClick={handlePrint}
+              disabled={isPrinting}
+              className={`px-3 py-1.5 text-sm rounded-lg flex items-center gap-1 transition-colors ${
+                isPrinting 
+                  ? 'bg-gray-400 cursor-not-allowed text-white' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-              </svg>
-              인쇄
+              {isPrinting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="32" strokeDashoffset="32">
+                      <animate attributeName="stroke-dasharray" dur="1s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
+                      <animate attributeName="stroke-dashoffset" dur="1s" values="0;-16;-32;-32" repeatCount="indefinite"/>
+                    </circle>
+                  </svg>
+                  준비중
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  인쇄
+                </>
+              )}
             </button>
             <button
               onClick={onClose}
@@ -319,7 +368,39 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                                     }}
                                   >
                                     {Array(tableData.cols).fill(null).map((_, colIndex) => {
-                                      const cellValue = tableData.cells?.[rowIndex]?.[colIndex] || '';
+                                      // 강화된 셀 값 추출 로직
+                                      let cellValue = '';
+                                      try {
+                                        // 1차 시도: 직접 접근
+                                        if (tableData.cells && Array.isArray(tableData.cells)) {
+                                          if (tableData.cells[rowIndex] && Array.isArray(tableData.cells[rowIndex])) {
+                                            const rawValue = tableData.cells[rowIndex][colIndex];
+                                            if (rawValue !== undefined && rawValue !== null) {
+                                              cellValue = String(rawValue).trim();
+                                            }
+                                          }
+                                        }
+                                        
+                                        // 2차 시도: field.value를 다시 파싱
+                                        if (!cellValue && field.value) {
+                                          try {
+                                            const reparsed = JSON.parse(field.value);
+                                            if (reparsed.cells && Array.isArray(reparsed.cells)) {
+                                              if (reparsed.cells[rowIndex] && Array.isArray(reparsed.cells[rowIndex])) {
+                                                const fallbackValue = reparsed.cells[rowIndex][colIndex];
+                                                if (fallbackValue !== undefined && fallbackValue !== null) {
+                                                  cellValue = String(fallbackValue).trim();
+                                                }
+                                              }
+                                            }
+                                          } catch (parseError) {
+                                            console.warn(`📊 DocumentPreviewModal 미리보기 재파싱 실패 [${rowIndex}][${colIndex}]:`, parseError);
+                                          }
+                                        }
+                                      } catch (error) {
+                                        console.error(`📊 DocumentPreviewModal 미리보기 셀 값 추출 실패 [${rowIndex}][${colIndex}]:`, error);
+                                      }
+                                      
                                       return (
                                         <td 
                                           key={colIndex}

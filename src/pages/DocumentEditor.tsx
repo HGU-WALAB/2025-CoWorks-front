@@ -4,6 +4,7 @@ import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import axios from 'axios';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import { usePrint, type PrintField, type PrintSignatureField } from '../utils/printUtils';
 
 // 테이블 편집 컴포넌트
 interface TableEditComponentProps {
@@ -174,6 +175,9 @@ const DocumentEditor: React.FC = () => {
   
   // 미리보기 모달 상태
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  
+  // 인쇄 기능
+  const { isPrinting, print } = usePrint();
 
   // 편집 완료 관련 상태
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -217,9 +221,10 @@ const DocumentEditor: React.FC = () => {
                   )
                 }) 
               : '', // 테이블인 경우 기본 빈 셀 배열 생성, 아니면 빈 값
-            required: field.required,
+            required: field.required || false,
             fontSize: field.fontSize || 14, // 기본 폰트 크기를 14px로 설정
             fontFamily: field.fontFamily || 'Arial',
+            page: 1, // page 속성 추가
             // 테이블 정보 추가
             ...(field.fieldType === 'table' && field.tableData && {
               tableData: field.tableData
@@ -257,6 +262,7 @@ const DocumentEditor: React.FC = () => {
         required: field.required || false,
         fontSize: field.fontSize || 12, // 폰트 크기 추가
         fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
+        page: 1, // page 속성 추가
         // 테이블 정보도 보존
         ...(field.tableData && { tableData: field.tableData })
       }));
@@ -328,9 +334,10 @@ const DocumentEditor: React.FC = () => {
           height: field.height,
           type: field.type,
           value: field.value,
-          required: field.required,
+          required: field.required || false,
           fontSize: field.fontSize || 12, // 폰트 크기 추가
           fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
+          page: 1, // page 속성 추가
           // 테이블 정보도 보존
           ...(field.tableData && { tableData: field.tableData })
         }))
@@ -446,6 +453,52 @@ const DocumentEditor: React.FC = () => {
     }
   }, [id, handleManualSave, navigate]);
 
+  // 인쇄 기능 - 공통 유틸리티 사용
+  const handlePrint = useCallback(async () => {
+    try {
+      // 인쇄 전 최신 데이터 저장
+      await handleManualSave();
+      
+      // PDF 이미지 URL (절대 경로로 변경)
+      const pdfImageUrl = currentDocument?.template?.pdfImagePath 
+        ? `/uploads/pdf-templates/${currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || ''}` 
+        : '';
+      
+      // 서명 필드 정보
+      const signatureFields = (currentDocument?.data?.signatureFields || []).map((field: any) => ({
+        ...field,
+        signatureData: currentDocument?.data?.signatures?.[field.reviewerEmail]
+      })) as PrintSignatureField[];
+      
+      // 좌표 필드를 PrintField 타입으로 변환
+      const printFields: PrintField[] = coordinateFields.map(field => ({
+        id: field.id,
+        label: field.label,
+        value: field.value || '',
+        x: field.x,
+        y: field.y,
+        width: field.width,
+        height: field.height,
+        fontSize: field.fontSize,
+        fontFamily: field.fontFamily,
+        tableData: field.tableData
+      }));
+      
+      // 공통 인쇄 함수 호출
+      await print({
+        pdfImageUrl,
+        coordinateFields: printFields,
+        signatureFields,
+        signatures: currentDocument?.data?.signatures || {},
+        documentId: currentDocument?.id,
+        documentTitle: currentDocument?.data?.title || '문서'
+      });
+      
+    } catch (error) {
+      console.error('DocumentEditor 인쇄 실패:', error);
+    }
+  }, [handleManualSave, coordinateFields, currentDocument, print]);
+
   // 안정된 핸들러 ref (리렌더링 방지)
   const stableHandlersRef = useRef({
     saveDocumentFieldValue,
@@ -496,7 +549,10 @@ const DocumentEditor: React.FC = () => {
     
     // 필요한 데이터만 포함하여 저장
     const updatedData = {
-      coordinateFields: updatedFields
+      coordinateFields: updatedFields.map(field => ({
+        ...field,
+        page: 1 // page 속성 추가
+      }))
     };
     
     console.log('💾 coordinateFields 업데이트 저장:', {
@@ -684,6 +740,7 @@ const DocumentEditor: React.FC = () => {
           required: templateField.required || false,
           fontSize: templateField.fontSize || 14, // 기본 폰트 크기를 14px로 설정
           fontFamily: templateField.fontFamily || 'Arial',
+          page: 1, // page 속성 추가
           // 테이블 정보 보존
           ...(templateField.fieldType === 'table' && templateField.tableData && {
             tableData: templateField.tableData
@@ -735,6 +792,7 @@ const DocumentEditor: React.FC = () => {
           required: templateField.required || false,
           fontSize: templateField.fontSize || 14, // 기본 폰트 크기를 14px로 설정
           fontFamily: templateField.fontFamily || 'Arial',
+          page: 1, // page 속성 추가
           // 테이블 정보 보존
           ...(templateField.fieldType === 'table' && templateField.tableData && {
             tableData: templateField.tableData
@@ -1157,6 +1215,91 @@ const DocumentEditor: React.FC = () => {
   }
 
   return (
+    <>
+      {/* 인쇄용 스타일 */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            /* 모든 요소 숨김 */
+            * {
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
+              visibility: hidden !important;
+            }
+            
+            /* 인쇄용 컨테이너만 보이게 */
+            .print-only {
+              visibility: visible !important;
+              display: block !important;
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 100vw !important;
+              height: 100vh !important;
+              background: white !important;
+              z-index: 9999 !important;
+            }
+            
+            .print-only * {
+              visibility: visible !important;
+            }
+            
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            
+            body {
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            
+            .print-container {
+              width: 210mm !important;
+              height: 297mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+              position: relative !important;
+              overflow: hidden !important;
+              page-break-after: avoid !important;
+            }
+            
+            .print-pdf-container {
+              width: 1240px !important;
+              height: 1754px !important;
+              transform: scale(0.169) !important;
+              transform-origin: top left !important;
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+            }
+            
+            .print-field {
+              position: absolute !important;
+              background: transparent !important;
+              border: none !important;
+              font-weight: 600 !important;
+              color: black !important;
+              padding: 2px !important;
+            }
+            
+            .print-table {
+              background: transparent !important;
+              border: 1px solid black !important;
+            }
+            
+            .print-table-cell {
+              border: 1px solid black !important;
+              background: transparent !important;
+              color: black !important;
+              font-weight: 500 !important;
+              padding: 2px !important;
+            }
+          }
+        `
+      }} />
+      
     <div className="min-h-screen w-full bg-gray-50">
       {/* 헤더 - 고정 위치 */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b px-6 py-4 flex justify-between items-center w-full">
@@ -1183,6 +1326,34 @@ const DocumentEditor: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrint}
+            disabled={isPrinting}
+            className={`px-4 py-2 text-white rounded-lg flex items-center gap-2 transition-colors ${
+              isPrinting 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-indigo-600 hover:bg-indigo-700'
+            }`}
+          >
+            {isPrinting ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="32" strokeDashoffset="32">
+                    <animate attributeName="stroke-dasharray" dur="1s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
+                    <animate attributeName="stroke-dashoffset" dur="1s" values="0;-16;-32;-32" repeatCount="indefinite"/>
+                  </circle>
+                </svg>
+                준비 중...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                인쇄
+              </>
+            )}
+          </button>
           <button
             onClick={() => setShowPreviewModal(true)}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
@@ -1259,7 +1430,7 @@ const DocumentEditor: React.FC = () => {
       </div>
 
       {/* 메인 컨텐츠 - 헤더 아래 고정 레이아웃 */}
-      <div className="fixed top-24 left-0 right-0 bottom-0 flex w-full">
+      <div className="fixed top-24 left-0 right-0 bottom-0 flex w-full no-print">
         {/* 왼쪽 패널 - PDF 뷰어 */}
         <div className="flex-1 bg-gray-100 overflow-auto flex justify-center items-start p-4">
           {renderPdfViewer || (
@@ -1268,9 +1439,144 @@ const DocumentEditor: React.FC = () => {
             </div>
           )}
         </div>
+        
+        {/* 인쇄 전용 컨테이너 (화면에서는 숨김) */}
+        <div className="hidden print-only print-container">
+          {currentDocument?.template?.pdfImagePath && (
+            <div className="print-pdf-container">
+              {/* PDF 배경 이미지 */}
+              <img 
+                src={`/uploads/pdf-templates/${currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || ''}`}
+                alt="PDF Document"
+                style={{
+                  width: '1240px',
+                  height: '1754px',
+                  objectFit: 'fill'
+                }}
+              />
+              
+              {/* 필드 데이터 오버레이 */}
+              {coordinateFields.map((field) => {
+                // 테이블 필드 확인
+                let isTableField = false;
+                let tableInfo = null;
+                let tableData = null;
+                
+                if (field.tableData) {
+                  isTableField = true;
+                  tableInfo = field.tableData;
+                } else if (field.value) {
+                  try {
+                    const parsedValue = JSON.parse(field.value);
+                    if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
+                      isTableField = true;
+                      tableInfo = {
+                        rows: parsedValue.rows,
+                        cols: parsedValue.cols,
+                        columnWidths: parsedValue.columnWidths
+                      };
+                      tableData = parsedValue;
+                    }
+                  } catch (e) {
+                    // JSON 파싱 실패 시 일반 필드로 처리
+                  }
+                }
+                
+                return (
+                  <div
+                    key={field.id}
+                    className="print-field"
+                    style={{
+                      left: `${field.x}px`,
+                      top: `${field.y}px`,
+                      width: `${field.width}px`,
+                      height: `${field.height}px`,
+                      fontSize: `${field.fontSize || 14}px`,
+                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                    }}
+                  >
+                    {isTableField && tableData ? (
+                      // 테이블 인쇄
+                      <table className="print-table" style={{ width: '100%', height: '100%', borderCollapse: 'collapse' }}>
+                        <tbody>
+                          {Array(tableInfo!.rows).fill(null).map((_, rowIndex) => (
+                            <tr key={rowIndex}>
+                              {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                                const cellContent = tableData.cells?.[rowIndex]?.[colIndex] || '';
+                                return (
+                                  <td 
+                                    key={colIndex}
+                                    className="print-table-cell"
+                                    style={{
+                                      width: tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`,
+                                      fontSize: `${field.fontSize || 14}px`,
+                                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                      textAlign: 'center',
+                                      verticalAlign: 'middle'
+                                    }}
+                                  >
+                                    {cellContent}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      // 일반 필드 인쇄
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: `${field.fontSize || 14}px`,
+                        fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                        fontWeight: '600',
+                        color: 'black'
+                      }}>
+                        {field.value || ''}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {/* 서명 필드 인쇄 */}
+              {currentDocument?.data?.signatureFields?.map((field: any) => {
+                const signatureData = currentDocument.data?.signatures?.[field.reviewerEmail];
+                return (
+                  <div
+                    key={`signature-${field.id}`}
+                    className="print-field"
+                    style={{
+                      left: `${field.x}px`,
+                      top: `${field.y}px`,
+                      width: `${field.width}px`,
+                      height: `${field.height}px`,
+                    }}
+                  >
+                    {signatureData && (
+                      <img 
+                        src={signatureData} 
+                        alt="서명"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* 오른쪽 패널 - 필드 목록 (고정 너비, 고정 위치) */}
-        <div className="w-96 bg-white border-l overflow-y-auto flex-shrink-0 h-full">
+        <div className="w-96 bg-white border-l overflow-y-auto flex-shrink-0 h-full no-print">
           <div className="p-4 border-b bg-gray-50">
             <h2 className="font-medium text-gray-900">문서 필드</h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -1428,11 +1734,12 @@ const DocumentEditor: React.FC = () => {
       
       {/* 미리보기 모달 */}
       {currentDocument?.template?.pdfImagePath && (
-        <DocumentPreviewModal
+        <div className="no-print">
+          <DocumentPreviewModal
           isOpen={showPreviewModal}
           onClose={() => setShowPreviewModal(false)}
           pdfImageUrl={`/uploads/pdf-templates/${currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || ''}`}
-          coordinateFields={coordinateFields}
+          coordinateFields={coordinateFields.map(field => ({ ...field, page: 1 }))}
           signatureFields={(() => {
             const docSignatureFields = currentDocument.data?.signatureFields || [];
             const docSignatures = currentDocument.data?.signatures || {};
@@ -1444,11 +1751,12 @@ const DocumentEditor: React.FC = () => {
           })()}
           documentTitle={currentDocument.template.name || '문서'}
         />
+        </div>
       )}
 
       {/* 편집 완료 확인 모달 */}
       {showCompleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 no-print">
           <div className="bg-white rounded-lg p-6 w-96 max-w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">편집 완료 확인</h3>
             
@@ -1503,6 +1811,7 @@ const DocumentEditor: React.FC = () => {
       )}
 
     </div>
+    </>
   );
 };
 

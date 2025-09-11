@@ -260,8 +260,8 @@ const TemplateUpload: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1 min-h-0">
-          <div className="lg:col-span-4 flex flex-col min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-4">
             <TemplatePreview
               pdfImageUrl={pdfImageDataUrl}
               fields={fields}
