@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useDocumentStore, type Document } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
 import axios from 'axios';
 
 interface User {
@@ -33,6 +34,7 @@ const DocumentList: React.FC = () => {
   const [selectedDocumentId, setSelectedDocumentId] = useState<number | null>(null);
   const [documentHistory, setDocumentHistory] = useState<DocumentHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [printingDocumentId, setPrintingDocumentId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchDocuments();
@@ -107,6 +109,45 @@ const DocumentList: React.FC = () => {
       alert('히스토리 조회에 실패했습니다.');
     } finally {
       setHistoryLoading(false);
+    }
+  };
+
+  // 인쇄 기능 - printUtils의 공통 함수 사용
+  const handlePrint = async (document: Document) => {
+    try {
+      setPrintingDocumentId(document.id);
+      
+      // 저장된 coordinateFields 사용 (사용자가 입력한 데이터 포함)
+      const coordinateFields = document.data?.coordinateFields || [];
+      
+      // PDF 이미지 URL
+      const pdfImageUrl = getPdfImageUrl(document);
+      
+      // 서명 필드 처리
+      const signatureFields = document.data?.signatureFields || [];
+      const signatures = document.data?.signatures || {};
+      
+      // 타입 변환: CoordinateField[] → PrintField[]
+      const printFields = coordinateFields.map(field => ({
+        ...field,
+        value: field.value || ''
+      }));
+
+      // printUtils의 공통 함수 사용
+      const printOptions: PrintOptions = {
+        pdfImageUrl,
+        coordinateFields: printFields,
+        signatureFields,
+        signatures,
+        documentId: document.id,
+        documentTitle: document.template?.name || '문서'
+      };
+      
+      await printDocument(printOptions);
+      setPrintingDocumentId(null);
+    } catch (error) {
+      console.error('인쇄 실패:', error);
+      setPrintingDocumentId(null);
     }
   };
 
@@ -211,7 +252,92 @@ const DocumentList: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <>
+      {/* 인쇄용 스타일 */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            /* 모든 요소 숨김 */
+            * {
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
+              visibility: hidden !important;
+            }
+            
+            /* 인쇄용 컨테이너만 보이게 */
+            .print-only {
+              visibility: visible !important;
+              display: block !important;
+              position: fixed !important;
+              top: 0 !important;
+              left: 0 !important;
+              width: 100vw !important;
+              height: 100vh !important;
+              background: white !important;
+              z-index: 9999 !important;
+            }
+            
+            .print-only * {
+              visibility: visible !important;
+            }
+            
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            
+            body {
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            
+            .print-container {
+              width: 210mm !important;
+              height: 297mm !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: white !important;
+              position: relative !important;
+              overflow: hidden !important;
+              page-break-after: avoid !important;
+            }
+            
+            .print-pdf-container {
+              width: 1240px !important;
+              height: 1754px !important;
+              transform: scale(0.169) !important;
+              transform-origin: top left !important;
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+            }
+            
+            .print-field {
+              position: absolute !important;
+              background: transparent !important;
+              border: none !important;
+              font-weight: 600 !important;
+              color: black !important;
+              padding: 2px !important;
+            }
+            
+            .print-table {
+              background: transparent !important;
+              border: 1px solid black !important;
+            }
+            
+            .print-table-cell {
+              border: 1px solid black !important;
+              background: transparent !important;
+              color: black !important;
+              font-weight: 500 !important;
+              padding: 2px !important;
+            }
+          }
+        `
+      }} />
+      
+    <div className="container mx-auto px-4 py-8 no-print">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">📋 문서 목록</h1>
         <Link to="/templates" className="btn btn-primary">
@@ -285,6 +411,17 @@ const DocumentList: React.FC = () => {
                     className="text-blue-600 hover:text-blue-700 mr-4"
                   >
                     📜 히스토리
+                  </button>
+                  <button
+                    onClick={() => handlePrint(document)}
+                    disabled={printingDocumentId === document.id}
+                    className={`mr-4 ${
+                      printingDocumentId === document.id 
+                        ? 'text-gray-400 cursor-not-allowed' 
+                        : 'text-indigo-600 hover:text-indigo-700'
+                    }`}
+                  >
+                    {printingDocumentId === document.id ? '준비중...' : '🖨️ 인쇄'}
                   </button>
                   <button
                     onClick={() => handlePreview(document.id)}
@@ -393,7 +530,173 @@ const DocumentList: React.FC = () => {
           documentTitle={previewDocument.template.name || '문서'}
         />
       )}
+      
+      {/* 인쇄 전용 컨테이너 (화면에서는 숨김) */}
+      <div className="hidden print-only print-container">
+        {printingDocumentId && previewDocument?.template?.pdfImagePath && (
+          <div className="print-pdf-container">
+            {/* PDF 배경 이미지 */}
+            <img 
+              src={getPdfImageUrl(previewDocument)}
+              alt="PDF Document"
+              style={{
+                width: '1240px',
+                height: '1754px',
+                objectFit: 'fill'
+              }}
+            />
+            
+            {/* 필드 데이터 오버레이 */}
+            {coordinateFields.map((field) => {
+              // 테이블 필드 확인
+              let isTableField = false;
+              let tableInfo = null;
+              let tableData = null;
+              
+              if (field.tableData) {
+                isTableField = true;
+                tableInfo = field.tableData;
+                tableData = field.tableData;
+              } else if (field.value) {
+                try {
+                  const parsedValue = JSON.parse(field.value);
+                  if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
+                    isTableField = true;
+                    tableInfo = {
+                      rows: parsedValue.rows,
+                      cols: parsedValue.cols,
+                      columnWidths: parsedValue.columnWidths
+                    };
+                    tableData = parsedValue;
+                  }
+                } catch (e) {
+                  // JSON 파싱 실패 시 일반 필드로 처리
+                }
+              }
+              
+              return (
+                <div
+                  key={field.id}
+                  className="print-field"
+                  style={{
+                    left: `${field.x}px`,
+                    top: `${field.y}px`,
+                    width: `${field.width}px`,
+                    height: `${field.height}px`,
+                    fontSize: `${field.fontSize || 14}px`,
+                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                  }}
+                >
+                  {isTableField && tableData ? (
+                    // 테이블 인쇄
+                    <table className="print-table" style={{ width: '100%', height: '100%', borderCollapse: 'collapse' }}>
+                      <tbody>
+                        {Array(tableInfo!.rows).fill(null).map((_, rowIndex) => (
+                          <tr key={rowIndex}>
+                            {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                              // 강화된 셀 값 추출 로직
+                              let cellContent = '';
+                              try {
+                                // 1차 시도: 직접 접근
+                                if (tableData.cells && Array.isArray(tableData.cells)) {
+                                  if (tableData.cells[rowIndex] && Array.isArray(tableData.cells[rowIndex])) {
+                                    const rawValue = tableData.cells[rowIndex][colIndex];
+                                    if (rawValue !== undefined && rawValue !== null) {
+                                      cellContent = String(rawValue).trim();
+                                    }
+                                  }
+                                }
+                                
+                                // 2차 시도: field.value를 다시 파싱
+                                if (!cellContent && field.value) {
+                                  try {
+                                    const reparsed = JSON.parse(field.value);
+                                    if (reparsed.cells && Array.isArray(reparsed.cells)) {
+                                      if (reparsed.cells[rowIndex] && Array.isArray(reparsed.cells[rowIndex])) {
+                                        const fallbackValue = reparsed.cells[rowIndex][colIndex];
+                                        if (fallbackValue !== undefined && fallbackValue !== null) {
+                                          cellContent = String(fallbackValue).trim();
+                                        }
+                                      }
+                                    }
+                                  } catch (parseError) {
+                                    console.warn(`📊 DocumentList 인라인 재파싱 실패 [${rowIndex}][${colIndex}]:`, parseError);
+                                  }
+                                }
+                              } catch (error) {
+                                console.error(`📊 DocumentList 인라인 셀 값 추출 실패 [${rowIndex}][${colIndex}]:`, error);
+                              }
+                              
+                              return (
+                                <td 
+                                  key={colIndex}
+                                  className="print-table-cell"
+                                  style={{
+                                    width: tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`,
+                                    fontSize: `${field.fontSize || 14}px`,
+                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                    textAlign: 'center',
+                                    verticalAlign: 'middle'
+                                  }}
+                                >
+                                  {cellContent || ''}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    // 일반 필드 인쇄
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: `${field.fontSize || 14}px`,
+                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                      fontWeight: '600',
+                      color: 'black'
+                    }}>
+                      {field.value || ''}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            
+            {/* 서명 필드 인쇄 */}
+            {signatureFields.map((field) => (
+              <div
+                key={field.id}
+                className="print-field"
+                style={{
+                  left: `${field.x}px`,
+                  top: `${field.y}px`,
+                  width: `${field.width}px`,
+                  height: `${field.height}px`,
+                }}
+              >
+                {field.signatureData && (
+                  <img 
+                    src={field.signatureData} 
+                    alt="서명"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain'
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
+    </>
   );
 };
 
