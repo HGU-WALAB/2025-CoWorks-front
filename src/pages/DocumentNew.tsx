@@ -108,10 +108,24 @@ const DocumentNew: React.FC = () => {
                 placeholder="문서 제목을 입력하세요"
                 required
               />
-              <p className="text-sm text-gray-500 mt-1">
-                템플릿 선택 시 자동으로 템플릿 이름이 설정됩니다.
-              </p>
             </div>
+
+            {/* 선택된 템플릿 설명 (읽기 전용) */}
+            {selectedTemplate && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  템플릿 설명
+                </label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    {selectedTemplate.description || '설명이 없습니다.'}
+                  </p>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  이 설명은 선택된 템플릿의 정보입니다. (수정 불가)
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

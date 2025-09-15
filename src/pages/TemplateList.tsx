@@ -84,11 +84,19 @@ const TemplateList: React.FC = () => {
                       {template.name}
                     </h3>
                     
-                    {template.description && (
-                      <p className="text-gray-600 mb-4">
-                        {template.description}
+                    <div className="h-10 mb-4">
+                      <p 
+                        className="text-gray-400 text-sm leading-5 overflow-hidden"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          lineHeight: '1.25rem',
+                          maxHeight: '2.5rem'
+                        }}
+                      >
+                        {template.description || '(없음)'}
                       </p>
-                    )}
+                    </div>
 
 
 

@@ -38,6 +38,7 @@ const TemplateUpload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jsonData, setJsonData] = useState('');
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
   
   // PDF preview states
   const [pdfImageDataUrl, setPdfImageDataUrl] = useState<string | null>(null);
@@ -116,8 +117,15 @@ const TemplateUpload: React.FC = () => {
       return;
     }
 
+    // 새 템플릿 생성 시에는 PDF 파일이 필수
     if (!selectedFile && !isEditMode) {
       setError('PDF 파일을 선택해주세요.');
+      return;
+    }
+
+    // 편집 모드에서는 기존 PDF가 있거나 새 파일이 있어야 함
+    if (isEditMode && !selectedFile && !pdfImageDataUrl) {
+      setError('PDF 파일이 없습니다. 새 PDF 파일을 업로드해주세요.');
       return;
     }
 
@@ -132,6 +140,7 @@ const TemplateUpload: React.FC = () => {
       };
 
       if (selectedFile) {
+        // 새 파일이 선택된 경우 (생성 모드 또는 편집 모드에서 파일 교체)
         const formData = new FormData();
         Object.keys(templateData).forEach(key => {
           formData.append(key, templateData[key]);
@@ -139,20 +148,25 @@ const TemplateUpload: React.FC = () => {
         formData.append('file', selectedFile);
         
         if (isEditMode) {
+          console.log('🔄 편집 모드: 새 PDF 파일로 업데이트');
           await axios.put(`/api/templates/${templateId}`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
         } else {
+          console.log('📄 생성 모드: 새 템플릿 생성');
           await axios.post('/api/templates/upload-pdf', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
         }
       } else if (isEditMode) {
+        // 편집 모드에서 파일 변경 없이 메타데이터만 업데이트
+        console.log('📝 편집 모드: 메타데이터만 업데이트');
         await axios.put(`/api/templates/${templateId}`, templateData, {
           headers: { 'Content-Type': 'application/json' }
         });
       }
 
+      alert(isEditMode ? '템플릿이 수정되었습니다.' : '템플릿이 생성되었습니다.');
       navigate('/templates');
     } catch (error) {
       console.error('템플릿 저장 실패:', error);
@@ -211,6 +225,61 @@ const TemplateUpload: React.FC = () => {
     setEditingCell(null);
   };
 
+  // 편집 모드일 때 기존 템플릿 데이터 로드
+  useEffect(() => {
+    const loadTemplateForEdit = async () => {
+      if (isEditMode && templateId) {
+        setLoadingTemplate(true);
+        try {
+          console.log('🔧 템플릿 편집 모드 - 기존 데이터 로드 시작:', templateId);
+          const response = await axios.get(`/api/templates/${templateId}`);
+          const template = response.data;
+          
+          console.log('📋 로드된 템플릿 데이터:', template);
+          
+          // 기본 정보 설정
+          setTemplateName(template.name || '');
+          setDescription(template.description || '');
+          
+          // PDF 이미지 경로 설정
+          if (template.pdfImagePath) {
+            const imageFileName = template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
+            const fullImagePath = `/uploads/pdf-templates/${imageFileName}`;
+            setPdfImageDataUrl(fullImagePath);
+            console.log('🖼️ PDF 이미지 경로 설정:', fullImagePath);
+          }
+          
+          // 필드 데이터 파싱 및 설정
+          if (template.coordinateFields) {
+            try {
+              const parsedFields = typeof template.coordinateFields === 'string' 
+                ? JSON.parse(template.coordinateFields)
+                : template.coordinateFields;
+              
+              console.log('📐 파싱된 필드 데이터:', parsedFields);
+              
+              if (Array.isArray(parsedFields)) {
+                setFields(parsedFields);
+                // JSON 데이터도 자동으로 표시
+                setJsonData(JSON.stringify(parsedFields, null, 2));
+              }
+            } catch (fieldParseError) {
+              console.error('❌ 필드 데이터 파싱 실패:', fieldParseError);
+            }
+          }
+          
+        } catch (error) {
+          console.error('❌ 템플릿 로드 실패:', error);
+          setError('템플릿을 불러오는데 실패했습니다.');
+        } finally {
+          setLoadingTemplate(false);
+        }
+      }
+    };
+
+    loadTemplateForEdit();
+  }, [isEditMode, templateId, setFields]);
+
   // PDF Object URL 정리를 위한 useEffect
   useEffect(() => {
     return () => {
@@ -265,6 +334,18 @@ const TemplateUpload: React.FC = () => {
     const fieldsJson = JSON.stringify(fields, null, 2);
     setJsonData(fieldsJson);
   };
+
+  // 로딩 상태 표시
+  if (loadingTemplate) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+          <p className="text-gray-600">템플릿 데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -322,13 +403,28 @@ const TemplateUpload: React.FC = () => {
                 />
                 <div className="space-y-2">
                   <div className="text-2xl">📄</div>
-                  <p className="text-sm text-gray-600">
-                    {selectedFile ? selectedFile.name : 'PDF 파일을 선택하거나 드래그하세요'}
-                  </p>
-                  {selectedFile && (
-                    <p className="text-xs text-gray-500">
-                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
+                  {isEditMode && pdfImageDataUrl && !selectedFile ? (
+                    // 편집 모드에서 기존 PDF가 있는 경우
+                    <div>
+                      <p className="text-sm text-green-600 font-medium">
+                        ✅ 기존 PDF 파일이 업로드되어 있습니다
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        새 PDF 파일을 선택하면 기존 파일을 교체할 수 있습니다
+                      </p>
+                    </div>
+                  ) : (
+                    // 새 파일 업로드 또는 파일 선택된 경우
+                    <div>
+                      <p className="text-sm text-gray-600">
+                        {selectedFile ? selectedFile.name : 'PDF 파일을 선택하거나 드래그하세요'}
+                      </p>
+                      {selectedFile && (
+                        <p className="text-xs text-gray-500">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
