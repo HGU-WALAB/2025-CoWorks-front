@@ -1,10 +1,13 @@
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTemplateStore } from '../stores/templateStore';
+import { useAuthStore } from '../stores/authStore';
+import { Template } from '../types/template';
 
 const TemplateList: React.FC = () => {
   const navigate = useNavigate();
   const { templates, loading, error, getTemplates, deleteTemplate } = useTemplateStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
     getTemplates();
@@ -12,6 +15,10 @@ const TemplateList: React.FC = () => {
 
   const handleCreateDocument = (templateId: number) => {
     navigate(`/documents/new?templateId=${templateId}`);
+  };
+  
+  const isTemplateOwner = (template: Template) => {
+    return user?.name === template.createdByName;
   };
 
   const handleDeleteTemplate = async (templateId: number, templateName: string) => {
@@ -77,11 +84,19 @@ const TemplateList: React.FC = () => {
                       {template.name}
                     </h3>
                     
-                    {template.description && (
-                      <p className="text-gray-600 mb-4">
-                        {template.description}
+                    <div className="h-10 mb-4">
+                      <p 
+                        className="text-gray-400 text-sm leading-5 overflow-hidden"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          lineHeight: '1.25rem',
+                          maxHeight: '2.5rem'
+                        }}
+                      >
+                        {template.description || '(없음)'}
                       </p>
-                    )}
+                    </div>
 
 
 
@@ -99,18 +114,24 @@ const TemplateList: React.FC = () => {
                       >
                         📄 문서 생성
                       </button>
-                      <Link
-                        to={`/templates/edit/${template.id}`}
-                        className="btn bg-green-600 text-white hover:bg-green-700 text-sm px-3 flex items-center justify-center"
-                      >
-                        ✏️
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteTemplate(template.id, template.name)}
-                        className="btn bg-red-600 text-white hover:bg-red-700 text-sm px-3"
-                      >
-                        🗑️
-                      </button>
+                      {isTemplateOwner(template) && (
+                        <>
+                          <Link
+                            to={`/templates/edit/${template.id}`}
+                            className="btn bg-green-600 text-white hover:bg-green-700 text-sm px-3 flex items-center justify-center"
+                            title="템플릿 편집"
+                          >
+                            ✏️
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteTemplate(template.id, template.name)}
+                            className="btn bg-red-600 text-white hover:bg-red-700 text-sm px-3"
+                            title="템플릿 삭제"
+                          >
+                            🗑️
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
