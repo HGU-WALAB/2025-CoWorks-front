@@ -57,6 +57,9 @@ export interface Document {
   deadline?: string;
   tasks?: TaskInfo[];
   template?: TemplateInfo;
+  // 폴더 관련 필드
+  folderId?: string | null;
+  folderName?: string | null;
 }
 
 export interface DocumentCreateRequest {

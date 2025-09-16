@@ -8,6 +8,7 @@ import DocumentEditor from './pages/DocumentEditor.tsx';
 import DocumentReview from './pages/DocumentReview';
 import DocumentNew from './pages/DocumentNew';
 import TaskDashboard from './pages/TaskDashboard';
+import FolderPage from './pages/FolderPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import HisnetCallback from './pages/HisnetCallback';
@@ -124,6 +125,26 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <DocumentReview />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/folders" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <FolderPage />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/folders/:folderId" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <FolderPage />
               </Layout>
             </ProtectedRoute>
           } 
