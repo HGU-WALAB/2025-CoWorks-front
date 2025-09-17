@@ -28,8 +28,10 @@ const FolderPage: React.FC<FolderPageProps> = () => {
     createFolder,
     renameFolder,
     moveFolder,
+    moveDocument,
     deleteFolder,
-    reset
+    reset,
+    clearError
   } = useFolderStore();
 
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
@@ -115,6 +117,10 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       await createFolder(folderName, folderId || null);
       // 생성 후 현재 폴더 내용을 다시 로드
       await loadFolderContents(folderId || null);
+    } catch (error: any) {
+      console.error('Create folder operation failed:', error);
+      alert(`폴더 생성 실패: ${error.message}`);
+      clearError();
     } finally {
       setCreateLoading(false);
     }
@@ -167,6 +173,10 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       }
       // 변경 후 폴더 내용 다시 로드
       await loadFolderContents(folderId || null);
+    } catch (error: any) {
+      console.error('Rename operation failed:', error);
+      alert(`이름 변경 실패: ${error.message}`);
+      clearError();
     } finally {
       setRenameLoading(false);
     }
@@ -186,6 +196,10 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       // 삭제 후 폴더 내용 다시 로드
       await loadFolderContents(folderId || null);
       setShowDeleteModal(false);
+    } catch (error: any) {
+      console.error('Delete operation failed:', error);
+      alert(`삭제 실패: ${error.message}`);
+      clearError();
     } finally {
       setDeleteLoading(false);
     }
@@ -203,8 +217,8 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       if (contextMenu.type === 'folder') {
         await moveFolder(contextMenu.item.id.toString(), targetFolderId);
       } else {
-        // TODO: 문서 이동 구현
-        console.log('Document move not implemented yet');
+        // 문서 이동 구현
+        await moveDocument(contextMenu.item.id.toString(), targetFolderId);
       }
       // 이동 후 폴더 내용 다시 로드
       await loadFolderContents(folderId || null);
@@ -218,6 +232,8 @@ const FolderPage: React.FC<FolderPageProps> = () => {
         navigate('/login');
       } else {
         alert(`이동 실패: ${error.message}`);
+        // alert으로 에러를 표시한 후 folderStore의 에러 상태를 초기화
+        clearError();
       }
     } finally {
       setMoveLoading(false);

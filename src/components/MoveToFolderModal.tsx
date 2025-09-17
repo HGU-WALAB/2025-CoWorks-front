@@ -37,9 +37,9 @@ const MoveToFolderModal: React.FC<MoveToFolderModalProps> = ({
   const loadFolders = async () => {
     setFolderLoading(true);
     try {
-      console.log('Loading folders for move modal...');
-      const foldersData = await folderService.getRootFolders();
-      console.log('Loaded folders:', foldersData);
+      console.log('Loading folder tree for move modal...');
+      const foldersData = await folderService.getFolderTree();
+      console.log('Loaded folder tree:', foldersData);
       setFolders(foldersData);
     } catch (error: any) {
       console.error('Error loading folders:', error);
@@ -59,9 +59,9 @@ const MoveToFolderModal: React.FC<MoveToFolderModalProps> = ({
     try {
       await onSubmit(selectedFolderId);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Move operation failed:', error);
-      setError('이동에 실패했습니다. 다시 시도해주세요.');
+      setError(error.message || '이동에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -71,41 +71,40 @@ const MoveToFolderModal: React.FC<MoveToFolderModalProps> = ({
     onClose();
   };
 
-  const renderFolderTree = (folders: Folder[], parentId: string | null = null, depth: number = 0) => {
-    return folders
-      .filter(folder => folder.parentId === parentId)
-      .map(folder => {
-        const isCurrentFolder = folder.id === currentFolderId;
-        const isSelected = folder.id === selectedFolderId;
-        
-        return (
-          <div key={folder.id}>
-            <button
-              onClick={() => setSelectedFolderId(folder.id)}
-              disabled={isCurrentFolder || loading}
-              className={`
-                w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center
-                ${isCurrentFolder 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                  : isSelected
-                    ? 'bg-indigo-100 text-indigo-700 border border-indigo-300'
-                    : 'hover:bg-gray-50 text-gray-700'
-                }
-              `}
-              style={{ marginLeft: `${depth * 20}px` }}
-            >
-              <svg className="w-4 h-4 mr-2 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-              </svg>
-              <span className="truncate">
-                {folder.name}
-                {isCurrentFolder && ' (현재 폴더)'}
-              </span>
-            </button>
-            {renderFolderTree(folders, folder.id, depth + 1)}
-          </div>
-        );
-      });
+  const renderFolderTree = (folders: Folder[], depth: number = 0): React.ReactNode => {
+    return folders.map(folder => {
+      const isCurrentFolder = folder.id === currentFolderId;
+      const isSelected = folder.id === selectedFolderId;
+      
+      return (
+        <div key={folder.id}>
+          <button
+            onClick={() => setSelectedFolderId(folder.id)}
+            disabled={isCurrentFolder || loading}
+            className={`
+              w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center
+              ${isCurrentFolder 
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                : isSelected
+                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-300'
+                  : 'hover:bg-gray-50 text-gray-700'
+              }
+            `}
+            style={{ marginLeft: `${depth * 20}px` }}
+          >
+            <svg className="w-4 h-4 mr-2 text-yellow-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+            </svg>
+            <span className="truncate">
+              {folder.name}
+              {isCurrentFolder && ' (현재 폴더)'}
+            </span>
+          </button>
+          {/* 하위 폴더들 렌더링 */}
+          {folder.children && folder.children.length > 0 && renderFolderTree(folder.children, depth + 1)}
+        </div>
+      );
+    });
   };
 
   if (!isOpen) return null;

@@ -64,6 +64,7 @@ export interface FolderState {
   checkFolderAccess: () => Promise<boolean>;
   getFolderPath: (folderId: string) => Promise<Folder[]>;
   reset: () => void;
+  clearError: () => void;
 }
 
 // Component Props Types
