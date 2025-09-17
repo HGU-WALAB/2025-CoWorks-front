@@ -110,25 +110,36 @@ const TemplateList: React.FC = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleCreateDocument(template.id)}
-                        className="btn btn-primary flex-1 text-center text-sm"
+                        className="px-3 py-1.5 text-sm bg-white border border-gray-500 rounded-md hover:bg-blue-50 transition-colors flex items-center justify-center flex-1"
+                        style={{ color: '#333333' }}
                       >
-                        📄 문서 생성
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        문서 생성
                       </button>
                       {isTemplateOwner(template) && (
                         <>
                           <Link
                             to={`/templates/edit/${template.id}`}
-                            className="btn bg-green-600 text-white hover:bg-green-700 text-sm px-3 flex items-center justify-center"
+                            className="px-3 py-1.5 text-sm  bg-white border border-gray-500 rounded-md hover:bg-gray-50 transition-colors flex items-center justify-center"
                             title="템플릿 편집"
+                            style={{ color: '#333333' }}
                           >
-                            ✏️
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            편집
                           </Link>
                           <button
                             onClick={() => handleDeleteTemplate(template.id, template.name)}
-                            className="btn bg-red-600 text-white hover:bg-red-700 text-sm px-3"
+                            className="px-3 py-1.5 text-sm text-red-600 bg-white border border-red-400 rounded-md hover:bg-red-50 transition-colors flex items-center justify-center"
                             title="템플릿 삭제"
                           >
-                            🗑️
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            삭제
                           </button>
                         </>
                       )}
