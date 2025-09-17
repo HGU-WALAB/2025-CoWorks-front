@@ -214,5 +214,9 @@ export const useFolderStore = create<FolderState>((set, get) => ({
       loading: false,
       error: null
     });
+  },
+
+  clearError: () => {
+    set({ error: null });
   }
 }));
