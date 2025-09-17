@@ -827,24 +827,6 @@ const DocumentEditor: React.FC = () => {
           documentStatus: currentDocument.status
         });
 
-        // 현재 사용자가 생성자인지 확인
-        const isCreator = currentDocument.tasks?.some(task => 
-          task.role === 'CREATOR' && task.assignedUserEmail === user.email
-        );
-
-        console.log('생성자 여부:', isCreator);
-
-        if (isCreator) {
-          alert('생성자는 문서를 편집할 수 없습니다. 편집자에게 할당된 문서만 편집 가능합니다.');
-          navigate('/documents');
-          return;
-        }
-
-        // 편집자가 아닌 경우에도 접근 차단
-        const isEditor = currentDocument.tasks?.some(task => 
-          task.role === 'EDITOR' && task.assignedUserEmail === user.email
-        );
-
         if (!isEditor) {
           alert('이 문서를 편집할 권한이 없습니다.');
           navigate('/documents');
