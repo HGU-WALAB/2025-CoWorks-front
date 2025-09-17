@@ -99,7 +99,7 @@ const TaskDashboard: React.FC = () => {
       loading,
       documents: documents.map(d => ({
         id: d.id,
-        templateName: d.templateName,
+        templateName: d.title || d.templateName,
         status: d.status,
         tasksCount: d.tasks?.length || 0,
         tasks: d.tasks?.map(t => ({

@@ -381,13 +381,13 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           e.stopPropagation();
         }}
       >
-        <div className="text-center p-1 pointer-events-none">
-          <div className="text-sm font-medium text-gray-700 truncate">
-            {field.label}
+        <div className="text-center p-1">
+          <div className="flex items-center justify-center gap-1 text-sm font-medium text-gray-700 truncate">
+            {field.required && (
+                <span className="text-xs text-red-500">필수</span>
+            )}
+            <span>{field.label}</span>
           </div>
-          {field.required && (
-            <div className="text-xs text-red-500">필수</div>
-          )}
         </div>
         
         {/* 리사이즈 핸들 */}
