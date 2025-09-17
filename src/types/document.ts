@@ -49,6 +49,7 @@ export interface TemplateInfo {
 export interface Document {
   id: number;
   templateId: number;
+  title: string;
   templateName?: string;
   data?: DocumentData;
   status: 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
@@ -65,6 +66,7 @@ export interface Document {
 export interface DocumentCreateRequest {
   templateId: number;
   editorEmail?: string;
+  title?: string;
 }
 
 export interface DocumentUpdateRequest {

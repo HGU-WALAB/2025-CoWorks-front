@@ -44,16 +44,8 @@ const DocumentNew: React.FC = () => {
       const newDocument = await createDocument({
         templateId: parseInt(selectedTemplateId),
         editorEmail: user?.email,
+        title: documentTitle.trim() || undefined,
       });
-
-      // 문서가 생성되면 제목 설정을 위해 업데이트
-      if (documentTitle.trim()) {
-        await updateDocument(newDocument.id, {
-          data: {
-            title: documentTitle.trim()
-          }
-        });
-      }
 
       alert('문서가 생성되었습니다.');
       navigate(`/documents`);

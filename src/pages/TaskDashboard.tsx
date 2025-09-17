@@ -37,7 +37,7 @@ const TaskDashboard: React.FC = () => {
       currentUserEmail,
       documents: documents.map(d => ({
         id: d.id,
-        templateName: d.templateName,
+        templateName: d.title || d.templateName,
         status: d.status,
         tasksCount: d.tasks?.length || 0,
         tasks: d.tasks?.map(t => ({ role: t.role, assignedUserEmail: t.assignedUserEmail, status: t.status }))
@@ -439,7 +439,7 @@ const TaskDashboard: React.FC = () => {
                             to={`/documents/${doc.id}/edit`}
                             className="hover:text-blue-600"
                           >
-                            {doc.templateName}
+                            {doc.title || doc.templateName}
                           </Link>
                         </h3>
                         {getStatusBadge(doc.status)}

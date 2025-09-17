@@ -623,7 +623,7 @@ const DocumentReview: React.FC = () => {
       <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b px-6 py-4 flex justify-between items-center w-full">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">
-            📋 {currentDocument.templateName} - 검토
+            📋 {currentDocument.title || currentDocument.templateName} - 검토
           </h1>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-sm text-gray-500">

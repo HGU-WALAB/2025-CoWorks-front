@@ -35,9 +35,10 @@ const DocumentList: React.FC = () => {
 
     // 검색어 필터링
     if (searchTerm.trim()) {
-      filtered = filtered.filter(doc => 
-        doc.templateName?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(doc => {
+        const documentTitle = doc.title || doc.templateName || '';
+        return documentTitle.toLowerCase().includes(searchTerm.toLowerCase());
+      });
     }
 
     // 상태 필터링
@@ -141,7 +142,7 @@ const DocumentList: React.FC = () => {
         signatureFields,
         signatures,
         documentId: document.id,
-        documentTitle: document.template?.name || '문서'
+        documentTitle: document.title || document.template?.name || '문서'
       };
 
       await printDocument(printOptions);
@@ -480,7 +481,7 @@ const DocumentList: React.FC = () => {
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="text-lg font-medium text-gray-900">
-                        {document.templateName}
+                        {document.title || document.templateName}
                       </h3>
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(document.status)}`}>
                         {getStatusText(document.status)}
@@ -658,7 +659,7 @@ const DocumentList: React.FC = () => {
               <div>
                 <h2 className="text-xl font-bold text-gray-800">작업 현황</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  {selectedWorkflowDocument.templateName}의 진행 상황을 확인하세요
+                  {selectedWorkflowDocument.title || selectedWorkflowDocument.templateName}의 진행 상황을 확인하세요
                 </p>
               </div>
               <button
@@ -765,7 +766,7 @@ const DocumentList: React.FC = () => {
           pdfImageUrl={getPdfImageUrl(previewDocument)}
           coordinateFields={coordinateFields}
           signatureFields={signatureFields}
-          documentTitle={previewDocument.template.name || '문서'}
+          documentTitle={previewDocument.title || previewDocument.template?.name || '문서'}
         />
       )}
 
