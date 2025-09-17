@@ -5,6 +5,8 @@ export interface Template {
   isPublic?: boolean;
   pdfFilePath?: string;
   pdfImagePath?: string;
+  defaultFolderId?: string | null;
+  defaultFolderName?: string | null;
   createdById: string;
   createdByName: string;
   createdAt: string;
@@ -17,4 +19,5 @@ export interface TemplateCreateRequest {
   isPublic?: boolean;
   pdfFilePath?: string;
   pdfImagePath?: string;
+  defaultFolderId?: string | null;
 }
