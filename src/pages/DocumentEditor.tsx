@@ -175,6 +175,66 @@ const DocumentEditor: React.FC = () => {
   
   // 미리보기 모달 상태
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewCoordinateFields, setPreviewCoordinateFields] = useState<any[]>([]);
+  const [previewSignatureFields, setPreviewSignatureFields] = useState<any[]>([]);
+
+  // 미리보기 처리 함수 (DocumentList와 동일한 로직)
+  const handlePreview = useCallback(() => {
+    console.log('🔍 DocumentEditor - handlePreview 호출됨');
+
+    if (!currentDocument) {
+      console.warn('⚠️ DocumentEditor - currentDocument가 없습니다');
+      return;
+    }
+
+    try {
+      console.log('🔍 DocumentEditor - 미리보기 문서:', currentDocument);
+      console.log('🔍 DocumentEditor - PDF 이미지 경로:', currentDocument.template?.pdfImagePath);
+
+      // 템플릿 필드와 저장된 필드를 합쳐서 설정
+      let allFields: any[] = [];
+
+      // 템플릿 필드 추가
+      if (currentDocument.template?.coordinateFields) {
+        try {
+          const templateFields = JSON.parse(currentDocument.template.coordinateFields);
+          allFields = [...templateFields];
+          console.log('📄 DocumentEditor - 템플릿 필드:', templateFields);
+        } catch (error) {
+          console.error('템플릿 필드 파싱 오류:', error);
+        }
+      }
+
+      // 저장된 추가 필드 추가
+      const savedFields = currentDocument.data?.coordinateFields || [];
+      allFields = [...allFields, ...savedFields];
+
+      console.log('📄 DocumentEditor - 모든 필드:', allFields);
+      setPreviewCoordinateFields(allFields);
+
+      // 서명 필드 처리
+      const docSignatureFields = currentDocument.data?.signatureFields || [];
+      const docSignatures = currentDocument.data?.signatures || {};
+
+      const processedSignatureFields = docSignatureFields.map((field: any) => ({
+        ...field,
+        signatureData: docSignatures[field.reviewerEmail]
+      }));
+
+      console.log('🖋️ DocumentEditor - 서명 필드 처리:', {
+        originalSignatureFields: docSignatureFields,
+        signatures: docSignatures,
+        processedSignatureFields
+      });
+
+      setPreviewSignatureFields(processedSignatureFields);
+
+      console.log('🔍 DocumentEditor - 미리보기 모달 표시');
+      setShowPreviewModal(true);
+    } catch (error) {
+      console.error('문서 미리보기 실패:', error);
+    }
+  }, [currentDocument]);
   
   // 인쇄 기능
   const { isPrinting, print } = usePrint();
@@ -1286,9 +1346,8 @@ const DocumentEditor: React.FC = () => {
       {/* 헤더 - 고정 위치 */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b px-6 py-4 flex justify-between items-center w-full">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">{currentDocument.data?.title || '문서 편집'}</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{currentDocument.title || '문서 편집'}</h1>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-gray-500">문서 편집</p>
             {lastSaved && (
               <span className="text-xs text-green-600">
                 • 마지막 저장: {lastSaved.toLocaleTimeString()}
@@ -1337,7 +1396,7 @@ const DocumentEditor: React.FC = () => {
             )}
           </button>
           <button
-            onClick={() => setShowPreviewModal(true)}
+            onClick={handlePreview}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1715,25 +1774,22 @@ const DocumentEditor: React.FC = () => {
       </div>
       
       {/* 미리보기 모달 */}
-      {currentDocument?.template?.pdfImagePath && (
-        <div className="no-print">
-          <DocumentPreviewModal
+      {showPreviewModal && currentDocument && (
+        <DocumentPreviewModal
           isOpen={showPreviewModal}
           onClose={() => setShowPreviewModal(false)}
-          pdfImageUrl={`/uploads/pdf-templates/${currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || ''}`}
-          coordinateFields={coordinateFields.map(field => ({ ...field, page: 1 }))}
-          signatureFields={(() => {
-            const docSignatureFields = currentDocument.data?.signatureFields || [];
-            const docSignatures = currentDocument.data?.signatures || {};
-            
-            return docSignatureFields.map((field: any) => ({
-              ...field,
-              signatureData: docSignatures[field.reviewerEmail]
-            }));
+          pdfImageUrl={(() => {
+            if (!currentDocument.template?.pdfImagePath) {
+              console.warn('⚠️ DocumentEditor - PDF 이미지 경로가 없습니다');
+              return '';
+            }
+            const filename = currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
+            return `/uploads/pdf-templates/${filename}`;
           })()}
-          documentTitle={currentDocument.template.name || '문서'}
+          coordinateFields={previewCoordinateFields}
+          signatureFields={previewSignatureFields}
+          documentTitle={currentDocument.title || currentDocument.template?.name || '문서'}
         />
-        </div>
       )}
 
       {/* 편집 완료 확인 모달 */}
