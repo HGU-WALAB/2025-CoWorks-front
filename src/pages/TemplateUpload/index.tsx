@@ -6,6 +6,7 @@ import { usePdfCanvas } from '../../hooks/usePdfCanvas';
 import NewFieldModal from '../../components/modals/NewFieldModal';
 import FieldEditModal from '../../components/modals/FieldEditModal';
 import TableCellEditModal from '../../components/modals/TableCellEditModal';
+import FolderSelector from '../../components/FolderSelector';
 import FieldManagement from './components/FieldManagement';
 import TemplatePreview from './components/TemplatePreview';
 import { TemplateField } from '../../types/field';
@@ -35,6 +36,7 @@ const TemplateUpload: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [templateName, setTemplateName] = useState('');
   const [description, setDescription] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jsonData, setJsonData] = useState('');
@@ -136,7 +138,8 @@ const TemplateUpload: React.FC = () => {
       let templateData: any = {
         name: templateName,
         description,
-        coordinateFields: JSON.stringify(fields)
+        coordinateFields: JSON.stringify(fields),
+        defaultFolderId: selectedFolderId
       };
 
       if (selectedFile) {
@@ -240,6 +243,9 @@ const TemplateUpload: React.FC = () => {
           // 기본 정보 설정
           setTemplateName(template.name || '');
           setDescription(template.description || '');
+          setSelectedFolderId(template.defaultFolderId || null);
+          
+          console.log('📁 기본 폴더 설정:', template.defaultFolderId, template.defaultFolderName);
           
           // PDF 이미지 경로 설정
           if (template.pdfImagePath) {
@@ -448,12 +454,15 @@ const TemplateUpload: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   폴더
                 </label>
-                <input
-                    // value={folder}
-                    // onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                    placeholder="문서를 관리할 폴더를 선택해주세요."
+                <FolderSelector
+                  selectedFolderId={selectedFolderId}
+                  onFolderSelect={setSelectedFolderId}
+                  placeholder="이 템플릿으로 생성한 문서가 담길 폴더를 선택해주세요"
+                  allowRoot={true}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  이 템플릿으로 문서를 생성할 때 선택한 폴더에 자동으로 저장됩니다.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
