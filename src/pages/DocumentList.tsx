@@ -1,22 +1,23 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useDocumentStore, type Document } from '../stores/documentStore';
-// import { useAuthStore } from '../stores/authStore';
+import { useAuthStore } from '../stores/authStore';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
-import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
+// import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
-type StatusFilter = 'all' | 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
+type StatusFilter = 'all' | 'DRAFT' | 'EDITING' | 'APPOINTING' | 'REVIEWING' | 'FINISHED' | 'REJECTED';
 
 const DocumentList: React.FC = () => {
   const { documents, loading, fetchDocuments } = useDocumentStore();
-  // const { user: currentUser } = useAuthStore();
+  const { user: currentUser } = useAuthStore();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showPreview, setShowPreview] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
   const [coordinateFields, setCoordinateFields] = useState<any[]>([]);
   const [signatureFields, setSignatureFields] = useState<any[]>([]);
-  const [printingDocumentId, setPrintingDocumentId] = useState<number | null>(null);
+  // const [printingDocumentId, setPrintingDocumentId] = useState<number | null>(null);
   const [showWorkflowModal, setShowWorkflowModal] = useState(false);
   const [selectedWorkflowDocument, setSelectedWorkflowDocument] = useState<Document | null>(null);
 
@@ -28,6 +29,14 @@ const DocumentList: React.FC = () => {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
+
+  // URL 파라미터에서 초기 필터 상태 설정
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam && ['DRAFT', 'EDITING', 'APPOINTING', 'REVIEWING', 'FINISHED', 'REJECTED'].includes(statusParam)) {
+      setStatusFilter(statusParam as StatusFilter);
+    }
+  }, [searchParams]);
 
   // 필터링 및 정렬된 문서 목록 계산
   const filteredAndSortedDocuments = useMemo(() => {
@@ -44,6 +53,16 @@ const DocumentList: React.FC = () => {
     // 상태 필터링
     if (statusFilter !== 'all') {
       filtered = filtered.filter(doc => doc.status === statusFilter);
+    }
+
+    // 검토자 필터링 (검토 중인 문서에서 현재 사용자가 검토자인 경우만)
+    const reviewerParam = searchParams.get('reviewer');
+    if (reviewerParam === 'me' && statusFilter === 'REVIEWING' && currentUser) {
+      filtered = filtered.filter(doc => {
+        return doc.tasks?.some(task => 
+          task.role === 'REVIEWER' && task.assignedUserEmail === currentUser.email
+        ) || false;
+      });
     }
 
     // 정렬
@@ -63,7 +82,7 @@ const DocumentList: React.FC = () => {
     });
 
     return sorted;
-  }, [documents, searchTerm, statusFilter, sortOption]);
+  }, [documents, searchTerm, statusFilter, sortOption, searchParams, currentUser]);
 
   const handlePreview = async (documentId: number) => {
     try {
@@ -114,44 +133,44 @@ const DocumentList: React.FC = () => {
     }
   };
 
-  // 인쇄 기능 - printUtils의 공통 함수 사용
-  const handlePrint = async (document: Document) => {
-    try {
-      setPrintingDocumentId(document.id);
+  // 인쇄 기능 - printUtils의 공통 함수 사용 (현재 사용되지 않음)
+  // const handlePrint = async (document: Document) => {
+  //   try {
+  //     setPrintingDocumentId(document.id);
 
-      // 저장된 coordinateFields 사용 (사용자가 입력한 데이터 포함)
-      const coordinateFields = document.data?.coordinateFields || [];
+  //     // 저장된 coordinateFields 사용 (사용자가 입력한 데이터 포함)
+  //     const coordinateFields = document.data?.coordinateFields || [];
 
-      // PDF 이미지 URL
-      const pdfImageUrl = getPdfImageUrl(document);
+  //     // PDF 이미지 URL
+  //     const pdfImageUrl = getPdfImageUrl(document);
 
-      // 서명 필드 처리
-      const signatureFields = document.data?.signatureFields || [];
-      const signatures = document.data?.signatures || {};
+  //     // 서명 필드 처리
+  //     const signatureFields = document.data?.signatureFields || [];
+  //     const signatures = document.data?.signatures || {};
 
-      // 타입 변환: CoordinateField[] → PrintField[]
-      const printFields = coordinateFields.map(field => ({
-        ...field,
-        value: field.value || ''
-      }));
+  //     // 타입 변환: CoordinateField[] → PrintField[]
+  //     const printFields = coordinateFields.map(field => ({
+  //       ...field,
+  //       value: field.value || ''
+  //     }));
 
-      // printUtils의 공통 함수 사용
-      const printOptions: PrintOptions = {
-        pdfImageUrl,
-        coordinateFields: printFields,
-        signatureFields,
-        signatures,
-        documentId: document.id,
-        documentTitle: document.title || document.template?.name || '문서'
-      };
+  //     // printUtils의 공통 함수 사용
+  //     const printOptions: PrintOptions = {
+  //       pdfImageUrl,
+  //       coordinateFields: printFields,
+  //       signatureFields,
+  //       signatures,
+  //       documentId: document.id,
+  //       documentTitle: document.title || document.template?.name || '문서'
+  //     };
 
-      await printDocument(printOptions);
-      setPrintingDocumentId(null);
-    } catch (error) {
-      console.error('인쇄 실패:', error);
-      setPrintingDocumentId(null);
-    }
-  };
+  //     await printDocument(printOptions);
+  //     setPrintingDocumentId(null);
+  //   } catch (error) {
+  //     console.error('인쇄 실패:', error);
+  //     setPrintingDocumentId(null);
+  //   }
+  // };
 
   const getPdfImageUrl = (doc: Document) => {
     console.log('🔍 DocumentList - PDF 이미지 URL 생성:', {
@@ -178,13 +197,13 @@ const DocumentList: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'COMPLETED':
+      case 'FINISHED':
         return 'bg-green-100 text-green-800';
       case 'REVIEWING':
         return 'bg-blue-100 text-blue-800';
       case 'REJECTED':
         return 'bg-red-100 text-red-800';
-      case 'READY_FOR_REVIEW':
+      case 'APPOINTING':
         return 'bg-yellow-100 text-yellow-800';
       case 'EDITING':
         return 'bg-purple-100 text-purple-800';
@@ -195,14 +214,14 @@ const DocumentList: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'COMPLETED':
+      case 'FINISHED':
         return '완료';
       case 'REVIEWING':
         return '검토중';
       case 'REJECTED':
         return '반려';
-      case 'READY_FOR_REVIEW':
-        return '검토준비';
+      case 'APPOINTING':
+        return '서명자 지정';
       case 'EDITING':
         return '편집중';
       case 'DRAFT':
@@ -245,8 +264,8 @@ const DocumentList: React.FC = () => {
       <div className="flex items-center text-xs">
         <span className={`w-2 h-2 rounded-full ${colorClass} mr-2`}></span>
         <span className="text-gray-700">
-          {roleLabel}: <span className="font-medium">{task.assignedUserName}</span>
-          <span className="ml-1 text-gray-500">({task.assignedUserEmail})</span>
+          {roleLabel}: <span className="font-medium">{(task as any).assignedUserName}</span>
+          <span className="ml-1 text-gray-500">({(task as any).assignedUserEmail})</span>
         </span>
       </div>
     );
@@ -262,9 +281,9 @@ const DocumentList: React.FC = () => {
   const getWorkflowSteps = () => {
     return [
       { key: 'EDITING', label: '편집중', description: '문서 내용 편집 및 수정' },
-      { key: 'READY_FOR_REVIEW', label: '검토준비', description: '검토자 지정 대기' },
+      { key: 'APPOINTING', label: '서명자 지정', description: '서명자 지정 및 설정' },
       { key: 'REVIEWING', label: '검토중', description: '검토자가 문서 검토' },
-      { key: 'COMPLETED', label: '완료', description: '모든 작업 완료' }
+      { key: 'FINISHED', label: '완료', description: '모든 작업 완료' }
     ];
   };
 
@@ -409,15 +428,26 @@ const DocumentList: React.FC = () => {
             <select
               id="status-filter"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              onChange={(e) => {
+                const newStatus = e.target.value as StatusFilter;
+                setStatusFilter(newStatus);
+                
+                // URL 파라미터 업데이트
+                if (newStatus === 'all') {
+                  searchParams.delete('status');
+                } else {
+                  searchParams.set('status', newStatus);
+                }
+                setSearchParams(searchParams);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">전체</option>
               <option value="DRAFT">초안</option>
               <option value="EDITING">편집중</option>
-              <option value="READY_FOR_REVIEW">검토준비</option>
+              <option value="APPOINTING">서명자 지정</option>
               <option value="REVIEWING">검토중</option>
-              <option value="COMPLETED">완료</option>
+              <option value="FINISHED">완료</option>
               <option value="REJECTED">반려</option>
             </select>
           </div>
@@ -462,6 +492,9 @@ const DocumentList: React.FC = () => {
                 onClick={() => {
                   setSearchTerm('');
                   setStatusFilter('all');
+                  // URL 파라미터도 초기화
+                  searchParams.delete('status');
+                  setSearchParams(searchParams);
                 }}
                 className="text-blue-600 hover:text-blue-800 font-medium"
               >
@@ -532,7 +565,7 @@ const DocumentList: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {document.status === 'COMPLETED' ? (
+                    {document.status === 'FINISHED' ? (
                       // 완료된 문서는 편집 불가
                       <span className="px-3 py-1.5 text-sm text-gray-400 bg-gray-50 border border-gray-200 rounded-md flex items-center">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -551,8 +584,8 @@ const DocumentList: React.FC = () => {
                         </svg>
                         검토
                       </Link>
-                    ) : document.status === 'READY_FOR_REVIEW' ? (
-                      // 검토 준비 상태
+                    ) : document.status === 'APPOINTING' ? (
+                      // 서명자 지정 상태
                       <Link
                         to={`/documents/${document.id}/review`}
                         className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center"
@@ -560,7 +593,7 @@ const DocumentList: React.FC = () => {
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        검토자 지정하기
+                        서명자 지정하기
                       </Link>
                     ) : (
                       // 편집 가능한 상태
@@ -624,6 +657,9 @@ const DocumentList: React.FC = () => {
                   onClick={() => {
                     setSearchTerm('');
                     setStatusFilter('all');
+                    // URL 파라미터도 초기화
+                    searchParams.delete('status');
+                    setSearchParams(searchParams);
                   }}
                   className="btn btn-primary"
                 >
@@ -668,10 +704,10 @@ const DocumentList: React.FC = () => {
                 <div className="flex items-start max-w-4xl w-full px-8">
                   {getWorkflowSteps().map((step, index) => {
                     const currentIndex = getCurrentStepIndex(selectedWorkflowDocument.status);
-                    const isCompleted = selectedWorkflowDocument.status === 'COMPLETED' 
-                      ? index <= currentIndex  // COMPLETED 상태일 때는 해당 단계까지 모두 완료로 표시
+                    const isCompleted = selectedWorkflowDocument.status === 'FINISHED' 
+                      ? index <= currentIndex  // FINISHED 상태일 때는 해당 단계까지 모두 완료로 표시
                       : index < currentIndex;
-                    const isActive = selectedWorkflowDocument.status !== 'COMPLETED' && index === currentIndex;
+                    const isActive = selectedWorkflowDocument.status !== 'FINISHED' && index === currentIndex;
                     const isLastStep = index === getWorkflowSteps().length - 1;
 
                     return (
@@ -756,7 +792,8 @@ const DocumentList: React.FC = () => {
 
       {/* 인쇄 전용 컨테이너 (화면에서는 숨김) */}
       <div className="hidden print-only print-container">
-        {printingDocumentId && previewDocument?.template?.pdfImagePath && (
+        {/* {printingDocumentId && previewDocument?.template?.pdfImagePath && ( */}
+        {false && previewDocument?.template?.pdfImagePath && (
           <div className="print-pdf-container">
             {/* PDF 배경 이미지 */}
             <img
@@ -792,9 +829,9 @@ const DocumentList: React.FC = () => {
                     };
                     tableData = parsedValue;
                   }
-                } catch (e) {
-                  // JSON 파싱 실패 시 일반 필드로 처리
-                }
+                              } catch {
+                                // JSON 파싱 실패 시 일반 필드로 처리
+                              }
               }
 
               return (
