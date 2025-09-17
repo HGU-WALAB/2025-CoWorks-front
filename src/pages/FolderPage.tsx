@@ -8,6 +8,7 @@ import ContextMenu, { ContextMenuOption } from '../components/ContextMenu';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import RenameModal from '../components/RenameModal';
 import MoveToFolderModal from '../components/MoveToFolderModal';
+import FolderSidebar from '../components/FolderSidebar';
 import { FolderPageProps, Folder } from '../types/folder';
 import { Document } from '../types/document';
 
@@ -38,6 +39,9 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [accessLoading, setAccessLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  
+  // 사이드바 상태
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // 컨텍스트 메뉴 상태
   const [contextMenu, setContextMenu] = useState<{
@@ -109,6 +113,20 @@ const FolderPage: React.FC<FolderPageProps> = () => {
     } else {
       navigate(`/folders/${targetFolderId}`);
     }
+  };
+
+  // 사이드바 폴더 선택 핸들러
+  const handleSidebarFolderSelect = (selectedFolderId: string | null) => {
+    if (selectedFolderId === null) {
+      navigate('/folders');
+    } else {
+      navigate(`/folders/${selectedFolderId}`);
+    }
+  };
+
+  // 사이드바 토글 핸들러
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
   };
 
   const handleCreateFolder = async (folderName: string) => {
@@ -355,11 +373,21 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        {/* 헤더 */}
-        <div className="px-4 py-6 sm:px-0">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* 사이드바 */}
+      <FolderSidebar
+        currentFolderId={folderId}
+        onFolderSelect={handleSidebarFolderSelect}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
+      />
+      
+      {/* 메인 콘텐츠 */}
+      <div className="flex-1 flex flex-col">
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 w-full">
+          {/* 헤더 */}
+          <div className="px-4 py-6 sm:px-0">
+            <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
               <svg
                 className="w-8 h-8 mr-3 text-yellow-500"
@@ -442,7 +470,10 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
         {/* 컨텐츠 영역 */}
         <div className="px-4 sm:px-0">
-          <div className="bg-white rounded-lg shadow p-6 min-h-96">
+          <div 
+            className="bg-white rounded-lg shadow p-6 min-h-96"
+            onClick={closeContextMenu}
+          >
             {/* 폴더가 있는 경우 */}
             {folders.length > 0 && (
               <div className="mb-8">
@@ -585,6 +616,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
         }
         itemType={contextMenu.type || 'folder'}
       />
+      </div>
     </div>
   );
 };
