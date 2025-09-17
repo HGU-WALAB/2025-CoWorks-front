@@ -551,7 +551,7 @@ const DocumentEditor: React.FC = () => {
         signatureFields,
         signatures: currentDocument?.data?.signatures || {},
         documentId: currentDocument?.id,
-        documentTitle: currentDocument?.data?.title || '문서'
+        documentTitle: currentDocument?.title || '문서'
       });
       
     } catch (error) {

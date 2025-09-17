@@ -491,7 +491,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                       </svg>
                       <span className="text-sm font-medium line-clamp-2 break-words">
-                        {document.data?.title || '제목 없음'}
+                        {document.title || '제목 없음'}
                       </span>
                     </div>
                   ))}
@@ -552,7 +552,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
         itemName={
           contextMenu.type === 'folder' 
             ? (contextMenu.item as Folder)?.name || '' 
-            : (contextMenu.item as Document)?.data?.title || ''
+            : (contextMenu.item as Document)?.title || ''
         }
       />
 
@@ -565,7 +565,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
         currentName={
           contextMenu.type === 'folder' 
             ? (contextMenu.item as Folder)?.name || '' 
-            : (contextMenu.item as Document)?.data?.title || ''
+            : (contextMenu.item as Document)?.title || ''
         }
         title={`${contextMenu.type === 'folder' ? '폴더' : '문서'} 이름 변경`}
         itemType={contextMenu.type || 'folder'}
@@ -581,7 +581,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
         itemName={
           contextMenu.type === 'folder' 
             ? (contextMenu.item as Folder)?.name || '' 
-            : (contextMenu.item as Document)?.data?.title || ''
+            : (contextMenu.item as Document)?.title || ''
         }
         itemType={contextMenu.type || 'folder'}
       />
