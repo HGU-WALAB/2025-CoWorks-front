@@ -522,9 +522,8 @@ const DocumentList: React.FC = () => {
                           const assignees = getTaskAssignees(document);
                           return (
                             <>
-                              {renderAssigneeInfo(assignees.creator, '생성자', 'bg-blue-500')}
                               {renderAssigneeInfo(assignees.editor, '편집자', 'bg-blue-500')}
-                              {renderAssigneeInfo(assignees.reviewer, '검토자', 'bg-blue-500')}
+                              {renderAssigneeInfo(assignees.reviewer, '서명자', 'bg-blue-500')}
                             </>
                           );
                         })()}
@@ -584,21 +583,6 @@ const DocumentList: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
                       작업현황
-                    </button>
-
-                    <button
-                      onClick={() => handlePrint(document)}
-                      disabled={printingDocumentId === document.id}
-                      className={`px-3 py-1.5 text-sm border rounded-md transition-colors flex items-center ${
-                        printingDocumentId === document.id 
-                          ? 'text-gray-400 bg-gray-50 border-gray-200 cursor-not-allowed' 
-                          : 'text-black bg-white border-gray-400 hover:bg-gray-50'
-                      }`}
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                      </svg>
-                      {printingDocumentId === document.id ? '인쇄중...' : '인쇄'}
                     </button>
 
                     <button

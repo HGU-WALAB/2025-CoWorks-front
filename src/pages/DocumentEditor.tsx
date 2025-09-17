@@ -1368,34 +1368,6 @@ const DocumentEditor: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={handlePrint}
-            disabled={isPrinting}
-            className={`px-4 py-2 text-white rounded-lg flex items-center gap-2 transition-colors ${
-              isPrinting 
-                ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-indigo-600 hover:bg-indigo-700'
-            }`}
-          >
-            {isPrinting ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="32" strokeDashoffset="32">
-                    <animate attributeName="stroke-dasharray" dur="1s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
-                    <animate attributeName="stroke-dashoffset" dur="1s" values="0;-16;-32;-32" repeatCount="indefinite"/>
-                  </circle>
-                </svg>
-                준비 중...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                인쇄
-              </>
-            )}
-          </button>
-          <button
             onClick={handlePreview}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
           >
