@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 export interface User {
   id: string;
@@ -26,8 +27,6 @@ interface UserStore {
   clearError: () => void;
 }
 
-const API_BASE_URL = 'http://localhost:8080/api';
-
 export const useUserStore = create<UserStore>((set, get) => ({
   users: [],
   loading: false,
@@ -43,8 +42,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
       set({ users, loading: false });
       return users;
     } catch (error: any) {
-      set({ 
-        error: error.response?.data?.error || '사용자 검색에 실패했습니다.', 
+      set({
+        error: error.response?.data?.error || '사용자 검색에 실패했습니다.',
         loading: false,
         users: []
       });
