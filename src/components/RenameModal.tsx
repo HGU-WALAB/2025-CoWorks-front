@@ -50,9 +50,9 @@ const RenameModal: React.FC<RenameModalProps> = ({
     try {
       await onSubmit(newName.trim());
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('이름 변경 실패:', error);
-      setError('이름 변경에 실패했습니다. 다시 시도해주세요.');
+      setError(error.message || '이름 변경에 실패했습니다. 다시 시도해주세요.');
     }
   };
 

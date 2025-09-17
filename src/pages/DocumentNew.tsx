@@ -48,7 +48,7 @@ const DocumentNew: React.FC = () => {
       });
 
       alert('문서가 생성되었습니다.');
-      navigate(`/documents`);
+      navigate(`/tasks`);
     } catch (error) {
       console.error('Document creation error:', error);
       alert('문서 생성에 실패했습니다.');

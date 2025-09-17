@@ -72,6 +72,20 @@ class FolderService {
   }
 
   /**
+   * 폴더 트리 구조 조회 (모든 폴더와 하위 폴더)
+   */
+  async getFolderTree(): Promise<Folder[]> {
+    try {
+      this.ensureAuthHeader();
+      const response = await axios.get(`${this.baseUrl}/tree`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching folder tree:', error);
+      throw new Error('폴더 트리를 가져오는데 실패했습니다.');
+    }
+  }
+
+  /**
    * 특정 폴더의 내용 조회 (하위 폴더 + 문서)
    */
   async getFolderContents(folderId: string): Promise<FolderContents> {

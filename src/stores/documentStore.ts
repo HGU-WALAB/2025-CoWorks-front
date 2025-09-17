@@ -67,6 +67,11 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
         documents: [newDocument, ...state.documents],
         loading: false,
       }));
+      // 문서 생성 이벤트 발생
+      console.log('DocumentStore: Document created, dispatching event');
+      window.dispatchEvent(new CustomEvent('documentCreated', {
+        detail: { document: newDocument }
+      }));
       return newDocument;
     } catch (error) {
       console.error('DocumentStore: Create document error:', error);

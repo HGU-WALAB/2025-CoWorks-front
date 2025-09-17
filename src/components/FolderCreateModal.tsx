@@ -29,9 +29,9 @@ const FolderCreateModal: React.FC<FolderCreateModalProps> = ({
       setFolderName('');
       setError(null);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('폴더 생성 실패:', error);
-      setError('폴더 생성에 실패했습니다. 다시 시도해주세요.');
+      setError(error.message || '폴더 생성에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
