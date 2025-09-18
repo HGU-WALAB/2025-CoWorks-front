@@ -1099,7 +1099,7 @@ const DocumentReview: React.FC = () => {
           </div>
         </div>
       </div>
-                                        fontWeight: '500'
+
       
       {/* 서명 배치 완료 확인 모달 */}
       {showCompleteSignatureSetupModal && (

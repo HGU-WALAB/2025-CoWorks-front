@@ -15,7 +15,6 @@ const FieldEditModal: React.FC<FieldEditModalProps> = ({
   onClose,
   onSave,
   onDelete,
-  availableFonts
 }) => {
   const [editField, setEditField] = useState<TemplateField | null>(field);
 
@@ -102,41 +101,6 @@ const FieldEditModal: React.FC<FieldEditModalProps> = ({
             <div>
               <span className="text-gray-600">크기:</span>
               <span className="ml-2 font-medium">{editField.width} × {editField.height}</span>
-            </div>
-          </div>
-
-          <div className="p-3 bg-blue-50 rounded-md">
-            <div className="text-sm font-medium text-blue-900 mb-3">폰트 설정</div>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  폰트 패밀리
-                </label>
-                <select
-                  value={editField.fontFamily || 'Arial'}
-                  onChange={(e) => setEditField({ ...editField, fontFamily: e.target.value })}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                >
-                  {availableFonts.map((font: string) => (
-                    <option key={font} value={font} style={{ fontFamily: font }}>
-                      {font}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  폰트 크기 (px)
-                </label>
-                <input
-                  type="number"
-                  min="8"
-                  max="72"
-                  value={editField.fontSize || 12}
-                  onChange={(e) => setEditField({ ...editField, fontSize: parseInt(e.target.value) || 12 })}
-                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
             </div>
           </div>
         </div>

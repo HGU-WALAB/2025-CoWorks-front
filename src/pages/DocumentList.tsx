@@ -7,7 +7,7 @@ import DocumentPreviewModal from '../components/DocumentPreviewModal';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
-type StatusFilter = 'all' | 'DRAFT' | 'EDITING' | 'APPOINTING' | 'REVIEWING' | 'FINISHED' | 'REJECTED';
+type StatusFilter = 'all' | 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
 
 const DocumentList: React.FC = () => {
   const { documents, loading, fetchDocuments } = useDocumentStore();
@@ -33,7 +33,7 @@ const DocumentList: React.FC = () => {
   // URL 파라미터에서 초기 필터 상태 설정
   useEffect(() => {
     const statusParam = searchParams.get('status');
-    if (statusParam && ['DRAFT', 'EDITING', 'APPOINTING', 'REVIEWING', 'FINISHED', 'REJECTED'].includes(statusParam)) {
+    if (statusParam && ['DRAFT', 'EDITING', 'READY_FOR_REVIEW', 'REVIEWING', 'COMPLETED', 'REJECTED'].includes(statusParam)) {
       setStatusFilter(statusParam as StatusFilter);
     }
   }, [searchParams]);
@@ -197,13 +197,13 @@ const DocumentList: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'FINISHED':
+      case 'COMPLETED':
         return 'bg-green-100 text-green-800';
       case 'REVIEWING':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-yellow-200  text-yellow-700';
       case 'REJECTED':
         return 'bg-red-100 text-red-800';
-      case 'APPOINTING':
+      case 'READY_FOR_REVIEW':
         return 'bg-yellow-100 text-yellow-800';
       case 'EDITING':
         return 'bg-purple-100 text-purple-800';
@@ -214,13 +214,13 @@ const DocumentList: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'FINISHED':
+      case 'COMPLETED':
         return '완료';
       case 'REVIEWING':
         return '검토중';
       case 'REJECTED':
         return '반려';
-      case 'APPOINTING':
+      case 'READY_FOR_REVIEW':
         return '서명자 지정';
       case 'EDITING':
         return '편집중';
@@ -265,7 +265,6 @@ const DocumentList: React.FC = () => {
         <span className={`w-2 h-2 rounded-full ${colorClass} mr-2`}></span>
         <span className="text-gray-700">
           {roleLabel}: <span className="font-medium">{(task as any).assignedUserName}</span>
-          <span className="ml-1 text-gray-500">({(task as any).assignedUserEmail})</span>
         </span>
       </div>
     );
@@ -281,9 +280,9 @@ const DocumentList: React.FC = () => {
   const getWorkflowSteps = () => {
     return [
       { key: 'EDITING', label: '편집중', description: '문서 내용 편집 및 수정' },
-      { key: 'APPOINTING', label: '서명자 지정', description: '서명자 지정 및 설정' },
+      { key: 'READY_FOR_REVIEW', label: '서명자 지정', description: '서명자 지정 및 설정' },
       { key: 'REVIEWING', label: '검토중', description: '검토자가 문서 검토' },
-      { key: 'FINISHED', label: '완료', description: '모든 작업 완료' }
+      { key: 'COMPLETED', label: '완료', description: '모든 작업 완료' }
     ];
   };
 
@@ -445,9 +444,9 @@ const DocumentList: React.FC = () => {
               <option value="all">전체</option>
               <option value="DRAFT">초안</option>
               <option value="EDITING">편집중</option>
-              <option value="APPOINTING">서명자 지정</option>
+              <option value="READY_FOR_REVIEW">서명자 지정</option>
               <option value="REVIEWING">검토중</option>
-              <option value="FINISHED">완료</option>
+              <option value="COMPLETED">완료</option>
               <option value="REJECTED">반려</option>
             </select>
           </div>
@@ -549,7 +548,6 @@ const DocumentList: React.FC = () => {
 
                     {/* 모든 담당자 정보 표시 */}
                     <div className="mt-3 space-y-1">
-                      <div className="text-xs font-medium text-gray-700 mb-2">담당자 현황:</div>
                       <div className="flex flex-wrap gap-4">
                         {(() => {
                           const assignees = getTaskAssignees(document);
@@ -565,7 +563,7 @@ const DocumentList: React.FC = () => {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    {document.status === 'FINISHED' ? (
+                    {document.status === 'COMPLETED' ? (
                       // 완료된 문서는 편집 불가
                       <span className="px-3 py-1.5 text-sm text-gray-400 bg-gray-50 border border-gray-200 rounded-md flex items-center">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -584,7 +582,7 @@ const DocumentList: React.FC = () => {
                         </svg>
                         검토
                       </Link>
-                    ) : document.status === 'APPOINTING' ? (
+                    ) : document.status === 'READY_FOR_REVIEW' ? (
                       // 서명자 지정 상태
                       <Link
                         to={`/documents/${document.id}/review`}
@@ -704,10 +702,10 @@ const DocumentList: React.FC = () => {
                 <div className="flex items-start max-w-4xl w-full px-8">
                   {getWorkflowSteps().map((step, index) => {
                     const currentIndex = getCurrentStepIndex(selectedWorkflowDocument.status);
-                    const isCompleted = selectedWorkflowDocument.status === 'FINISHED' 
-                      ? index <= currentIndex  // FINISHED 상태일 때는 해당 단계까지 모두 완료로 표시
+                    const isCompleted = selectedWorkflowDocument.status === 'COMPLETED' 
+                      ? index <= currentIndex  // COMPLETED 상태일 때는 해당 단계까지 모두 완료로 표시
                       : index < currentIndex;
-                    const isActive = selectedWorkflowDocument.status !== 'FINISHED' && index === currentIndex;
+                    const isActive = selectedWorkflowDocument.status !== 'COMPLETED' && index === currentIndex;
                     const isLastStep = index === getWorkflowSteps().length - 1;
 
                     return (
@@ -793,167 +791,7 @@ const DocumentList: React.FC = () => {
       {/* 인쇄 전용 컨테이너 (화면에서는 숨김) */}
       <div className="hidden print-only print-container">
         {/* {printingDocumentId && previewDocument?.template?.pdfImagePath && ( */}
-        {false && previewDocument?.template?.pdfImagePath && (
-          <div className="print-pdf-container">
-            {/* PDF 배경 이미지 */}
-            <img
-              src={getPdfImageUrl(previewDocument)}
-              alt="PDF Document"
-              style={{
-                width: '1240px',
-                height: '1754px',
-                objectFit: 'fill'
-              }}
-            />
-
-            {/* 필드 데이터 오버레이 */}
-            {coordinateFields.map((field) => {
-              // 테이블 필드 확인
-              let isTableField = false;
-              let tableInfo = null;
-              let tableData = null;
-
-              if (field.tableData) {
-                isTableField = true;
-                tableInfo = field.tableData;
-                tableData = field.tableData;
-              } else if (field.value) {
-                try {
-                  const parsedValue = JSON.parse(field.value);
-                  if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
-                    isTableField = true;
-                    tableInfo = {
-                      rows: parsedValue.rows,
-                      cols: parsedValue.cols,
-                      columnWidths: parsedValue.columnWidths
-                    };
-                    tableData = parsedValue;
-                  }
-                              } catch {
-                                // JSON 파싱 실패 시 일반 필드로 처리
-                              }
-              }
-
-              return (
-                <div
-                  key={field.id}
-                  className="print-field"
-                  style={{
-                    left: `${field.x}px`,
-                    top: `${field.y}px`,
-                    width: `${field.width}px`,
-                    height: `${field.height}px`,
-                    fontSize: `${field.fontSize || 14}px`,
-                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
-                  }}
-                >
-                  {isTableField && tableData ? (
-                    // 테이블 인쇄
-                    <table className="print-table" style={{ width: '100%', height: '100%', borderCollapse: 'collapse' }}>
-                      <tbody>
-                        {Array(tableInfo!.rows).fill(null).map((_, rowIndex) => (
-                          <tr key={rowIndex}>
-                            {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
-                              // 강화된 셀 값 추출 로직
-                              let cellContent = '';
-                              try {
-                                // 1차 시도: 직접 접근
-                                if (tableData.cells && Array.isArray(tableData.cells)) {
-                                  if (tableData.cells[rowIndex] && Array.isArray(tableData.cells[rowIndex])) {
-                                    const rawValue = tableData.cells[rowIndex][colIndex];
-                                    if (rawValue !== undefined && rawValue !== null) {
-                                      cellContent = String(rawValue).trim();
-                                    }
-                                  }
-                                }
-
-                                // 2차 시도: field.value를 다시 파싱
-                                if (!cellContent && field.value) {
-                                  try {
-                                    const reparsed = JSON.parse(field.value);
-                                    if (reparsed.cells && Array.isArray(reparsed.cells)) {
-                                      if (reparsed.cells[rowIndex] && Array.isArray(reparsed.cells[rowIndex])) {
-                                        const fallbackValue = reparsed.cells[rowIndex][colIndex];
-                                        if (fallbackValue !== undefined && fallbackValue !== null) {
-                                          cellContent = String(fallbackValue).trim();
-                                        }
-                                      }
-                                    }
-                                  } catch (parseError) {
-                                    console.warn(`📊 DocumentList 인라인 재파싱 실패 [${rowIndex}][${colIndex}]:`, parseError);
-                                  }
-                                }
-                              } catch (error) {
-                                console.error(`📊 DocumentList 인라인 셀 값 추출 실패 [${rowIndex}][${colIndex}]:`, error);
-                              }
-
-                              return (
-                                <td
-                                  key={colIndex}
-                                  className="print-table-cell"
-                                  style={{
-                                    width: tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`,
-                                    fontSize: `${field.fontSize || 14}px`,
-                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
-                                    textAlign: 'center',
-                                    verticalAlign: 'middle'
-                                  }}
-                                >
-                                  {cellContent || ''}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    // 일반 필드 인쇄
-                    <div style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: `${field.fontSize || 14}px`,
-                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
-                      fontWeight: '600',
-                      color: 'black'
-                    }}>
-                      {field.value || ''}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* 서명 필드 인쇄 */}
-            {signatureFields.map((field) => (
-              <div
-                key={field.id}
-                className="print-field"
-                style={{
-                  left: `${field.x}px`,
-                  top: `${field.y}px`,
-                  width: `${field.width}px`,
-                  height: `${field.height}px`,
-                }}
-              >
-                {field.signatureData && (
-                  <img
-                    src={field.signatureData}
-                    alt="서명"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain'
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        {false}
       </div>
     </div>
     </>

@@ -162,9 +162,9 @@ const TaskDashboard: React.FC = () => {
       doc.status === 'REJECTED'
     );
 
-    // 완료된 문서 (FINISHED 상태)
+    // 완료된 문서 (COMPLETED 상태)
     const completedTasks = myDocuments.filter(doc => 
-      doc.status === 'FINISHED'
+      doc.status === 'COMPLETED'
     );
 
     return {
@@ -261,12 +261,12 @@ const TaskDashboard: React.FC = () => {
            </Link>
 
            {/* 4. 완료된 문서 - 회색 */}
-           <Link to="/documents?status=FINISHED" className="block">
+           <Link to="/documents?status=COMPLETED" className="block">
              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-gray-400 hover:bg-gray-50 transition-colors cursor-pointer">
                <div className="flex items-center">
                  <div className="flex-shrink-0">
                    <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center">
-                     <span className="text-white text-lg">✅</span>
+
                    </div>
                  </div>
                  <div className="ml-4">
