@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { SignatureModal } from '../components/SignatureModal';
 import UserSearchInput from '../components/UserSearchInput';
 import axios from 'axios';
+import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 
 interface RejectModalProps {
   isOpen: boolean;
@@ -621,14 +622,13 @@ const DocumentReview: React.FC = () => {
       {/* 헤더 - 고정 위치 */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b px-6 py-4 flex justify-between items-center w-full">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">
-            {currentDocument.title || currentDocument.templateName} - 검토
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold text-gray-900">
+              {currentDocument.title || currentDocument.templateName} - 검토
+            </h1>
+            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.REVIEWING} size="md" />
+          </div>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-gray-500">
-              상태: <span className="font-medium text-blue-600">{currentDocument.status}</span>
-            </p>
-            <span className="text-sm text-gray-500">•</span>
             <p className="text-sm text-gray-500">
               생성일: {new Date(currentDocument.createdAt).toLocaleDateString()}
             </p>

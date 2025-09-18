@@ -4,6 +4,7 @@ import { useDocumentStore, type Document } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 // import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
+import { StatusBadge, getStatusText } from '../utils/documentStatusUtils';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
@@ -195,41 +196,6 @@ const DocumentList: React.FC = () => {
     return url;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'bg-green-100 text-green-800';
-      case 'REVIEWING':
-        return 'bg-yellow-200  text-yellow-700';
-      case 'REJECTED':
-        return 'bg-red-100 text-red-800';
-      case 'READY_FOR_REVIEW':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'EDITING':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return '완료';
-      case 'REVIEWING':
-        return '검토중';
-      case 'REJECTED':
-        return '반려';
-      case 'READY_FOR_REVIEW':
-        return '서명자 지정';
-      case 'EDITING':
-        return '편집중';
-      case 'DRAFT':
-        return '초안';
-      default:
-        return status;
-    }
-  };
 
   // const getUserRole = (document: Document) => {
   //   if (!currentUser) return '';
@@ -515,9 +481,7 @@ const DocumentList: React.FC = () => {
                       <h3 className="text-lg font-medium text-gray-900">
                         {document.title || document.templateName}
                       </h3>
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(document.status)}`}>
-                        {getStatusText(document.status)}
-                      </span>
+                      <StatusBadge status={document.status} size="sm" />
                       {/* {userRole && (
                         <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
                           {userRole}
@@ -691,9 +655,7 @@ const DocumentList: React.FC = () => {
               {/* <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-sm text-gray-600">현재 상태</div>
-                  <div className={`px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(selectedWorkflowDocument.status)}`}>
-                    {getStatusText(selectedWorkflowDocument.status)}
-                  </div>
+                  <StatusBadge status={selectedWorkflowDocument.status} size="sm" />
                 </div>
               </div> */}
 
