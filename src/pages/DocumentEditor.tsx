@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import axios from 'axios';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import { usePrint, type PrintField, type PrintSignatureField } from '../utils/printUtils';
+import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 
 // 테이블 편집 컴포넌트
 interface TableEditComponentProps {
@@ -1368,7 +1369,10 @@ const DocumentEditor: React.FC = () => {
       {/* 헤더 - 고정 위치 */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b px-6 py-4 flex justify-between items-center w-full">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">{currentDocument.title || '문서 편집'}</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold text-gray-900">{currentDocument.title || '문서 편집'}</h1>
+            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.EDITING} size="md" />
+          </div>
           <div className="flex items-center gap-2 mt-1">
             {lastSaved && (
               <span className="text-xs text-green-600">
