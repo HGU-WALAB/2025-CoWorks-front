@@ -178,6 +178,45 @@ const DocumentEditor: React.FC = () => {
   const [previewCoordinateFields, setPreviewCoordinateFields] = useState<any[]>([]);
   const [previewSignatureFields, setPreviewSignatureFields] = useState<any[]>([]);
 
+  // 리사이저블 패널 상태
+  const [rightPanelWidth, setRightPanelWidth] = useState(524);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // 마우스 이벤트 핸들러
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isResizing) return;
+
+    const newWidth = window.innerWidth - e.clientX;
+    const minWidth = 280; // 최소 너비
+    const maxWidth = 700; // 최대 너비
+
+    setRightPanelWidth(Math.max(minWidth, Math.min(maxWidth, newWidth)));
+  }, [isResizing]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // 마우스 이벤트 리스너 등록
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = 'none'; // 선택 방지
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizing, handleMouseMove, handleMouseUp]);
+
   // 미리보기 처리 함수 (DocumentList와 동일한 로직)
   const handlePreview = useCallback(() => {
     console.log('🔍 DocumentEditor - handlePreview 호출됨');
@@ -191,26 +230,9 @@ const DocumentEditor: React.FC = () => {
       console.log('🔍 DocumentEditor - 미리보기 문서:', currentDocument);
       console.log('🔍 DocumentEditor - PDF 이미지 경로:', currentDocument.template?.pdfImagePath);
 
-      // 템플릿 필드와 저장된 필드를 합쳐서 설정
-      let allFields: any[] = [];
-
-      // 템플릿 필드 추가
-      if (currentDocument.template?.coordinateFields) {
-        try {
-          const templateFields = JSON.parse(currentDocument.template.coordinateFields);
-          allFields = [...templateFields];
-          console.log('📄 DocumentEditor - 템플릿 필드:', templateFields);
-        } catch (error) {
-          console.error('템플릿 필드 파싱 오류:', error);
-        }
-      }
-
-      // 저장된 추가 필드 추가
-      const savedFields = currentDocument.data?.coordinateFields || [];
-      allFields = [...allFields, ...savedFields];
-
-      console.log('📄 DocumentEditor - 모든 필드:', allFields);
-      setPreviewCoordinateFields(allFields);
+      // 현재 편집 중인 coordinateFields 사용 (실시간 반영)
+      console.log('📄 DocumentEditor - 현재 편집 필드:', coordinateFields);
+      setPreviewCoordinateFields(coordinateFields);
 
       // 서명 필드 처리
       const docSignatureFields = currentDocument.data?.signatureFields || [];
@@ -234,7 +256,7 @@ const DocumentEditor: React.FC = () => {
     } catch (error) {
       console.error('문서 미리보기 실패:', error);
     }
-  }, [currentDocument]);
+  }, [currentDocument, coordinateFields]);
   
   // 인쇄 기능
   const { isPrinting, print } = usePrint();
@@ -337,7 +359,7 @@ const DocumentEditor: React.FC = () => {
       if (success) {
         setLastSaved(new Date());
       }
-    }, 1000),
+    }, 60000), // 1분(60초)으로 변경
     [updateDocumentSilently]
   );
 
@@ -1588,8 +1610,24 @@ const DocumentEditor: React.FC = () => {
           )}
         </div>
 
-        {/* 오른쪽 패널 - 필드 목록 (고정 너비, 고정 위치) */}
-        <div className="w-96 bg-white border-l overflow-y-auto flex-shrink-0 h-full no-print">
+        {/* 오른쪽 패널 - 필드 목록 (리사이저블 너비) */}
+        <div
+          className="bg-white border-l overflow-y-auto flex-shrink-0 h-full no-print relative"
+          style={{ width: `${rightPanelWidth}px` }}
+        >
+          {/* 리사이저 핸들 */}
+          <div
+            className={`absolute left-0 top-0 w-2.5 h-full cursor-col-resize hover:bg-blue-500 transition-colors ${
+              isResizing ? 'bg-blue-500' : 'bg-gray-300'
+            }`}
+            onMouseDown={handleMouseDown}
+            style={{
+              transform: 'translateX(-50%)',
+              zIndex: 10
+            }}
+          >
+            <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-8 bg-gray-400 rounded-full opacity-60" />
+          </div>
           <div className="p-4 border-b bg-gray-50">
             <h2 className="font-medium text-gray-900">문서 필드</h2>
             <p className="text-sm text-gray-500 mt-1">
