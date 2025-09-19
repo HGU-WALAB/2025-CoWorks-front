@@ -770,20 +770,20 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                         <div className="flex items-center justify-between">
                                           <div className="flex-1">
                                             <div className="flex items-center space-x-3 mb-2">
-                                              <h4 className="text-lg font-medium text-gray-900 cursor-pointer hover:text-blue-600"
+                                              <h6 className="text-s font-medium text-gray-900 cursor-pointer hover:text-blue-600"
                                                   onClick={() => handleDocumentClick(document.id.toString())}>
                                                 {document.title || document.templateName || '제목 없음'}
-                                              </h4>
+                                              </h6>
                                               <StatusBadge status={document.status} size="sm" />
                                             </div>
                                             <div className="flex items-center space-x-4 text-sm text-gray-500">
-                              <span>마지막 수정일: {new Date(document.updatedAt).toLocaleString('ko-KR', {
-                                year: 'numeric',
-                                month: 'numeric',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}</span>
+                                              <span>마지막 수정일: {new Date(document.updatedAt).toLocaleString('ko-KR', {
+                                                year: 'numeric',
+                                                month: 'numeric',
+                                                day: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                              })}</span>
                                             </div>
                                           </div>
                                           <div className="flex items-center space-x-2">
