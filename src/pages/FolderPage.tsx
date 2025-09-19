@@ -12,6 +12,7 @@ import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import FolderSidebar from '../components/FolderSidebar';
 import { FolderPageProps, Folder } from '../types/folder';
 import { Document } from '../types/document';
+import { DOCUMENT_STATUS, StatusBadge, getStatusText } from '../utils/documentStatusUtils';
 
 const FolderPage: React.FC<FolderPageProps> = () => {
   const { folderId } = useParams<{ folderId?: string }>();
@@ -329,22 +330,22 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
     documents.forEach(doc => {
       switch (doc.status) {
-        case 'DRAFT':
+        case DOCUMENT_STATUS.DRAFT:
           stats.draft++;
           break;
-        case 'EDITING':
+        case DOCUMENT_STATUS.EDITING:
           stats.editing++;
           break;
-        case 'READY_FOR_REVIEW':
+        case DOCUMENT_STATUS.READY_FOR_REVIEW:
           stats.readyForReview++;
           break;
-        case 'REVIEWING':
+        case DOCUMENT_STATUS.REVIEWING:
           stats.reviewing++;
           break;
-        case 'COMPLETED':
+        case DOCUMENT_STATUS.COMPLETED:
           stats.completed++;
           break;
-        case 'REJECTED':
+        case DOCUMENT_STATUS.REJECTED:
           stats.rejected++;
           break;
       }
@@ -618,80 +619,80 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                   {/* 각 상태별 필터 버튼 */}
                                   {stats.draft > 0 && (
                                       <button
-                                          onClick={() => handleStatusFilter('DRAFT')}
+                                          onClick={() => handleStatusFilter(DOCUMENT_STATUS.DRAFT)}
                                           className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                              statusFilter === 'DRAFT'
+                                              statusFilter === DOCUMENT_STATUS.DRAFT
                                                   ? 'bg-gray-100 text-gray-700 border border-gray-300'
                                                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                                           }`}
                                       >
                                         <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                                        <span>초안 {stats.draft}</span>
+                                        <span>{getStatusText(DOCUMENT_STATUS.DRAFT)} {stats.draft}</span>
                                       </button>
                                   )}
                                   {stats.editing > 0 && (
                                       <button
-                                          onClick={() => handleStatusFilter('EDITING')}
+                                          onClick={() => handleStatusFilter(DOCUMENT_STATUS.EDITING)}
                                           className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                              statusFilter === 'EDITING'
-                                                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
-                                                  : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
-                                          }`}
-                                      >
-                                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                        <span>편집중 {stats.editing}</span>
-                                      </button>
-                                  )}
-                                  {stats.readyForReview > 0 && (
-                                      <button
-                                          onClick={() => handleStatusFilter('READY_FOR_REVIEW')}
-                                          className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                              statusFilter === 'READY_FOR_REVIEW'
-                                                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
-                                                  : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
-                                          }`}
-                                      >
-                                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                        <span>서명자 지정 {stats.readyForReview}</span>
-                                      </button>
-                                  )}
-                                  {stats.reviewing > 0 && (
-                                      <button
-                                          onClick={() => handleStatusFilter('REVIEWING')}
-                                          className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                              statusFilter === 'REVIEWING'
+                                              statusFilter === DOCUMENT_STATUS.EDITING
                                                   ? 'bg-blue-100 text-blue-700 border border-blue-300'
                                                   : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                                           }`}
                                       >
                                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                        <span>검토중 {stats.reviewing}</span>
+                                        <span>{getStatusText(DOCUMENT_STATUS.EDITING)} {stats.editing}</span>
+                                      </button>
+                                  )}
+                                  {stats.readyForReview > 0 && (
+                                      <button
+                                          onClick={() => handleStatusFilter(DOCUMENT_STATUS.READY_FOR_REVIEW)}
+                                          className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                              statusFilter === DOCUMENT_STATUS.READY_FOR_REVIEW
+                                                  ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                                                  : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+                                          }`}
+                                      >
+                                        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                        <span>{getStatusText(DOCUMENT_STATUS.READY_FOR_REVIEW)} {stats.readyForReview}</span>
+                                      </button>
+                                  )}
+                                  {stats.reviewing > 0 && (
+                                      <button
+                                          onClick={() => handleStatusFilter(DOCUMENT_STATUS.REVIEWING)}
+                                          className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                              statusFilter === DOCUMENT_STATUS.REVIEWING
+                                                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-300'
+                                                  : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
+                                          }`}
+                                      >
+                                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                        <span>{getStatusText(DOCUMENT_STATUS.REVIEWING)} {stats.reviewing}</span>
                                       </button>
                                   )}
                                   {stats.rejected > 0 && (
                                       <button
-                                          onClick={() => handleStatusFilter('REJECTED')}
+                                          onClick={() => handleStatusFilter(DOCUMENT_STATUS.REJECTED)}
                                           className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                              statusFilter === 'REJECTED'
+                                              statusFilter === DOCUMENT_STATUS.REJECTED
                                                   ? 'bg-red-100 text-red-700 border border-red-300'
                                                   : 'bg-red-50 text-red-700 hover:bg-red-100'
                                           }`}
                                       >
                                         <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                        <span>반려 {stats.rejected}</span>
+                                        <span>{getStatusText(DOCUMENT_STATUS.REJECTED)} {stats.rejected}</span>
                                       </button>
                                   )}
                                   {stats.completed > 0 && (
                                       <button
-                                          onClick={() => handleStatusFilter('COMPLETED')}
+                                          onClick={() => handleStatusFilter(DOCUMENT_STATUS.COMPLETED)}
                                           className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-                                              statusFilter === 'COMPLETED'
+                                              statusFilter === DOCUMENT_STATUS.COMPLETED
                                                   ? 'bg-green-100 text-green-700 border border-green-300'
                                                   : 'bg-green-50 text-green-700 hover:bg-green-100'
                                           }`}
                                       >
                                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <span>완료 {stats.completed}</span>
+                                        <span>{getStatusText(DOCUMENT_STATUS.COMPLETED)} {stats.completed}</span>
                                       </button>
                                   )}
                                 </div>
@@ -773,19 +774,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                                   onClick={() => handleDocumentClick(document.id.toString())}>
                                                 {document.title || document.templateName || '제목 없음'}
                                               </h4>
-                                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                  document.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                                      document.status === 'REVIEWING' ? 'bg-blue-100 text-blue-800' :
-                                                          document.status === 'READY_FOR_REVIEW' ? 'bg-yellow-100 text-yellow-800' :
-                                                              document.status === 'EDITING' ? 'bg-purple-100 text-purple-800' :
-                                                                  'bg-gray-100 text-gray-800'
-                                              }`}>
-                                {document.status === 'COMPLETED' ? '완료' :
-                                    document.status === 'REVIEWING' ? '검토중' :
-                                        document.status === 'READY_FOR_REVIEW' ? '서명자 지정' :
-                                            document.status === 'EDITING' ? '편집중' :
-                                                '초안'}
-                              </span>
+                                              <StatusBadge status={document.status} size="sm" />
                                             </div>
                                             <div className="flex items-center space-x-4 text-sm text-gray-500">
                               <span>마지막 수정일: {new Date(document.updatedAt).toLocaleString('ko-KR', {
