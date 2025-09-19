@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTemplateStore } from '../stores/templateStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
+import UploadExcelButton from '../components/UploadExcelButton';
 
 const DocumentNew: React.FC = () => {
   const navigate = useNavigate();
@@ -10,7 +11,7 @@ const DocumentNew: React.FC = () => {
   const preselectedTemplateId = searchParams.get('templateId');
 
   const { templates, getTemplates } = useTemplateStore();
-  const { createDocument, updateDocument, loading } = useDocumentStore();
+  const { createDocument, loading } = useDocumentStore();
   const { user } = useAuthStore();
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
@@ -41,7 +42,7 @@ const DocumentNew: React.FC = () => {
     }
 
     try {
-      const newDocument = await createDocument({
+      await createDocument({
         templateId: parseInt(selectedTemplateId),
         editorEmail: user?.email,
         title: documentTitle.trim() || undefined,
@@ -120,9 +121,18 @@ const DocumentNew: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                편집자
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  편집자
+                </label>
+                <UploadExcelButton 
+                  templateId={selectedTemplateId}
+                  onUploadComplete={() => {
+                    // 업로드 완료 후 필요한 작업 (예: 페이지 새로고침, 알림 등)
+                    console.log('Excel upload completed');
+                  }}
+                />
+              </div>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
