@@ -3,7 +3,7 @@ import UploadExcelModal from './UploadExcelModal';
 
 interface UploadExcelButtonProps {
   templateId: string;
-  onUploadComplete?: () => void;
+  onUploadComplete?: (stagingId: string, summary: { total: number; valid: number; invalid: number }) => void;
 }
 
 const UploadExcelButton: React.FC<UploadExcelButtonProps> = ({ 
@@ -24,10 +24,10 @@ const UploadExcelButton: React.FC<UploadExcelButtonProps> = ({
     setIsModalOpen(false);
   };
 
-  const handleUploadComplete = () => {
+  const handleUploadComplete = (stagingId: string, summary: { total: number; valid: number; invalid: number }) => {
     setIsModalOpen(false);
     if (onUploadComplete) {
-      onUploadComplete();
+      onUploadComplete(stagingId, summary);
     }
   };
 
