@@ -3,6 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTemplateStore } from '../stores/templateStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
+import UploadExcelButton from '../components/UploadExcelButton';
+import axios from 'axios';
+import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
 
 const DocumentNew: React.FC = () => {
   const navigate = useNavigate();
@@ -10,7 +13,7 @@ const DocumentNew: React.FC = () => {
   const preselectedTemplateId = searchParams.get('templateId');
 
   const { templates, getTemplates } = useTemplateStore();
-  const { createDocument, updateDocument, loading } = useDocumentStore();
+  const { createDocument, loading } = useDocumentStore();
   const { user } = useAuthStore();
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
@@ -18,6 +21,8 @@ const DocumentNew: React.FC = () => {
   );
 
   const [documentTitle, setDocumentTitle] = useState<string>('');
+  const [stagingId, setStagingId] = useState<string | null>(null);
+  const [uploadSummary, setUploadSummary] = useState<{ total: number; valid: number; invalid: number } | null>(null);
 
   useEffect(() => {
     getTemplates();
@@ -41,17 +46,89 @@ const DocumentNew: React.FC = () => {
     }
 
     try {
-      const newDocument = await createDocument({
-        templateId: parseInt(selectedTemplateId),
-        editorEmail: user?.email,
-        title: documentTitle.trim() || undefined,
-      });
+      if (stagingId) {
+        // 엑셀 업로드 데이터가 있는 경우 DocumentCreateRequest에 stagingId 포함
+        console.log('=== 엑셀 데이터 있음! ===');
+        console.log('Staging ID:', stagingId);
+        console.log('Template ID:', selectedTemplateId);
+        console.log('Editor Email:', user?.email);
+        console.log('Document Title:', documentTitle);
+        
+        const requestData = {
+          templateId: parseInt(selectedTemplateId),
+          editorEmail: user?.email,
+          title: documentTitle.trim() || undefined,
+          stagingId: stagingId
+        };
+        
+        console.log('Request data:', requestData);
+        console.log('Request URL:', `${API_BASE_URL}${API_ENDPOINTS.DOCUMENTS.BASE}`);
+        console.log('=====================================');
+        
+        const response = await axios.post(`${API_BASE_URL}${API_ENDPOINTS.DOCUMENTS.BASE}`, requestData);
+        
+        const result = response.data;
+        console.log('Bulk commit result:', result);
+        
+        let message = '';
+        if (result.created > 0) {
+          message += `${result.created}개의 문서 생성 완료`;
+        }
+        if (result.skipped > 0) {
+          if (message) message += ', ';
+          message += `${result.skipped}개 건너뜀`;
+        }
+        if (result.failed > 0) {
+          if (message) message += ', ';
+          message += `${result.failed}개 실패`;
+        }
+        
+        alert(message || '문서 처리가 완료되었습니다.');
+      } else {
+        // 엑셀파일 업로드 없을시 -> 일반 단일 문서 생성
+        await createDocument({
+          templateId: parseInt(selectedTemplateId),
+          editorEmail: user?.email,
+          title: documentTitle.trim() || undefined,
+        });
 
-      alert('문서가 생성되었습니다.');
+        alert('문서가 생성되었습니다.');
+      }
+      
       navigate(`/tasks`);
     } catch (error) {
-      console.error('Document creation error:', error);
-      alert('문서 생성에 실패했습니다.');
+      console.error('=== Document creation error details ===');
+      console.error('Error type:', typeof error);
+      console.error('Error object:', error);
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { 
+          response?: { 
+            data?: { error?: string; message?: string; details?: unknown }; 
+            status?: number; 
+            statusText?: string;
+            headers?: Record<string, string>;
+          };
+          config?: unknown;
+        };
+        
+        console.error('Response status:', axiosError.response?.status);
+        console.error('Response statusText:', axiosError.response?.statusText);
+        console.error('Response data:', axiosError.response?.data);
+        console.error('Response headers:', axiosError.response?.headers);
+        console.error('Request config:', axiosError.config);
+        
+        const errorMessage = axiosError.response?.data?.error || 
+                           axiosError.response?.data?.message || 
+                           `문서 생성에 실패했습니다. (${axiosError.response?.status})`;
+        
+        console.error('Final error message:', errorMessage);
+        alert(errorMessage);
+      } else {
+        console.error('Non-axios error:', error);
+        alert('문서 생성에 실패했습니다.');
+      }
+      console.error('=====================================');
     }
   };
 
@@ -120,9 +197,19 @@ const DocumentNew: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                편집자
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  편집자
+                </label>
+                <UploadExcelButton 
+                  templateId={selectedTemplateId}
+                  onUploadComplete={(newStagingId, summary) => {
+                    setStagingId(newStagingId);
+                    setUploadSummary(summary);
+                    console.log('Excel upload completed:', { stagingId: newStagingId, summary });
+                  }}
+                />
+              </div>
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
@@ -138,6 +225,24 @@ const DocumentNew: React.FC = () => {
               <p className="text-sm text-gray-500 mt-2">
                 자동으로 편집자로 할당됩니다.
               </p>
+              
+              {/* 엑셀 업로드 상태 표시 */}
+              {uploadSummary && (
+                <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm font-medium text-green-800">
+                      엑셀 업로드 완료
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-700 mt-1">
+                    총 {uploadSummary.total}행 중 {uploadSummary.valid}개 문서 생성 예정
+                    {uploadSummary.invalid > 0 && ` (${uploadSummary.invalid}개 오류)`}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* 버튼 */}
@@ -154,7 +259,8 @@ const DocumentNew: React.FC = () => {
                 disabled={loading || !selectedTemplateId || !documentTitle.trim()}
                 className="btn btn-primary flex-1"
               >
-                {loading ? '생성 중...' : '문서 생성'}
+                {loading ? '생성 중...' : 
+                 stagingId ? `문서 생성 (${uploadSummary?.valid || 0}개)` : '문서 생성'}
               </button>
             </div>
           </form>
