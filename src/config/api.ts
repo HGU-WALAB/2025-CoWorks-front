@@ -16,6 +16,10 @@ export const API_ENDPOINTS = {
     ASSIGN_EDITOR: (id: number | string) => `/documents/${id}/assign-editor`,
     ASSIGN_REVIEWER: (id: number | string) => `/documents/${id}/assign-reviewer`,
     DOWNLOAD_PDF: (id: number | string) => `/documents/${id}/download-pdf`,
+    BULK_PREVIEW: '/documents/bulk/preview',
+    BULK_COMMIT: '/documents/bulk/commit',
+    BULK_CANCEL: '/documents/bulk/cancel',
+    BULK_STAGING_ITEMS: (stagingId: string) => `/documents/bulk/staging/${stagingId}/items`,
   },
   TEMPLATES: {
     BASE: '/templates',
