@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import axios from 'axios';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import { SignatureModal } from '../components/SignatureModal';
+import TableBulkInput from '../components/TableBulkInput';
 import { usePrint, type PrintField, type PrintSignatureField } from '../utils/printUtils';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 
@@ -13,17 +14,30 @@ interface TableEditComponentProps {
   tableInfo: { rows: number; cols: number; columnWidths?: number[] };
   tableData: any;
   onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
+  onBulkInput?: () => void;
 }
 
 const TableEditComponent: React.FC<TableEditComponentProps> = ({
   tableInfo,
   tableData,
-  onCellChange
+  onCellChange,
+  onBulkInput
 }) => {
   return (
     <div className="space-y-2">
-      <div className="text-xs text-gray-500 mb-2">
-        {tableInfo.rows}행 × {tableInfo.cols}열 표
+      <div className="flex justify-between items-center mb-2">
+        <div className="text-xs text-gray-500">
+          {tableInfo.rows}행 × {tableInfo.cols}열 표
+        </div>
+        {onBulkInput && (
+          <button
+            onClick={onBulkInput}
+            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            title="쉼표(,)로 열 구분, 줄바꿈으로 행 구분하여 한번에 입력"
+          >
+            한번에 적기
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border border-gray-300">
@@ -183,6 +197,13 @@ const DocumentEditor: React.FC = () => {
   // 편집자 서명 모달 상태
   const [showEditorSignatureModal, setShowEditorSignatureModal] = useState(false);
   const [currentSignatureFieldId, setCurrentSignatureFieldId] = useState<string | null>(null);
+
+  // 테이블 벌크 입력 모달 상태
+  const [showTableBulkInput, setShowTableBulkInput] = useState(false);
+  const [currentTableFieldId, setCurrentTableFieldId] = useState<string | null>(null);
+  const [currentTableInfo, setCurrentTableInfo] = useState<{ rows: number; cols: number } | null>(null);
+  const [currentTableLabel, setCurrentTableLabel] = useState<string>('');
+  const [currentTableData, setCurrentTableData] = useState<string[][] | undefined>(undefined);
 
   // 리사이저블 패널 상태
   const [rightPanelWidth, setRightPanelWidth] = useState(524);
@@ -566,6 +587,7 @@ const DocumentEditor: React.FC = () => {
     setCurrentSignatureFieldId(null);
   }, []);
 
+
   // 필수 필드 검증 함수
   const validateRequiredFields = useCallback(() => {
     const missingFields: string[] = [];
@@ -774,6 +796,65 @@ const DocumentEditor: React.FC = () => {
     stableHandlersRef.current.debouncedUpdateDocument(parseInt(id!), { data: updatedData });
   }, [id, currentDocument, templateFields, coordinateFields]);
 
+  // 테이블 벌크 입력 핸들러들
+  const handleTableBulkInputOpen = useCallback((fieldId: string) => {
+    const field = coordinateFields.find(f => f.id === fieldId);
+    if (!field || !field.tableData) return;
+
+    // 기존 테이블 데이터 추출
+    let existingTableData: string[][] | undefined = undefined;
+    if (field.tableData.cells && Array.isArray(field.tableData.cells)) {
+      existingTableData = field.tableData.cells.map(row =>
+        Array.isArray(row) ? row.map(cell => cell ? String(cell) : '') : []
+      );
+    }
+
+    setCurrentTableFieldId(fieldId);
+    setCurrentTableInfo({ rows: field.tableData.rows, cols: field.tableData.cols });
+    setCurrentTableLabel(field.label || '표');
+    setCurrentTableData(existingTableData);
+    setShowTableBulkInput(true);
+  }, [coordinateFields]);
+
+  const handleTableBulkInputClose = useCallback(() => {
+    setShowTableBulkInput(false);
+    setCurrentTableFieldId(null);
+    setCurrentTableInfo(null);
+    setCurrentTableLabel('');
+    setCurrentTableData(undefined);
+  }, []);
+
+  const handleTableBulkInputApply = useCallback((data: string[][]) => {
+    if (!currentTableFieldId) return;
+
+    const fieldIndex = coordinateFields.findIndex(f => f.id === currentTableFieldId);
+    if (fieldIndex === -1) return;
+
+    const field = coordinateFields[fieldIndex];
+    if (!field.tableData) return;
+
+    // 새로운 테이블 데이터 생성
+    const updatedTableData = {
+      ...field.tableData,
+      cells: data
+    };
+
+    // 필드 업데이트
+    const updatedFields = [...coordinateFields];
+    updatedFields[fieldIndex] = {
+      ...field,
+      tableData: updatedTableData,
+      value: JSON.stringify(updatedTableData)
+    };
+
+    setCoordinateFields(updatedFields);
+    handleTableBulkInputClose();
+
+    // 서버에 저장
+    if (field.id) {
+      handleCoordinateFieldChange(field.id, JSON.stringify(updatedTableData));
+    }
+  }, [currentTableFieldId, coordinateFields, handleCoordinateFieldChange, handleTableBulkInputClose]);
 
   // 템플릿 필드 로드
   const loadTemplateFields = useCallback(async () => {
@@ -1283,7 +1364,7 @@ const DocumentEditor: React.FC = () => {
                     // 편집자 서명 필드 렌더링
                     <div className="w-full h-full p-2 flex flex-col items-center justify-center">
                       <div className="text-xs font-medium mb-1 text-green-700 truncate">
-                        ✍️ {field.label}
+                        {field.label}
                         {field.required && <span className="text-red-500">*</span>}
                       </div>
                       {field.value && (
@@ -1724,7 +1805,7 @@ const DocumentEditor: React.FC = () => {
                         padding: '4px'
                       }}>
                         <div style={{ fontSize: '10px', marginBottom: '2px' }}>
-                          ✍️ {field.label}
+                          {field.label}
                         </div>
                         {field.value ? (
                           <div style={{ fontSize: '9px', textAlign: 'center' }}>
@@ -1997,9 +2078,10 @@ const DocumentEditor: React.FC = () => {
                     </div>
                   ) : isTableField && tableInfo ? (
                     // 테이블 편집 UI
-                    <TableEditComponent 
+                    <TableEditComponent
                       tableInfo={tableInfo}
                       tableData={tableData}
+                      onBulkInput={() => handleTableBulkInputOpen(field.id)}
                       onCellChange={(rowIndex, colIndex, newValue) => {
                         // coordinateFields 상태 업데이트
                         setCoordinateFields(prev => {
@@ -2163,6 +2245,18 @@ const DocumentEditor: React.FC = () => {
         onSave={handleSignatureSave}
         reviewerName={user?.name || '편집자'}
       />
+
+      {/* 테이블 벌크 입력 모달 */}
+      {currentTableInfo && (
+        <TableBulkInput
+          isOpen={showTableBulkInput}
+          onClose={handleTableBulkInputClose}
+          onApply={handleTableBulkInputApply}
+          tableInfo={currentTableInfo}
+          fieldLabel={currentTableLabel}
+          existingData={currentTableData}
+        />
+      )}
 
     </div>
     </>
