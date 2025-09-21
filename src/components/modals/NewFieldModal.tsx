@@ -22,6 +22,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
   const [label, setLabel] = useState('');
   const [required, setRequired] = useState(false);
   const [isTable, setIsTable] = useState(false);
+  const [isEditorSignature, setIsEditorSignature] = useState(false);
   const [tableRows, setTableRows] = useState(2);
   const [tableCols, setTableCols] = useState(2);
 
@@ -30,6 +31,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
       setLabel('');
       setRequired(false);
       setIsTable(false);
+      setIsEditorSignature(false);
       setTableRows(2);
       setTableCols(2);
     }
@@ -41,7 +43,8 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
     if (label.trim()) {
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 8);
-      const autoId = `${isTable ? 'table' : 'field'}_${timestamp}_${randomStr}`;
+      const fieldType = isEditorSignature ? 'editor_signature' : isTable ? 'table' : 'field';
+      const autoId = `${fieldType}_${timestamp}_${randomStr}`;
 
       const fieldWidth = selectionBox?.width || 150;
       const fieldHeight = selectionBox?.height || 30;
@@ -57,7 +60,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
         height: fieldHeight,
         page: 1,
         required,
-        type: isTable ? 'table' : 'field',
+        type: fieldType,
         fontSize: defaultFontSize,
         fontFamily: defaultFontFamily,
         ...(isTable && {
@@ -108,17 +111,42 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
             </label>
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isTable"
-              checked={isTable}
-              onChange={(e) => setIsTable(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="isTable" className="ml-2 text-sm text-gray-700">
-              테이블 생성
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isTable"
+                checked={isTable}
+                onChange={(e) => {
+                  setIsTable(e.target.checked);
+                  if (e.target.checked) {
+                    setIsEditorSignature(false);
+                  }
+                }}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isTable" className="ml-2 text-sm text-gray-700">
+                테이블 생성
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isEditorSignature"
+                checked={isEditorSignature}
+                onChange={(e) => {
+                  setIsEditorSignature(e.target.checked);
+                  if (e.target.checked) {
+                    setIsTable(false);
+                  }
+                }}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isEditorSignature" className="ml-2 text-sm text-gray-700">
+                편집자 서명 필드
+              </label>
+            </div>
           </div>
 
           {isTable && (

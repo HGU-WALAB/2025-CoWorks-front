@@ -9,6 +9,7 @@ export interface PrintField {
   y: number;
   width: number;
   height: number;
+  type?: string;
   fontSize?: number;
   fontFamily?: string;
   tableData?: {
@@ -49,10 +50,16 @@ export const generatePrintHTML = (
   console.log('📝 HTML 생성 시작:', { pdfImageUrl, fieldsCount: fields.length, signatureFieldsCount: signatureFields.length });
   
   const fieldsHTML = fields.map(field => {
-    // 테이블 필드 확인
+    // 필드 타입 확인
     let isTableField = false;
+    let isEditorSignature = false;
     let tableInfo = null;
     let tableData = null;
+
+    // 편집자 서명 필드 확인
+    if (field.type === 'editor_signature') {
+      isEditorSignature = true;
+    }
     
     if (field.tableData) {
       isTableField = true;
@@ -176,6 +183,44 @@ export const generatePrintHTML = (
           <tbody>${tableRows}</tbody>
         </table>
       </div>`;
+    } else if (isEditorSignature) {
+      // 편집자 서명 필드 HTML 생성
+      if (field.value && field.value.startsWith('data:image')) {
+        return `<div class="editor-signature-overlay" style="
+          left: ${field.x * 0.64}px;
+          top: ${field.y * 0.64}px;
+          width: ${field.width * 0.64}px;
+          height: ${field.height * 0.64}px;
+          position: absolute;
+          z-index: 10;
+        ">
+          <img src="${field.value}" alt="편집자 서명" class="editor-signature-img" style="
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: transparent;
+          " />
+        </div>`;
+      } else {
+        // // 서명이 없는 경우 빈 공간 또는 플레이스홀더
+        // return `<div class="editor-signature-placeholder" style="
+        //   left: ${field.x * 0.64}px;
+        //   top: ${field.y * 0.64}px;
+        //   width: ${field.width * 0.64}px;
+        //   height: ${field.height * 0.64}px;
+        //   position: absolute;
+        //   z-index: 10;
+        //   border: 1px dashed #ccc;
+        //   display: flex;
+        //   align-items: center;
+        //   justify-content: center;
+        //   font-size: ${Math.max((field.fontSize || 12) * 0.64, 8)}px;
+        //   color: #666;
+        //   background: transparent;
+        // ">
+        //   편집자 서명
+        // </div>`;
+      }
     } else {
       // 일반 필드 HTML 생성
       return `<div class="field-overlay" style="left: ${field.x * 0.64}px; top: ${field.y * 0.64}px; width: ${field.width * 0.64}px; height: ${field.height * 0.64}px; font-size: ${(field.fontSize || 14) * 0.64}px; font-family: '${field.fontFamily || 'Arial'}', sans-serif;">${field.value || ''}</div>`;
@@ -185,6 +230,18 @@ export const generatePrintHTML = (
   // 서명 필드 HTML 생성
   const signaturesHTML = signatureFields.map((field: PrintSignatureField) => {
     const signatureData = field.signatureData || signatures[field.reviewerEmail];
+
+    console.log('🖋️ printUtils - 서명 필드 처리:', {
+      fieldId: field.id,
+      reviewerEmail: field.reviewerEmail,
+      reviewerName: field.reviewerName,
+      hasSignatureDataInField: !!field.signatureData,
+      hasSignatureDataInSignatures: !!signatures[field.reviewerEmail],
+      finalSignatureData: !!signatureData,
+      signatureDataLength: signatureData?.length,
+      signatureDataPreview: signatureData?.substring(0, 50) + '...'
+    });
+
     return signatureData ? `<div class="signature-overlay" style="left: ${field.x * 0.64}px; top: ${field.y * 0.64}px; width: ${field.width * 0.64}px; height: ${field.height * 0.64}px;">
       <img src="${signatureData}" alt="서명" class="signature-img" />
     </div>` : '';

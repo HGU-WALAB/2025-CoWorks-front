@@ -123,7 +123,11 @@ const DocumentList: React.FC = () => {
         console.log('🖋️ DocumentList - 서명 필드 처리:', {
           originalSignatureFields: docSignatureFields,
           signatures: docSignatures,
-          processedSignatureFields
+          processedSignatureFields,
+          signatureFieldsWithData: processedSignatureFields.filter(sf => sf.signatureData).length,
+          reviewerEmails: Object.keys(docSignatures),
+          hasSignatures: Object.keys(docSignatures).length > 0,
+          documentStatus: document.status
         });
 
         setSignatureFields(processedSignatureFields);

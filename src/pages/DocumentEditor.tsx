@@ -4,6 +4,8 @@ import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import axios from 'axios';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import { SignatureModal } from '../components/SignatureModal';
+import TableBulkInput from '../components/TableBulkInput';
 import { usePrint, type PrintField, type PrintSignatureField } from '../utils/printUtils';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 
@@ -12,17 +14,30 @@ interface TableEditComponentProps {
   tableInfo: { rows: number; cols: number; columnWidths?: number[] };
   tableData: any;
   onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
+  onBulkInput?: () => void;
 }
 
 const TableEditComponent: React.FC<TableEditComponentProps> = ({
   tableInfo,
   tableData,
-  onCellChange
+  onCellChange,
+  onBulkInput
 }) => {
   return (
     <div className="space-y-2">
-      <div className="text-xs text-gray-500 mb-2">
-        {tableInfo.rows}행 × {tableInfo.cols}열 표
+      <div className="flex justify-between items-center mb-2">
+        <div className="text-xs text-gray-500">
+          {tableInfo.rows}행 × {tableInfo.cols}열 표
+        </div>
+        {onBulkInput && (
+          <button
+            onClick={onBulkInput}
+            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            title="쉼표(,)로 열 구분, 줄바꿈으로 행 구분하여 한번에 입력"
+          >
+            한번에 적기
+          </button>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border border-gray-300">
@@ -120,7 +135,7 @@ interface CoordinateField {
   width: number;
   height: number;
   label: string;
-  type: 'text' | 'textarea' | 'date' | 'number';
+  type: 'text' | 'textarea' | 'date' | 'number' | 'editor_signature';
   value?: string;
   required?: boolean;
   // 폰트 설정 추가
@@ -179,6 +194,17 @@ const DocumentEditor: React.FC = () => {
   const [previewCoordinateFields, setPreviewCoordinateFields] = useState<any[]>([]);
   const [previewSignatureFields, setPreviewSignatureFields] = useState<any[]>([]);
 
+  // 편집자 서명 모달 상태
+  const [showEditorSignatureModal, setShowEditorSignatureModal] = useState(false);
+  const [currentSignatureFieldId, setCurrentSignatureFieldId] = useState<string | null>(null);
+
+  // 테이블 벌크 입력 모달 상태
+  const [showTableBulkInput, setShowTableBulkInput] = useState(false);
+  const [currentTableFieldId, setCurrentTableFieldId] = useState<string | null>(null);
+  const [currentTableInfo, setCurrentTableInfo] = useState<{ rows: number; cols: number } | null>(null);
+  const [currentTableLabel, setCurrentTableLabel] = useState<string>('');
+  const [currentTableData, setCurrentTableData] = useState<string[][] | undefined>(undefined);
+
   // 리사이저블 패널 상태
   const [rightPanelWidth, setRightPanelWidth] = useState(524);
   const [isResizing, setIsResizing] = useState(false);
@@ -218,36 +244,73 @@ const DocumentEditor: React.FC = () => {
     }
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // 미리보기 처리 함수 (DocumentList와 동일한 로직)
-  const handlePreview = useCallback(() => {
+  // 미리보기 처리 함수 (최신 문서 데이터 로드 후 표시)
+  const handlePreview = useCallback(async () => {
     console.log('🔍 DocumentEditor - handlePreview 호출됨');
 
-    if (!currentDocument) {
-      console.warn('⚠️ DocumentEditor - currentDocument가 없습니다');
+    if (!currentDocument || !id) {
+      console.warn('⚠️ DocumentEditor - currentDocument 또는 id가 없습니다');
       return;
     }
 
     try {
-      console.log('🔍 DocumentEditor - 미리보기 문서:', currentDocument);
-      console.log('🔍 DocumentEditor - PDF 이미지 경로:', currentDocument.template?.pdfImagePath);
+      console.log('🔍 DocumentEditor - 최신 문서 데이터 로드 시작');
+
+      // 먼저 현재 편집 중인 데이터를 저장
+      try {
+        setIsSaving(true);
+        const updatedData = {
+          coordinateFields: coordinateFields.map(field => ({
+            id: field.id,
+            label: field.label,
+            x: field.x,
+            y: field.y,
+            width: field.width,
+            height: field.height,
+            type: field.type,
+            value: field.value,
+            required: field.required || false,
+            fontSize: field.fontSize || 12,
+            fontFamily: field.fontFamily || 'Arial',
+            page: 1,
+            ...(field.tableData && { tableData: field.tableData })
+          }))
+        };
+
+        await updateDocumentSilently(parseInt(id), { data: updatedData });
+        setLastSaved(new Date());
+        setIsSaving(false);
+      } catch (saveError) {
+        console.error('저장 실패:', saveError);
+        setIsSaving(false);
+      }
+
+      // 최신 문서 데이터를 서버에서 다시 가져오기
+      const response = await axios.get(`/api/documents/${id}`);
+      const latestDocument = response.data;
+
+      console.log('🔍 DocumentEditor - 최신 문서 데이터:', latestDocument);
+      console.log('🔍 DocumentEditor - PDF 이미지 경로:', latestDocument.template?.pdfImagePath);
 
       // 현재 편집 중인 coordinateFields 사용 (실시간 반영)
       console.log('📄 DocumentEditor - 현재 편집 필드:', coordinateFields);
       setPreviewCoordinateFields(coordinateFields);
 
-      // 서명 필드 처리
-      const docSignatureFields = currentDocument.data?.signatureFields || [];
-      const docSignatures = currentDocument.data?.signatures || {};
+      // 최신 문서 데이터에서 서명 필드 처리
+      const docSignatureFields = latestDocument.data?.signatureFields || [];
+      const docSignatures = latestDocument.data?.signatures || {};
 
       const processedSignatureFields = docSignatureFields.map((field: any) => ({
         ...field,
         signatureData: docSignatures[field.reviewerEmail]
       }));
 
-      console.log('🖋️ DocumentEditor - 서명 필드 처리:', {
+      console.log('🖋️ DocumentEditor - 최신 서명 필드 처리:', {
         originalSignatureFields: docSignatureFields,
         signatures: docSignatures,
-        processedSignatureFields
+        processedSignatureFields,
+        reviewerEmails: Object.keys(docSignatures),
+        hasSignatures: Object.keys(docSignatures).length > 0
       });
 
       setPreviewSignatureFields(processedSignatureFields);
@@ -256,8 +319,23 @@ const DocumentEditor: React.FC = () => {
       setShowPreviewModal(true);
     } catch (error) {
       console.error('문서 미리보기 실패:', error);
+      // 오류 발생 시 기존 방식으로 fallback
+      console.log('🔍 DocumentEditor - fallback으로 기존 데이터 사용');
+
+      setPreviewCoordinateFields(coordinateFields);
+
+      const docSignatureFields = currentDocument.data?.signatureFields || [];
+      const docSignatures = currentDocument.data?.signatures || {};
+
+      const processedSignatureFields = docSignatureFields.map((field: any) => ({
+        ...field,
+        signatureData: docSignatures[field.reviewerEmail]
+      }));
+
+      setPreviewSignatureFields(processedSignatureFields);
+      setShowPreviewModal(true);
     }
-  }, [currentDocument, coordinateFields]);
+  }, [currentDocument, coordinateFields, id, updateDocumentSilently]);
   
   // 인쇄 기능
   const { isPrinting, print } = usePrint();
@@ -265,6 +343,17 @@ const DocumentEditor: React.FC = () => {
   // 편집 완료 관련 상태
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+
+  // 편집자 권한 확인
+  const isEditor = useMemo(() => {
+    if (!currentDocument || !user) return false;
+
+    // 문서 생성자이거나 EDITOR 역할을 가진 사용자
+    return currentDocument.createdBy === user.email ||
+           currentDocument.tasks?.some(task =>
+             task.assignedUserEmail === user.email && task.role === 'EDITOR'
+           );
+  }, [currentDocument, user]);
 
 
   // 저장 관련 refs
@@ -294,7 +383,11 @@ const DocumentEditor: React.FC = () => {
             y: pixelCoords.y,
             width: pixelCoords.width,
             height: pixelCoords.height,
-            type: (field.fieldType?.toLowerCase() === 'date' ? 'date' : 'text') as 'text' | 'date',
+            type: (
+              field.fieldType?.toLowerCase() === 'date' ? 'date' :
+              field.fieldType === 'editor_signature' ? 'editor_signature' :
+              'text'
+            ) as 'text' | 'date' | 'editor_signature',
             value: field.fieldType === 'table' && field.tableData 
               ? JSON.stringify({
                   rows: field.tableData.rows,
@@ -340,7 +433,11 @@ const DocumentEditor: React.FC = () => {
         y: field.y,
         width: field.width || 100,
         height: field.height || 20,
-        type: 'text' as 'text' | 'date',
+        type: (
+          field.type === 'editor_signature' ? 'editor_signature' :
+          field.type === 'date' ? 'date' :
+          'text'
+        ) as 'text' | 'date' | 'editor_signature',
         value: field.value || '', // 이 문서에 저장된 값 사용
         required: field.required || false,
         fontSize: field.fontSize || 12, // 폰트 크기 추가
@@ -440,6 +537,56 @@ const DocumentEditor: React.FC = () => {
       setIsSaving(false);
     }
   }, [id, currentDocument, templateFields, coordinateFields, saveDocumentFieldValue, updateDocumentSilently]);
+
+  // 편집자 서명 핸들러
+  const handleEditorSignature = useCallback((fieldId: string) => {
+    // 편집자 권한 확인
+    if (!isEditor) {
+      alert('편집자만 서명할 수 있습니다.');
+      return;
+    }
+
+    setCurrentSignatureFieldId(fieldId);
+    setShowEditorSignatureModal(true);
+  }, [isEditor]);
+
+  const handleSignatureSave = useCallback((signatureData: string) => {
+    if (!currentSignatureFieldId || !id || !currentDocument) return;
+
+    // 서명 데이터를 해당 필드에 직접 저장
+    setCoordinateFields(prev => {
+      const updated = prev.map(field =>
+        field.id === currentSignatureFieldId
+          ? { ...field, value: signatureData }
+          : field
+      );
+
+      // 서버에 저장
+      const updatedData = {
+        coordinateFields: updated.map(field => ({
+          ...field,
+          page: 1
+        }))
+      };
+
+      // 비동기 저장 (에러가 발생해도 UI는 업데이트됨)
+      updateDocumentSilently(parseInt(id), { data: updatedData }).catch(error => {
+        console.error('서명 저장 실패:', error);
+      });
+
+      return updated;
+    });
+
+    // 모달 닫기
+    setShowEditorSignatureModal(false);
+    setCurrentSignatureFieldId(null);
+  }, [currentSignatureFieldId, id, currentDocument, updateDocumentSilently]);
+
+  const handleSignatureModalClose = useCallback(() => {
+    setShowEditorSignatureModal(false);
+    setCurrentSignatureFieldId(null);
+  }, []);
+
 
   // 필수 필드 검증 함수
   const validateRequiredFields = useCallback(() => {
@@ -562,6 +709,7 @@ const DocumentEditor: React.FC = () => {
         y: field.y,
         width: field.width,
         height: field.height,
+        type: field.type,
         fontSize: field.fontSize,
         fontFamily: field.fontFamily,
         tableData: field.tableData
@@ -648,6 +796,65 @@ const DocumentEditor: React.FC = () => {
     stableHandlersRef.current.debouncedUpdateDocument(parseInt(id!), { data: updatedData });
   }, [id, currentDocument, templateFields, coordinateFields]);
 
+  // 테이블 벌크 입력 핸들러들
+  const handleTableBulkInputOpen = useCallback((fieldId: string) => {
+    const field = coordinateFields.find(f => f.id === fieldId);
+    if (!field || !field.tableData) return;
+
+    // 기존 테이블 데이터 추출
+    let existingTableData: string[][] | undefined = undefined;
+    if (field.tableData.cells && Array.isArray(field.tableData.cells)) {
+      existingTableData = field.tableData.cells.map(row =>
+        Array.isArray(row) ? row.map(cell => cell ? String(cell) : '') : []
+      );
+    }
+
+    setCurrentTableFieldId(fieldId);
+    setCurrentTableInfo({ rows: field.tableData.rows, cols: field.tableData.cols });
+    setCurrentTableLabel(field.label || '표');
+    setCurrentTableData(existingTableData);
+    setShowTableBulkInput(true);
+  }, [coordinateFields]);
+
+  const handleTableBulkInputClose = useCallback(() => {
+    setShowTableBulkInput(false);
+    setCurrentTableFieldId(null);
+    setCurrentTableInfo(null);
+    setCurrentTableLabel('');
+    setCurrentTableData(undefined);
+  }, []);
+
+  const handleTableBulkInputApply = useCallback((data: string[][]) => {
+    if (!currentTableFieldId) return;
+
+    const fieldIndex = coordinateFields.findIndex(f => f.id === currentTableFieldId);
+    if (fieldIndex === -1) return;
+
+    const field = coordinateFields[fieldIndex];
+    if (!field.tableData) return;
+
+    // 새로운 테이블 데이터 생성
+    const updatedTableData = {
+      ...field.tableData,
+      cells: data
+    };
+
+    // 필드 업데이트
+    const updatedFields = [...coordinateFields];
+    updatedFields[fieldIndex] = {
+      ...field,
+      tableData: updatedTableData,
+      value: JSON.stringify(updatedTableData)
+    };
+
+    setCoordinateFields(updatedFields);
+    handleTableBulkInputClose();
+
+    // 서버에 저장
+    if (field.id) {
+      handleCoordinateFieldChange(field.id, JSON.stringify(updatedTableData));
+    }
+  }, [currentTableFieldId, coordinateFields, handleCoordinateFieldChange, handleTableBulkInputClose]);
 
   // 템플릿 필드 로드
   const loadTemplateFields = useCallback(async () => {
@@ -700,7 +907,7 @@ const DocumentEditor: React.FC = () => {
           id: parseInt(field.id?.replace(/\D/g, '') || index.toString()), // ID에서 숫자만 추출
           fieldKey: field.id,
           label: field.label,
-          fieldType: field.type === 'table' ? 'table' : 'text',
+          fieldType: field.type === 'table' ? 'table' : field.type === 'editor_signature' ? 'editor_signature' : 'text',
           x: field.x,
           y: field.y,
           width: field.width,
@@ -818,7 +1025,11 @@ const DocumentEditor: React.FC = () => {
           y: pixelCoords.y,
           width: pixelCoords.width,
           height: pixelCoords.height,
-          type: (templateField.fieldType?.toLowerCase() === 'date' ? 'date' : 'text') as 'text' | 'date',
+          type: (
+            templateField.fieldType?.toLowerCase() === 'date' ? 'date' :
+            templateField.fieldType === 'editor_signature' ? 'editor_signature' :
+            'text'
+          ) as 'text' | 'date' | 'editor_signature',
           value: value,
           required: templateField.required || false,
           fontSize: templateField.fontSize || 14, // 기본 폰트 크기를 14px로 설정
@@ -870,7 +1081,11 @@ const DocumentEditor: React.FC = () => {
           y: pixelCoords.y,
           width: pixelCoords.width,
           height: pixelCoords.height,
-          type: (templateField.fieldType?.toLowerCase() === 'date' ? 'date' : 'text') as 'text' | 'date',
+          type: (
+            templateField.fieldType?.toLowerCase() === 'date' ? 'date' :
+            templateField.fieldType === 'editor_signature' ? 'editor_signature' :
+            'text'
+          ) as 'text' | 'date' | 'editor_signature',
           value: defaultValue,
           required: templateField.required || false,
           fontSize: templateField.fontSize || 14, // 기본 폰트 크기를 14px로 설정
@@ -1068,10 +1283,17 @@ const DocumentEditor: React.FC = () => {
               const widthPercent = field.width;
               const heightPercent = field.height;
 
-              // 테이블 필드인지 확인
+              // 필드 타입 확인
               let isTableField = false;
+              let isEditorSignature = false;
               let tableInfo = null;
-              
+
+              // 편집자 서명 필드 확인
+              if (field.type === 'editor_signature') {
+                isEditorSignature = true;
+              }
+
+              // 테이블 필드 확인
               // 1. tableData 속성으로 확인
               if (field.tableData) {
                 isTableField = true;
@@ -1095,10 +1317,12 @@ const DocumentEditor: React.FC = () => {
                 }
               }
               
-              console.log('🔍 테이블 필드 확인:', {
+              console.log('🔍 필드 타입 확인:', {
                 fieldId: field.id,
                 fieldLabel: field.label,
+                fieldType: field.type,
                 isTableField,
+                isEditorSignature,
                 tableInfo,
                 hasTableDataProperty: !!field.tableData,
                 value: field.value
@@ -1108,6 +1332,7 @@ const DocumentEditor: React.FC = () => {
                 <div
                   key={field.id}
                   className={`absolute border-2 bg-opacity-30 hover:bg-opacity-50 transition-colors flex flex-col justify-center cursor-pointer ${
+                    isEditorSignature ? 'bg-green-100 border-green-500' :
                     isTableField ? 'bg-purple-100 border-purple-500' : 'bg-blue-100 border-blue-500'
                   }`}
                   style={{
@@ -1135,7 +1360,30 @@ const DocumentEditor: React.FC = () => {
                     }
                   }}
                 >
-                  {isTableField && tableInfo ? (
+                  {isEditorSignature ? (
+                    // 편집자 서명 필드 렌더링
+                    <div className="w-full h-full p-2 flex flex-col items-center justify-center">
+                      <div className="text-xs font-medium mb-1 text-green-700 truncate">
+                        {field.label}
+                        {field.required && <span className="text-red-500">*</span>}
+                      </div>
+                      {field.value && (
+                        <div className="text-xs text-gray-600 mt-1 text-center">
+                          {field.value.startsWith('data:image') ? (
+                            <div className="flex items-center justify-center">
+                              <img
+                                src={field.value}
+                                alt="편집자 서명"
+                                className="max-w-full h-8 border border-transparent rounded bg-transparent"
+                              />
+                            </div>
+                          ) : (
+                            <div>서명됨: {new Date().toLocaleDateString()}</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : isTableField && tableInfo ? (
                     // 테이블 렌더링
                     <div className="w-full h-full p-1">
                       <div className="text-xs font-medium mb-1 text-purple-700 truncate">
@@ -1496,10 +1744,16 @@ const DocumentEditor: React.FC = () => {
               
               {/* 필드 데이터 오버레이 */}
               {coordinateFields.map((field) => {
-                // 테이블 필드 확인
+                // 필드 타입 확인
                 let isTableField = false;
+                let isEditorSignature = false;
                 let tableInfo = null;
                 let tableData = null;
+
+                // 편집자 서명 필드 확인
+                if (field.type === 'editor_signature') {
+                  isEditorSignature = true;
+                }
                 
                 if (field.tableData) {
                   isTableField = true;
@@ -1534,7 +1788,51 @@ const DocumentEditor: React.FC = () => {
                       fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                     }}
                   >
-                    {isTableField && tableData ? (
+                    {isEditorSignature ? (
+                      // 편집자 서명 필드 인쇄
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: `${field.fontSize || 12}px`,
+                        fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                        fontWeight: '600',
+                        color: 'black',
+                        border: '1px solid #ccc',
+                        padding: '4px'
+                      }}>
+                        <div style={{ fontSize: '10px', marginBottom: '2px' }}>
+                          {field.label}
+                        </div>
+                        {field.value ? (
+                          <div style={{ fontSize: '9px', textAlign: 'center' }}>
+                            {field.value.startsWith('data:image') ? (
+                              <img
+                                src={field.value}
+                                alt="편집자 서명"
+                                style={{
+                                  maxWidth: '100%',
+                                  maxHeight: '20px',
+                                  objectFit: 'contain'
+                                }}
+                              />
+                            ) : (
+                              <>
+                                서명됨<br/>
+                                {new Date().toLocaleDateString()}
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '9px', color: '#666' }}>
+                            미서명
+                          </div>
+                        )}
+                      </div>
+                    ) : isTableField && tableData ? (
                       // 테이블 인쇄
                       <table className="print-table" style={{ width: '100%', height: '100%', borderCollapse: 'collapse' }}>
                         <tbody>
@@ -1543,7 +1841,7 @@ const DocumentEditor: React.FC = () => {
                               {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
                                 const cellContent = tableData.cells?.[rowIndex]?.[colIndex] || '';
                                 return (
-                                  <td 
+                                  <td
                                     key={colIndex}
                                     className="print-table-cell"
                                     style={{
@@ -1641,10 +1939,16 @@ const DocumentEditor: React.FC = () => {
           
           <div className="p-4 space-y-4">
             {coordinateFields.map((field) => {
-              // 테이블 필드인지 확인
+              // 필드 타입 확인
               let isTableField = false;
+              let isEditorSignature = false;
               let tableInfo = null;
               let tableData = null;
+
+              // 편집자 서명 필드 확인
+              if (field.type === 'editor_signature') {
+                isEditorSignature = true;
+              }
               
               // 1. 서버에서 불러온 데이터 우선 확인 (field.value)
               if (field.value) {
@@ -1699,13 +2003,85 @@ const DocumentEditor: React.FC = () => {
                     {field.label}
                     {field.required && <span className="text-red-500 ml-1">*</span>}
                     {isTableField && <span className="text-purple-600 text-xs ml-1">(표)</span>}
+                    {isEditorSignature && <span className="text-green-600 text-xs ml-1">(편집자 서명)</span>}
                   </label>
-                  
-                  {isTableField && tableInfo ? (
+
+                  {isEditorSignature ? (
+                    // 편집자 서명 필드 UI
+                    <div className="space-y-3">
+                      {isEditor ? (
+                        // 편집자인 경우 - 서명 가능
+                        <div>
+                          {field.value ? (
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-green-700 font-medium">서명 완료</p>
+                                  <p className="text-xs text-green-600 mt-1">
+                                    서명일: {new Date().toLocaleString()}
+                                  </p>
+                                  {/* 서명 이미지 미리보기 */}
+                                  {field.value.startsWith('data:image') && (
+                                    <div className="mt-2">
+                                      <img
+                                        src={field.value}
+                                        alt="서명 미리보기"
+                                        className="max-w-full h-12 border border-transparent rounded bg-transparent"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    handleCoordinateFieldChange(field.id, '');
+                                  }}
+                                  className="text-xs text-red-500 hover:text-red-700 underline"
+                                >
+                                  서명 취소
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleEditorSignature(field.id)}
+                              className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                            >
+                              서명하기
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        // 편집자가 아닌 경우 - 서명 불가
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <p className="text-sm text-gray-600">
+                            편집자만 서명할 수 있습니다
+                          </p>
+                          {field.value && (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-500">
+                                서명됨: {new Date().toLocaleString()}
+                              </p>
+                              {/* 서명 이미지 미리보기 */}
+                              {field.value.startsWith('data:image') && (
+                                <div className="mt-2">
+                                  <img
+                                    src={field.value}
+                                    alt="서명 미리보기"
+                                    className="max-w-full h-12 border border-transparent rounded bg-transparent"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : isTableField && tableInfo ? (
                     // 테이블 편집 UI
-                    <TableEditComponent 
+                    <TableEditComponent
                       tableInfo={tableInfo}
                       tableData={tableData}
+                      onBulkInput={() => handleTableBulkInputOpen(field.id)}
                       onCellChange={(rowIndex, colIndex, newValue) => {
                         // coordinateFields 상태 업데이트
                         setCoordinateFields(prev => {
@@ -1860,6 +2236,26 @@ const DocumentEditor: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 편집자 서명 모달 */}
+      <SignatureModal
+        isOpen={showEditorSignatureModal}
+        onClose={handleSignatureModalClose}
+        onSave={handleSignatureSave}
+        reviewerName={user?.name || '편집자'}
+      />
+
+      {/* 테이블 벌크 입력 모달 */}
+      {currentTableInfo && (
+        <TableBulkInput
+          isOpen={showTableBulkInput}
+          onClose={handleTableBulkInputClose}
+          onApply={handleTableBulkInputApply}
+          tableInfo={currentTableInfo}
+          fieldLabel={currentTableLabel}
+          existingData={currentTableData}
+        />
       )}
 
     </div>
