@@ -101,8 +101,22 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   // 인쇄 기능 - printUtils의 공통 함수 사용
   const handlePrint = React.useCallback(async () => {
     setIsPrinting(true);
-    
+
     try {
+      console.log('🖨️ DocumentPreviewModal - 인쇄 시작:', {
+        pdfImageUrl,
+        coordinateFieldsCount: coordinateFields.length,
+        signatureFieldsCount: signatureFields.length,
+        signatureFields: signatureFields.map(sf => ({
+          id: sf.id,
+          reviewerEmail: sf.reviewerEmail,
+          reviewerName: sf.reviewerName,
+          hasSignatureData: !!sf.signatureData,
+          signatureDataLength: sf.signatureData?.length
+        })),
+        signatureFieldsWithData: signatureFields.filter(sf => sf.signatureData).length
+      });
+
       // 타입 변환: CoordinateField[] → PrintField[]
       const printFields = coordinateFields.map(field => ({
         ...field,
@@ -117,7 +131,9 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         signatures: {},
         documentTitle: documentTitle
       };
-      
+
+      console.log('🖨️ DocumentPreviewModal - 인쇄 옵션:', printOptions);
+
       await printDocument(printOptions);
       setIsPrinting(false);
     } catch (error) {
@@ -266,7 +282,14 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               
               {/* 필드 값들을 자연스럽게 오버레이 - 테두리나 배경 없이 */}
               {coordinateFields
-                .filter(field => field.value && field.value.trim() !== '') // 값이 있는 필드만 표시
+                .filter(field => {
+                  // 편집자 서명 필드는 값이 없어도 표시
+                  if (field.type === 'editor_signature') {
+                    return true;
+                  }
+                  // 일반 필드는 값이 있는 경우만 표시
+                  return field.value && field.value.trim() !== '';
+                })
                 .map((field) => {
                   console.log('🎯 미리보기 모달 - 필드 렌더링:', {
                     id: field.id,
@@ -278,9 +301,15 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                     value: field.value
                   });
                   
-                  // 테이블 필드인지 확인
+                  // 필드 타입 확인
                   let isTableField = false;
+                  let isEditorSignature = false;
                   let tableData = null;
+
+                  // 편집자 서명 필드인지 확인
+                  if (field.type === 'editor_signature') {
+                    isEditorSignature = true;
+                  }
                   
                   try {
                     if (field.value && typeof field.value === 'string') {
@@ -328,7 +357,38 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                         height: `${heightPercent}%`,
                       }}
                     >
-                      {isTableField && tableData ? (
+                      {isEditorSignature ? (
+                        // 편집자 서명 필드 렌더링
+                        <div
+                          className="w-full h-full flex items-center justify-center"
+                          style={{
+                            background: 'transparent'
+                          }}
+                        >
+                          {field.value && field.value.startsWith('data:image') ? (
+                            <img
+                              src={field.value}
+                              alt="편집자 서명"
+                              className="w-full h-full object-contain"
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '100%',
+                                background: 'transparent'
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="text-gray-500 text-center"
+                              style={{
+                                fontSize: `${Math.max(Math.min(12 * scale, 16 * scale), 8 * scale)}px`,
+                                fontFamily: 'Arial, sans-serif'
+                              }}
+                            >
+                              {/*편집자 서명*/}
+                            </div>
+                          )}
+                        </div>
+                      ) : isTableField && tableData ? (
                         // 테이블 렌더링
                         <div 
                           className="w-full h-full" 

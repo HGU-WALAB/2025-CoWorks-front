@@ -797,8 +797,14 @@ const DocumentReview: React.FC = () => {
 
                 // 테이블 필드인지 확인
                 let isTableField = false;
+                let isEditorSignature = false;
                 let tableInfo = null;
-                
+
+                // 편집자 서명 필드 확인
+                if (field.type === 'editor_signature') {
+                  isEditorSignature = true;
+                }
+
                 // 1. tableData 속성으로 확인
                 if (field.tableData) {
                   isTableField = true;
@@ -826,6 +832,7 @@ const DocumentReview: React.FC = () => {
                   <div
                     key={field.id}
                     className={`absolute border-2 bg-opacity-30 flex flex-col justify-center ${
+                      isEditorSignature ? 'bg-green-100 border-green-500' :
                       isTableField ? 'bg-purple-100 border-purple-500' : 'bg-blue-100 border-blue-500'
                     }`}
                     style={{
@@ -835,7 +842,28 @@ const DocumentReview: React.FC = () => {
                       height: `${heightPercent}px`,
                     }}
                   >
-                    {isTableField && tableInfo ? (
+                    {isEditorSignature ? (
+                      // 편집자 서명 필드 렌더링
+                      <div className="w-full h-full p-2 flex flex-col items-center justify-center">
+                        <div className="text-xs font-medium mb-1 text-green-700 truncate">
+                          ✍️ {field.label}
+                          {field.required && <span className="text-red-500">*</span>}
+                        </div>
+                        {field.value && field.value.startsWith('data:image') ? (
+                          <div className="flex items-center justify-center">
+                            <img
+                              src={field.value}
+                              alt="편집자 서명"
+                              className="max-w-full h-8 border border-transparent rounded bg-transparent"
+                            />
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-600 mt-1 text-center">
+                            {field.value ? '서명됨' : '미서명'}
+                          </div>
+                        )}
+                      </div>
+                    ) : isTableField && tableInfo ? (
                       // 테이블 렌더링
                       <div className="w-full h-full p-1">
                         <div className="text-xs font-medium mb-1 text-purple-700 truncate">

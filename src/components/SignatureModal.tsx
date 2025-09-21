@@ -17,6 +17,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastX, setLastX] = useState(0);
   const [lastY, setLastY] = useState(0);
+  const [lineWidth, setLineWidth] = useState(3);
 
   useEffect(() => {
     if (isOpen && canvasRef.current) {
@@ -30,7 +31,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
       }
@@ -162,7 +163,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                 onClick={saveSignature}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                ✅ 서명 저장
+                서명 저장
               </button>
             </div>
           </div>
