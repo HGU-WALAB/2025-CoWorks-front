@@ -6,11 +6,12 @@ import {
   DocumentCreateRequest, 
   DocumentUpdateRequest,
   TaskInfo,
-  TemplateInfo
+  TemplateInfo,
+  DocumentStatusLog
 } from '../types/document';
 
 // Re-export types for other components
-export type { Document, DocumentData, TaskInfo, TemplateInfo };
+export type { Document, DocumentData, TaskInfo, TemplateInfo, DocumentStatusLog };
 
 interface DocumentStore {
   documents: Document[];
