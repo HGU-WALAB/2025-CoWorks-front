@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFolderStore } from '../stores/folderStore';
+import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import AccessDenied from '../components/AccessDenied';
 import FolderCreateModal from '../components/FolderCreateModal';
@@ -36,6 +37,8 @@ const FolderPage: React.FC<FolderPageProps> = () => {
     reset,
     clearError
   } = useFolderStore();
+
+  const { deleteDocument } = useDocumentStore();
 
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -219,8 +222,11 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       if (contextMenu.type === 'folder') {
         await deleteFolder(contextMenu.item.id.toString());
       } else {
-        // TODO: 문서 삭제 구현
-        console.log('Document delete not implemented yet');
+        // 문서 삭제 API 호출
+        const documentId = Number(contextMenu.item.id);
+        console.log('🗑️ 문서 삭제 시도:', documentId);
+        await deleteDocument(documentId);
+        console.log('✅ 문서 삭제 완료:', documentId);
       }
       // 삭제 후 폴더 내용 다시 로드
       await loadFolderContents(folderId || null);
