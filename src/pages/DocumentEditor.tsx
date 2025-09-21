@@ -1922,7 +1922,7 @@ const DocumentEditor: React.FC = () => {
                     {field.label}
                     {field.required && <span className="text-red-500 ml-1">*</span>}
                     {isTableField && <span className="text-purple-600 text-xs ml-1">(표)</span>}
-                    {isEditorSignature && <span className="text-green-600 text-xs ml-1">✍️(편집자 서명)</span>}
+                    {isEditorSignature && <span className="text-green-600 text-xs ml-1">(편집자 서명)</span>}
                   </label>
 
                   {isEditorSignature ? (
@@ -1965,7 +1965,7 @@ const DocumentEditor: React.FC = () => {
                               onClick={() => handleEditorSignature(field.id)}
                               className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
                             >
-                              ✍️ 서명하기
+                              서명하기
                             </button>
                           )}
                         </div>
@@ -1973,7 +1973,7 @@ const DocumentEditor: React.FC = () => {
                         // 편집자가 아닌 경우 - 서명 불가
                         <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                           <p className="text-sm text-gray-600">
-                            🔒 편집자만 서명할 수 있습니다
+                            편집자만 서명할 수 있습니다
                           </p>
                           {field.value && (
                             <div className="mt-2">
