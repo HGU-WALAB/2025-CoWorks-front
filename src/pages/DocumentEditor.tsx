@@ -1752,7 +1752,7 @@ const DocumentEditor: React.FC = () => {
 
         {/* 오른쪽 패널 - 필드 목록 (리사이저블 너비) */}
         <div
-          className="bg-white border-l overflow-y-auto flex-shrink-0 h-full no-print relative"
+          className="bg-white border-l flex-shrink-0 h-full no-print relative flex flex-col"
           style={{ width: `${rightPanelWidth}px` }}
         >
           {/* 리사이저 핸들 */}
@@ -1768,14 +1768,18 @@ const DocumentEditor: React.FC = () => {
           >
             <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-8 bg-gray-400 rounded-full opacity-60" />
           </div>
-          <div className="p-4 border-b bg-gray-50">
+
+          {/* 고정 헤더 */}
+          <div className="p-4 border-b bg-gray-50 flex-shrink-0">
             <h2 className="font-medium text-gray-900">문서 필드</h2>
             <p className="text-sm text-gray-500 mt-1">
               {coordinateFields.length}개 필드
             </p>
           </div>
-          
-          <div className="p-4 space-y-4">
+
+          {/* 스크롤 가능한 필드 목록 */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4 space-y-4">
             {coordinateFields.map((field) => {
               // 필드 타입 확인
               let isTableField = false;
@@ -1983,6 +1987,7 @@ const DocumentEditor: React.FC = () => {
                 <p>표시할 필드가 없습니다.</p>
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
