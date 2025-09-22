@@ -99,7 +99,6 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
         parseAndPreview(initialText);
       }
     } else if (isOpen) {
-      // 새로 열릴 때 초기화
       setInputText('');
       setError('');
       setPreview([]);
@@ -156,11 +155,10 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
                 텍스트 입력
               </label>
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">📝 입력 형식</h4>
+                <h4 className="text-sm font-medium text-blue-800 mb-2">입력 형식</h4>
                 <ul className="text-xs text-blue-700 space-y-1">
                   <li>• 각 열은 쉼표(,)로 구분</li>
-                  <li>• 각 행은 줄바꿈(\n)으로 구분</li>
-                  <li>• 예시: "값1,값2,값3\n값4,값5,값6"</li>
+                  <li>• 각 행은 줄바꿈(Enter)으로 구분</li>
                 </ul>
               </div>
               <textarea
