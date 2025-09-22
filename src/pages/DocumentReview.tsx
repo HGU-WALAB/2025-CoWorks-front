@@ -44,7 +44,7 @@ const RejectModal: React.FC<RejectModalProps> = ({ isOpen, onClose, onReject }) 
             placeholder="반려 사유를 상세히 입력해주세요..."
             className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
           />
-          
+
           <div className="flex space-x-3 mt-6">
             <button
               onClick={onClose}
@@ -125,7 +125,7 @@ const DocumentReview: React.FC = () => {
       reviewerEmail,
       reviewerName,
     };
-    
+
     setSignatureFields(prev => [...prev, newField]);
   };
 
@@ -133,12 +133,12 @@ const DocumentReview: React.FC = () => {
   const handleMouseDown = (e: React.MouseEvent, fieldId: string, action: 'drag' | 'resize') => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const field = signatureFields.find(f => f.id === fieldId);
     if (!field) return;
 
     setActiveFieldId(fieldId);
-    
+
     if (action === 'drag') {
       setIsDragging(true);
       setDragStart({
@@ -165,10 +165,10 @@ const DocumentReview: React.FC = () => {
     if (isDragging) {
       const deltaX = e.clientX - dragStart.x;
       const deltaY = e.clientY - dragStart.y;
-      
-      setSignatureFields(prev => 
-        prev.map(field => 
-          field.id === activeFieldId 
+
+      setSignatureFields(prev =>
+        prev.map(field =>
+          field.id === activeFieldId
             ? {
                 ...field,
                 x: Math.max(0, dragStart.fieldX + deltaX),
@@ -180,10 +180,10 @@ const DocumentReview: React.FC = () => {
     } else if (isResizing) {
       const deltaX = e.clientX - resizeStart.x;
       const deltaY = e.clientY - resizeStart.y;
-      
-      setSignatureFields(prev => 
-        prev.map(field => 
-          field.id === activeFieldId 
+
+      setSignatureFields(prev =>
+        prev.map(field =>
+          field.id === activeFieldId
             ? {
                 ...field,
                 width: Math.max(50, resizeStart.width + deltaX),
@@ -221,12 +221,12 @@ const DocumentReview: React.FC = () => {
   // 서명 배치 완료 처리
   const handleCompleteSignatureSetup = async () => {
     if (!currentDocument) return;
-    
+
     setIsCompletingSetup(true);
     try {
       // 서명 필드를 로컬 상태에서 관리하면서 DB에도 저장
       console.log('서명 필드 배치 완료:', signatureFields);
-      
+
       // 서명 필드를 문서의 signatureFields에 추가
       const updatedSignatureFields = [
         ...(currentDocument.data?.signatureFields || []),
@@ -259,21 +259,21 @@ const DocumentReview: React.FC = () => {
       });
 
       console.log('DB에 서명 필드 저장 완료:', updatedSignatureFields);
-      
+
       setShowCompleteSignatureSetupModal(false);
       setSignatureFields([]); // 로컬 상태 초기화
-      
+
       // 로컬 스토리지에서도 제거
       if (id) {
         localStorage.removeItem(`signatureFields_${id}`);
       }
-      
+
       // 문서 정보 새로고침
       await getDocument(Number(id));
-      
+
       // 성공 메시지 표시
       alert('서명 필드 배치가 완료되었습니다. 이제 리뷰어들이 검토를 시작할 수 있습니다.');
-      
+
     } catch (error) {
       console.error('서명 필드 저장 실패:', error);
       if (axios.isAxiosError(error)) {
@@ -338,8 +338,8 @@ const DocumentReview: React.FC = () => {
   // 검토자 권한 확인
   const isReviewer = () => {
     if (!currentDocument || !user) return false;
-    return currentDocument.tasks?.some(task => 
-      task.role === 'REVIEWER' && 
+    return currentDocument.tasks?.some(task =>
+      task.role === 'REVIEWER' &&
       task.assignedUserEmail === user.email
     );
   };
@@ -370,10 +370,10 @@ const DocumentReview: React.FC = () => {
   // 서명 저장 핸들러
   const handleSignatureSave = async (signatureData: string) => {
     if (!currentDocument || !user) return;
-    
+
     try {
       const { token } = useAuthStore.getState();
-      
+
       console.log('📝 서명 저장 시도:', {
         documentId: currentDocument.id,
         documentStatus: currentDocument.status,
@@ -381,14 +381,14 @@ const DocumentReview: React.FC = () => {
         signatureDataLength: signatureData?.length,
         token: token ? '있음' : '없음'
       });
-      
+
       const requestBody = {
         signatureData,
         reviewerEmail: user.email
       };
-      
+
       console.log('📤 요청 본문:', requestBody);
-      
+
       const response = await axios.post(
         `http://localhost:8080/api/documents/${currentDocument.id}/approve`,
         requestBody,
@@ -399,9 +399,9 @@ const DocumentReview: React.FC = () => {
           }
         }
       );
-      
+
       console.log('✅ 응답 성공:', response.data);
-      
+
       // 응답에서 직접 서명 데이터 확인
       console.log('🔍 응답에서 서명 데이터 확인:', {
         documentId: response.data.id,
@@ -411,13 +411,13 @@ const DocumentReview: React.FC = () => {
         hasSignatureData: !!response.data.data?.signatures?.[user.email],
         allSignatures: response.data.data?.signatures
       });
-      
+
       // 서명 모달 닫기
       setShowSignatureModal(false);
-      
+
       // 서명 저장 후 문서를 다시 로드하여 서명이 표시되도록 함
       const updatedDocument = await getDocument(Number(id));
-      
+
       console.log('🔄 문서 재로드 후 서명 데이터 확인 (직접):', {
         documentId: updatedDocument?.id,
         documentStatus: updatedDocument?.status,
@@ -426,14 +426,14 @@ const DocumentReview: React.FC = () => {
         hasSignatureData: !!updatedDocument?.data?.signatures?.[user.email],
         allSignatures: updatedDocument?.data?.signatures
       });
-      
+
       alert('✅ 문서가 승인되었습니다! 서명이 문서에 추가되었습니다.');
-      
+
       // 사용자가 직접 페이지를 이동할 수 있도록 자동 이동 제거
       // setTimeout(() => {
       //   navigate('/tasks');
       // }, 2000);
-      
+
     } catch (error: any) {
       console.error('❌ 승인 실패:', error);
       console.error('❌ 에러 응답:', error.response?.data);
@@ -468,7 +468,7 @@ const DocumentReview: React.FC = () => {
 
     try {
       const { token, user: currentUser } = useAuthStore.getState();
-      
+
       // 디버깅 로그 추가
       console.log('🔍 검토자 지정 시도:', {
         documentId: currentDocument.id,
@@ -508,10 +508,10 @@ const DocumentReview: React.FC = () => {
   // 반려 실행
   const executeReject = async (reason: string) => {
     if (!currentDocument || !user) return;
-    
+
     try {
       const { token } = useAuthStore.getState();
-      
+
       await axios.post(
         `http://localhost:8080/api/documents/${currentDocument.id}/reject`,
         {
@@ -524,7 +524,7 @@ const DocumentReview: React.FC = () => {
           }
         }
       );
-      
+
       alert('❌ 문서가 반려되었습니다.');
       setShowRejectModal(false);
       navigate('/tasks');
@@ -540,21 +540,21 @@ const DocumentReview: React.FC = () => {
       template: document.template,
       pdfImagePath: document.template?.pdfImagePath
     });
-    
+
     if (!document.template?.pdfImagePath) {
       console.warn('⚠️ DocumentReview - PDF 이미지 경로가 없습니다');
       return '';
     }
-    
+
     const filename = document.template.pdfImagePath.split('/').pop();
     const url = `http://localhost:8080/api/files/pdf-template-images/${filename}`;
-    
+
     console.log('📄 DocumentReview - 생성된 PDF 이미지 URL:', {
       originalPath: document.template.pdfImagePath,
       filename: filename,
       url: url
     });
-    
+
     return url;
   };
 
@@ -602,7 +602,7 @@ const DocumentReview: React.FC = () => {
               <ul className="ml-4">
                 {currentDocument.tasks?.map((task, idx) => (
                   <li key={idx}>
-                    {task.role}: {task.assignedUserEmail} 
+                    {task.role}: {task.assignedUserEmail}
                     {task.role === 'EDITOR' && ` (검토자 지정 권한: ${task.canAssignReviewer ? '있음' : '없음'})`}
                   </li>
                 )) || <li>작업 없음</li>}
@@ -666,7 +666,7 @@ const DocumentReview: React.FC = () => {
               )}
             </button>
           )}
-          
+
           {/* 검토 액션 버튼들 */}
           {canReview() && (
             <>
@@ -691,7 +691,7 @@ const DocumentReview: React.FC = () => {
             </>
           )}
           <button
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate(-1)}
             className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             돌아가기
@@ -740,7 +740,7 @@ const DocumentReview: React.FC = () => {
         {/* 왼쪽 패널 - PDF 뷰어 */}
         <div className="flex-1 bg-gray-100 overflow-auto flex justify-center items-start p-4">
           {/* PDF 컨테이너 - 고정 크기 */}
-          <div 
+          <div
             className="relative bg-white shadow-sm border"
             style={{
               width: '1240px',
@@ -751,7 +751,7 @@ const DocumentReview: React.FC = () => {
             }}
           >
             {/* PDF 배경 이미지 */}
-            <img 
+            <img
               src={getPdfImageUrl(currentDocument)}
               alt="PDF Preview"
               className="absolute inset-0"
@@ -764,9 +764,9 @@ const DocumentReview: React.FC = () => {
                 console.error('PDF 이미지 로드 실패:', getPdfImageUrl(currentDocument));
               }}
             />
-            
+
             {/* 필드 컨테이너 */}
-            <div 
+            <div
               className="absolute inset-0"
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -788,7 +788,7 @@ const DocumentReview: React.FC = () => {
                   fontSize: field.fontSize,
                   fontFamily: field.fontFamily
                 });
-                
+
                 // 픽셀값 직접 사용
                 const leftPercent = field.x;
                 const topPercent = field.y;
@@ -870,10 +870,10 @@ const DocumentReview: React.FC = () => {
                           {field.label} ({tableInfo.rows}×{tableInfo.cols})
                           {field.required && <span className="text-red-500">*</span>}
                         </div>
-                        <div 
-                          className="grid gap-px bg-purple-300" 
+                        <div
+                          className="grid gap-px bg-purple-300"
                           style={{
-                            gridTemplateColumns: tableInfo.columnWidths 
+                            gridTemplateColumns: tableInfo.columnWidths
                               ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
                               : `repeat(${tableInfo.cols}, 1fr)`,
                             height: 'calc(100% - 20px)'
@@ -891,9 +891,9 @@ const DocumentReview: React.FC = () => {
                                     tableValue = field.value;
                                   }
                                 }
-                                
+
                                 cellText = tableValue.cells?.[rowIndex]?.[colIndex] || '';
-                                
+
                               } catch (error) {
                                 console.error(`테이블 값 파싱 실패 [${rowIndex}][${colIndex}]:`, {
                                   fieldId: field.id,
@@ -902,12 +902,12 @@ const DocumentReview: React.FC = () => {
                                 });
                                 cellText = '';
                               }
-                              
+
                               return (
-                                <div 
+                                <div
                                   key={`${rowIndex}-${colIndex}`}
                                   className="border border-purple-200 flex items-center justify-center p-1"
-                                  style={{ 
+                                  style={{
                                     minHeight: '20px',
                                     fontSize: `${field.fontSize || 14}px !important`,
                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
@@ -916,7 +916,7 @@ const DocumentReview: React.FC = () => {
                                   }}
                                   title={cellText || ''}
                                 >
-                                  <span 
+                                  <span
                                     className="text-center truncate leading-tight"
                                     style={{
                                       display: 'block',
@@ -961,10 +961,10 @@ const DocumentReview: React.FC = () => {
               {(() => {
                 const existingSignatureFields = currentDocument.data?.signatureFields || [];
                 const signatures = currentDocument.data?.signatures || {};
-                
+
                 return existingSignatureFields.map((field: any) => {
                   const signatureData = signatures[field.reviewerEmail];
-                  
+
                   return (
                     <div
                       key={`existing-signature-${field.id}`}
@@ -977,8 +977,8 @@ const DocumentReview: React.FC = () => {
                       }}
                     >
                       {signatureData ? (
-                        <img 
-                          src={signatureData} 
+                        <img
+                          src={signatureData}
                           alt={`${field.reviewerName} 서명`}
                           className="max-w-full max-h-full object-contain"
                         />
@@ -1012,13 +1012,13 @@ const DocumentReview: React.FC = () => {
                     {field.reviewerName} 서명
                     <div className="text-orange-600">드래그 가능</div>
                   </div>
-                  
+
                   {/* 리사이즈 핸들 */}
                   <div
                     className="absolute bottom-0 right-0 w-3 h-3 bg-orange-500 cursor-se-resize"
                     onMouseDown={(e) => handleMouseDown(e, field.id, 'resize')}
                   />
-                  
+
                   {/* 삭제 버튼 */}
                   <button
                     className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-xs flex items-center justify-center rounded-full transform translate-x-1 -translate-y-1 hover:bg-red-600"
@@ -1041,7 +1041,7 @@ const DocumentReview: React.FC = () => {
               문서 상태 및 검토자 정보
             </p>
           </div>
-          
+
           <div className="p-4 space-y-4">
             {/* 리뷰어 목록 */}
             <div className="border rounded-lg p-3">
@@ -1128,13 +1128,13 @@ const DocumentReview: React.FC = () => {
         </div>
       </div>
 
-      
+
       {/* 서명 배치 완료 확인 모달 */}
       {showCompleteSignatureSetupModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-96 max-w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">서명 배치 완료 확인</h3>
-            
+
             <div className="space-y-4">
               <p className="text-gray-600">
                 서명 필드 배치를 완료하시겠습니까?
@@ -1145,7 +1145,7 @@ const DocumentReview: React.FC = () => {
               <p className="text-sm text-amber-600">
                 ⚠️ 완료 후에는 서명 필드를 수정할 수 없으며, 리뷰어들이 검토를 시작할 수 있습니다.
               </p>
-              
+
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowCompleteSignatureSetupModal(false)}
