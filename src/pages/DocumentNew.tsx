@@ -95,7 +95,7 @@ const DocumentNew: React.FC = () => {
         alert('문서가 생성되었습니다.');
       }
       
-      navigate(`/tasks`);
+      navigate(`/documents`);
     } catch (error) {
       console.error('=== Document creation error details ===');
       console.error('Error type:', typeof error);

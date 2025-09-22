@@ -1708,7 +1708,7 @@ const DocumentEditor: React.FC = () => {
             )}
           </button>
           <button
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate(-1)}
             className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             돌아가기
