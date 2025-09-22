@@ -246,7 +246,6 @@ const DocumentEditor: React.FC = () => {
 
   // 미리보기 처리 함수 (최신 문서 데이터 로드 후 표시)
   const handlePreview = useCallback(async () => {
-    console.log('🔍 DocumentEditor - handlePreview 호출됨');
 
     if (!currentDocument || !id) {
       console.warn('⚠️ DocumentEditor - currentDocument 또는 id가 없습니다');
@@ -254,7 +253,6 @@ const DocumentEditor: React.FC = () => {
     }
 
     try {
-      console.log('🔍 DocumentEditor - 최신 문서 데이터 로드 시작');
 
       // 먼저 현재 편집 중인 데이터를 저장
       try {
@@ -289,11 +287,6 @@ const DocumentEditor: React.FC = () => {
       const response = await axios.get(`/api/documents/${id}`);
       const latestDocument = response.data;
 
-      console.log('🔍 DocumentEditor - 최신 문서 데이터:', latestDocument);
-      console.log('🔍 DocumentEditor - PDF 이미지 경로:', latestDocument.template?.pdfImagePath);
-
-      // 현재 편집 중인 coordinateFields 사용 (실시간 반영)
-      console.log('📄 DocumentEditor - 현재 편집 필드:', coordinateFields);
       setPreviewCoordinateFields(coordinateFields);
 
       // 최신 문서 데이터에서 서명 필드 처리
@@ -305,22 +298,11 @@ const DocumentEditor: React.FC = () => {
         signatureData: docSignatures[field.reviewerEmail]
       }));
 
-      console.log('🖋️ DocumentEditor - 최신 서명 필드 처리:', {
-        originalSignatureFields: docSignatureFields,
-        signatures: docSignatures,
-        processedSignatureFields,
-        reviewerEmails: Object.keys(docSignatures),
-        hasSignatures: Object.keys(docSignatures).length > 0
-      });
-
       setPreviewSignatureFields(processedSignatureFields);
 
-      console.log('🔍 DocumentEditor - 미리보기 모달 표시');
       setShowPreviewModal(true);
     } catch (error) {
       console.error('문서 미리보기 실패:', error);
-      // 오류 발생 시 기존 방식으로 fallback
-      console.log('🔍 DocumentEditor - fallback으로 기존 데이터 사용');
 
       setPreviewCoordinateFields(coordinateFields);
 
@@ -466,21 +448,9 @@ const DocumentEditor: React.FC = () => {
     if (!id) return;
 
     try {
-      console.log('💾 필드 값 저장 시작:', { 
-        documentId: id, 
-        templateFieldId, 
-        value,
-        timestamp: new Date().toISOString()
-      });
       
       // 백엔드 API는 단일 객체를 받음 (배열이 아님)
       await axios.post(`/api/documents/${id}/field-values`, {
-        templateFieldId,
-        value
-      });
-      
-      console.log('💾 필드 값 저장 성공:', {
-        documentId: id,
         templateFieldId,
         value
       });
@@ -619,21 +589,12 @@ const DocumentEditor: React.FC = () => {
   const confirmCompleteEditing = useCallback(async () => {
     if (!id) return;
 
-    console.log('편집 완료 시작 - 문서 ID:', id);
-    console.log('현재 문서 상태:', currentDocument?.status);
-    console.log('현재 문서 데이터:', currentDocument);
-
     setIsCompleting(true);
     try {
-      // 먼저 현재 데이터를 저장
-      console.log('데이터 저장 시작');
+
       await handleManualSave();
-      console.log('데이터 저장 완료');
-      
-      // 편집 완료 API 호출
-      console.log('편집 완료 API 호출 시작');
+
       const response = await axios.post(`/api/documents/${id}/complete-editing`);
-      console.log('편집 완료 API 응답:', response);
       
       if (response.status === 200) {
         // 현재 사용자가 검토자 지정 권한이 있는지 확인
@@ -754,22 +715,9 @@ const DocumentEditor: React.FC = () => {
           ? { ...field, value } 
           : field
       );
-      console.log('🔧 coordinateFields 로컬 업데이트:', {
-        documentId: id,
-        fieldId,
-        value,
-        allFields: updated.map(f => ({ id: f.id, label: f.label, value: f.value }))
-      });
       return updated;
     });
 
-    // 템플릿 필드가 있는 경우도 coordinateFields 방식으로 저장
-    console.log('🔧 좌표 필드 모드로 저장:', {
-      documentId: id,
-      fieldId,
-      value,
-      hasTemplateFields: Array.isArray(templateFields) && templateFields.length > 0
-    });
 
     // coordinateFields 전체 업데이트 방식으로 통일
     const updatedFields = coordinateFields.map(field => 
@@ -786,13 +734,6 @@ const DocumentEditor: React.FC = () => {
       }))
     };
     
-    console.log('💾 coordinateFields 업데이트 저장:', {
-      documentId: id,
-      fieldId,
-      value,
-      updatedData
-    });
-    
     stableHandlersRef.current.debouncedUpdateDocument(parseInt(id!), { data: updatedData });
   }, [id, currentDocument, templateFields, coordinateFields]);
 
@@ -803,7 +744,23 @@ const DocumentEditor: React.FC = () => {
 
     // 기존 테이블 데이터 추출
     let existingTableData: string[][] | undefined = undefined;
-    if (field.tableData.cells && Array.isArray(field.tableData.cells)) {
+
+    // field.value에서 실제 저장된 데이터 확인
+    if (field.value) {
+      try {
+        const parsedValue = JSON.parse(field.value);
+        if (parsedValue.cells && Array.isArray(parsedValue.cells)) {
+          existingTableData = parsedValue.cells.map(row =>
+            Array.isArray(row) ? row.map(cell => cell ? String(cell) : '') : []
+          );
+        }
+      } catch (error) {
+        console.error('테이블 데이터 파싱 실패:', error);
+      }
+    }
+
+    // field.value에서 데이터를 찾지 못한 경우, field.tableData.cells 확인 (fallback)
+    if (!existingTableData && field.tableData.cells && Array.isArray(field.tableData.cells)) {
       existingTableData = field.tableData.cells.map(row =>
         Array.isArray(row) ? row.map(cell => cell ? String(cell) : '') : []
       );
@@ -859,27 +816,16 @@ const DocumentEditor: React.FC = () => {
   // 템플릿 필드 로드
   const loadTemplateFields = useCallback(async () => {
     if (!currentDocument?.templateId) {
-      console.log('🔧 템플릿 ID가 없어서 템플릿 필드 로드 스킵');
       setTemplateFields([]);
       return;
     }
 
     try {
-      console.log('🔧 [편집단계] 템플릿 필드 로드 시작:', {
-        documentId: currentDocument.id,
-        templateId: currentDocument.templateId
-      });
       
       // 템플릿 정보를 가져와서 coordinateFields에서 테이블 데이터 추출
       const templateResponse = await axios.get(`/api/templates/${currentDocument.templateId}`);
       const template = templateResponse.data;
-      
-      console.log('🔧 [편집단계] 템플릿 정보 로드:', {
-        template,
-        hasCoordinateFields: !!template.coordinateFields,
-        coordinateFieldsType: typeof template.coordinateFields,
-        coordinateFieldsValue: template.coordinateFields
-      });
+
 
       let parsedFields: any[] = [];
       
@@ -889,13 +835,7 @@ const DocumentEditor: React.FC = () => {
           parsedFields = typeof template.coordinateFields === 'string' 
             ? JSON.parse(template.coordinateFields)
             : template.coordinateFields;
-            
-          console.log('🔧 [편집단계] 파싱된 coordinate fields 상세:', {
-            parsedFields,
-            isArray: Array.isArray(parsedFields),
-            fieldsCount: Array.isArray(parsedFields) ? parsedFields.length : 0,
-            tableFields: parsedFields.filter(f => f.type === 'table')
-          });
+
         } catch (error) {
           console.error('coordinateFields 파싱 실패:', error);
         }
@@ -918,15 +858,7 @@ const DocumentEditor: React.FC = () => {
           fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
           tableData: field.tableData
         };
-        
-        console.log('🔤 템플릿 필드 폰트 정보:', {
-          fieldId: converted.id,
-          fieldLabel: converted.label,
-          fieldType: converted.fieldType,
-          fontSize: converted.fontSize,
-          fontFamily: converted.fontFamily,
-          originalField: field
-        });
+
         
         return converted;
       });
@@ -945,32 +877,15 @@ const DocumentEditor: React.FC = () => {
 
   // 문서 필드 값 로드
   const loadDocumentFieldValues = useCallback(async () => {
-    if (!id || !Array.isArray(templateFields) || templateFields.length === 0) {
-      console.log('📥 필드 값 로드 스킵:', { 
-        hasId: !!id, 
-        hasTemplateFields: Array.isArray(templateFields) && templateFields.length > 0 
-      });
-      return;
-    }
 
     try {
-      console.log('📥 필드 값 로드 시작:', {
-        documentId: id,
-        templateFieldsCount: templateFields.length,
-        templateFieldIds: templateFields.map(tf => tf.id),
-        currentDocumentData: currentDocument?.data
-      });
       
       // 문서 데이터에서 필드 값 추출 (coordinateFields 사용)
       let fieldValues: any[] = [];
       
       if (currentDocument?.data?.coordinateFields) {
         fieldValues = currentDocument.data.coordinateFields;
-        console.log('📥 문서의 coordinateFields에서 필드 값 로드:', fieldValues);
-      } else {
-        console.log('📥 문서에 저장된 coordinateFields가 없음, 빈 값으로 초기화');
       }
-      
       // coordinateFields 업데이트 - 템플릿 필드 정보에 저장된 값 추가
       const updated = templateFields.map(templateField => {
         // coordinateFields에서 해당 필드 찾기 (ID 또는 label 기준)
@@ -999,16 +914,6 @@ const DocumentEditor: React.FC = () => {
         } else {
           value = savedField ? (savedField.value || '') : '';
         }
-        
-        console.log('📥 필드 값 매핑:', {
-          templateFieldId: templateField.id,
-          templateFieldLabel: templateField.label,
-          templateFieldType: templateField.fieldType,
-          foundSavedField: !!savedField,
-          value: value,
-          hasTableData: !!templateField.tableData,
-          tableData: templateField.tableData
-        });
         
         // 픽셀 좌표를 그대로 사용 (변환 없음)
         const pixelCoords = {
@@ -1041,11 +946,8 @@ const DocumentEditor: React.FC = () => {
           })
         };
       });
-      
-      console.log('📥 업데이트된 coordinateFields:', {
-        documentId: id,
-        updated: updated.map(f => ({ id: f.id, label: f.label, value: f.value, x: f.x, y: f.y }))
-      });
+
+
       setCoordinateFields(updated);
     } catch (error) {
       console.error('문서 필드 값 로드 실패:', {
@@ -1103,8 +1005,6 @@ const DocumentEditor: React.FC = () => {
   // 초기 데이터 로드
   useEffect(() => {
     if (id) {
-      // 페이지 방문 시 항상 최신 문서 데이터를 로드
-      console.log('📄 문서 로드 시작:', id);
       
       // 상태 초기화 - 문서 변경 시 이전 상태 완전히 초기화
       setTemplateFields([]);
@@ -1119,11 +1019,6 @@ const DocumentEditor: React.FC = () => {
   useEffect(() => {
     const checkPermissionAndStartEditing = async () => {
       if (currentDocument && user) {
-        console.log('권한 확인 시작:', {
-          currentUser: user.email,
-          documentTasks: currentDocument.tasks,
-          documentStatus: currentDocument.status
-        });
 
         if (!isEditor) {
           alert('이 문서를 편집할 권한이 없습니다.');
@@ -1134,9 +1029,7 @@ const DocumentEditor: React.FC = () => {
         // 편집자인 경우, 문서가 DRAFT 상태라면 편집 시작
         if (currentDocument.status === 'DRAFT' && isEditor) {
           try {
-            console.log('편집 시작 API 호출');
             await axios.post(`/api/documents/${currentDocument.id}/start-editing`);
-            console.log('편집 시작 완료');
             // 문서 상태를 다시 로드
             getDocument(parseInt(id!));
           } catch (error) {
@@ -1154,10 +1047,7 @@ const DocumentEditor: React.FC = () => {
   // 문서가 변경될 때마다 상태 완전 초기화
   useEffect(() => {
     return () => {
-      // 컴포넌트 언마운트 또는 문서 변경 시 상태 초기화
-      console.log('🧹 문서 에디터 상태 초기화:', { documentId: id });
       setTemplateFields([]);
-      // coordinateFields는 필드 구조 유지, 값만 초기화
       setCoordinateFields(prev => prev.map(field => ({ ...field, value: '' })));
       setIsSaving(false);
       setLastSaved(null);
@@ -1256,20 +1146,6 @@ const DocumentEditor: React.FC = () => {
           >
             {/* 필드 오버레이 - 퍼센트 기반 위치 */}
             {coordinateFields.map((field) => {
-              console.log('🎯 편집 화면 - 필드 렌더링:', {
-                id: field.id,
-                label: field.label,
-                x: field.x,
-                y: field.y,
-                width: field.width,
-                height: field.height,
-                value: field.value,
-                hasTableData: !!field.tableData,
-                tableData: field.tableData,
-                fieldType: field.type,
-                fontSize: field.fontSize, // 폰트 크기 로그 추가
-                fontFamily: field.fontFamily // 폰트 패밀리 로그 추가
-              });
               
               // 퍼센트 기반 위치 계산
               // const leftPercent = (field.x / 1240) * 100;
@@ -1316,17 +1192,6 @@ const DocumentEditor: React.FC = () => {
                   // JSON 파싱 실패 시 일반 필드로 처리
                 }
               }
-              
-              console.log('🔍 필드 타입 확인:', {
-                fieldId: field.id,
-                fieldLabel: field.label,
-                fieldType: field.type,
-                isTableField,
-                isEditorSignature,
-                tableInfo,
-                hasTableDataProperty: !!field.tableData,
-                value: field.value
-              });
 
               return (
                 <div
@@ -1428,37 +1293,10 @@ const DocumentEditor: React.FC = () => {
                                 cellText = field.tableData.cells[rowIndex]?.[colIndex] || '';
                               }
                               
-                              console.log(`📋 테이블 셀 데이터 [${rowIndex}][${colIndex}]:`, {
-                                fieldId: field.id,
-                                fieldLabel: field.label,
-                                cellText,
-                                hasFieldValue: !!field.value,
-                                hasTableData: !!field.tableData,
-                                rowIndex,
-                                colIndex
-                              });
-                              
                             } catch (error) {
-                              console.error(`❌ 테이블 데이터 파싱 실패 [${rowIndex}][${colIndex}]:`, {
-                                fieldId: field.id,
-                                fieldLabel: field.label,
-                                rawValue: field.value,
-                                error
-                              });
                               cellText = '';
                             }
-                            
-                            // 디버깅: 폰트 정보 로그
-                            if (rowIndex === 0 && colIndex === 0) {
-                              console.log('🔤 테이블 셀 폰트 정보:', {
-                                fieldId: field.id,
-                                fontSize: field.fontSize,
-                                fontFamily: field.fontFamily,
-                                hasTableData: !!field.tableData,
-                                cellText
-                              });
-                            }
-                            
+
                             return (
                               <div 
                                 key={`${rowIndex}-${colIndex}`}
@@ -1962,14 +1800,6 @@ const DocumentEditor: React.FC = () => {
                       columnWidths: parsedValue.columnWidths
                     };
                     tableData = parsedValue; // 서버에서 불러온 실제 데이터 (cells 포함)
-                    
-                    console.log('📋 우측 패널 - 서버 테이블 데이터 사용:', {
-                      fieldId: field.id,
-                      fieldLabel: field.label,
-                      tableInfo,
-                      hasCells: !!parsedValue.cells,
-                      cellsLength: parsedValue.cells?.length
-                    });
                   }
                 } catch (error) {
                   console.error('서버 테이블 데이터 파싱 실패:', error);
@@ -1989,12 +1819,6 @@ const DocumentEditor: React.FC = () => {
                   ),
                   columnWidths: field.tableData.columnWidths
                 };
-                
-                console.log('📋 우측 패널 - 템플릿 테이블 데이터 사용 (빈 셀):', {
-                  fieldId: field.id,
-                  fieldLabel: field.label,
-                  tableInfo
-                });
               }
 
               return (
