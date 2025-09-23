@@ -303,6 +303,10 @@ export const generatePrintHTML = (
             align-items: center;
             justify-content: center;
             z-index: 10;
+            line-height: 1.2;
+            padding: 2px;
+            overflow: hidden;
+            text-align: center;
         }
         
         .table-overlay {
@@ -321,7 +325,10 @@ export const generatePrintHTML = (
             border: 1px solid black;
             text-align: center;
             vertical-align: middle;
-            padding: 2px;
+            padding: 4px 2px;
+            line-height: 1.2;
+            font-weight: 500;
+            overflow: hidden;
         }
         
         .signature-overlay {
@@ -515,4 +522,150 @@ export const extractTableCellValue = (
   }
   
   return cellContent;
+};
+
+// DOM 캡처를 통한 새로운 인쇄 함수
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+
+export interface CaptureToImageOptions {
+  elementRef: React.RefObject<HTMLElement | null>;
+  documentTitle?: string;
+  pdfPageWidth?: number;
+  pdfPageHeight?: number;
+  backgroundColor?: string;
+}
+
+/**
+ * DOM 요소를 캡처하여 이미지로 변환 후 PDF로 저장하는 함수
+ * 미리보기 모달에서 보이는 내용 그대로를 PDF로 저장
+ */
+export const captureAndSaveToPDF = async (options: CaptureToImageOptions): Promise<void> => {
+  const {
+    elementRef,
+    documentTitle = '문서',
+    pdfPageWidth = 210, // A4 width in mm
+    pdfPageHeight = 297, // A4 height in mm
+    backgroundColor = '#ffffff'
+  } = options;
+
+  if (!elementRef.current) {
+    throw new Error('캡처할 요소를 찾을 수 없습니다.');
+  }
+
+  try {
+    console.log('🖨️ DOM 캡처 인쇄 시작:', {
+      elementRef: !!elementRef.current,
+      documentTitle,
+      pdfPageWidth,
+      pdfPageHeight
+    });
+
+    // 캡처 옵션 설정
+    const captureOptions = {
+      backgroundColor,
+      useCORS: true,
+      allowTaint: true,
+      scale: 3, // 고해상도로 캡처 (2 → 3으로 증가)
+      width: elementRef.current.scrollWidth,
+      height: elementRef.current.scrollHeight,
+      scrollX: 0,
+      scrollY: 0,
+      letterRendering: true, // 텍스트 렌더링 개선
+      logging: false,
+      removeContainer: true,
+      imageTimeout: 15000,
+      onclone: (clonedDoc: Document) => {
+        // 클론된 문서에서 텍스트 렌더링 최적화
+        const clonedElement = clonedDoc.body;
+        if (clonedElement) {
+          // 모든 텍스트 요소에 렌더링 최적화 스타일 적용
+          const style = clonedDoc.createElement('style');
+          style.textContent = `
+            * {
+              -webkit-font-smoothing: antialiased !important;
+              -moz-osx-font-smoothing: grayscale !important;
+              font-variant-ligatures: none !important;
+              text-rendering: optimizeLegibility !important;
+              font-feature-settings: "kern" 1 !important;
+              line-height: 1.4 !important;
+              overflow: visible !important;
+            }
+            div, span, p, td {
+              white-space: nowrap !important;
+              overflow: visible !important;
+              text-overflow: clip !important;
+            }
+          `;
+          clonedDoc.head.appendChild(style);
+        }
+      }
+    };
+
+    console.log('📸 html2canvas 캡처 옵션:', captureOptions);
+
+    // DOM을 캔버스로 캡처
+    const canvas = await html2canvas(elementRef.current, captureOptions);
+    
+    console.log('✅ 캔버스 캡처 완료:', {
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height
+    });
+
+    // 캔버스를 이미지 데이터로 변환
+    const imageData = canvas.toDataURL('image/png');
+
+    // PDF 생성
+    const pdf = new jsPDF({
+      orientation: pdfPageHeight > pdfPageWidth ? 'portrait' : 'landscape',
+      unit: 'mm',
+      format: [pdfPageWidth, pdfPageHeight]
+    });
+
+    // 이미지를 PDF 페이지 크기에 맞게 조정
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    
+    // 이미지 비율 계산
+    const imageAspectRatio = canvas.width / canvas.height;
+    const pdfAspectRatio = pdfWidth / pdfHeight;
+    
+    let imgWidth = pdfWidth;
+    let imgHeight = pdfHeight;
+    
+    // 비율에 맞춰 크기 조정
+    if (imageAspectRatio > pdfAspectRatio) {
+      // 이미지가 더 가로로 길 때
+      imgHeight = pdfWidth / imageAspectRatio;
+    } else {
+      // 이미지가 더 세로로 길 때
+      imgWidth = pdfHeight * imageAspectRatio;
+    }
+
+    // 이미지를 PDF 중앙에 배치
+    const x = (pdfWidth - imgWidth) / 2;
+    const y = (pdfHeight - imgHeight) / 2;
+
+    console.log('📄 PDF 이미지 배치:', {
+      pdfWidth,
+      pdfHeight,
+      imgWidth,
+      imgHeight,
+      x,
+      y
+    });
+
+    // PDF에 이미지 추가
+    pdf.addImage(imageData, 'PNG', x, y, imgWidth, imgHeight);
+
+    // PDF 저장
+    const filename = `${documentTitle}_${new Date().toISOString().split('T')[0]}.pdf`;
+    pdf.save(filename);
+
+    console.log('✅ PDF 저장 완료:', filename);
+
+  } catch (error) {
+    console.error('❌ DOM 캡처 인쇄 실패:', error);
+    throw new Error(`인쇄 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+  }
 };
