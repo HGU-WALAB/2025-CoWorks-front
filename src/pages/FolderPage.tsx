@@ -14,6 +14,7 @@ import FolderSidebar from '../components/FolderSidebar';
 import { FolderPageProps, Folder } from '../types/folder';
 import { Document } from '../types/document';
 import { DOCUMENT_STATUS, StatusBadge, getStatusText } from '../utils/documentStatusUtils';
+import { useBulkDownload } from '../utils/bulkDownloadUtils';
 
 const FolderPage: React.FC<FolderPageProps> = () => {
   const { folderId } = useParams<{ folderId?: string }>();
@@ -51,11 +52,17 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   // 문서 필터링 상태
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  // 문서 선택 상태
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<number>>(new Set());
+
   // 문서 미리보기 상태
   const [showPreview, setShowPreview] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
   const [coordinateFields, setCoordinateFields] = useState<any[]>([]);
   const [signatureFields, setSignatureFields] = useState<any[]>([]);
+
+  // 대량 다운로드 훅
+  const { isDownloading, progress, downloadAsZip } = useBulkDownload();
 
   // 컨텍스트 메뉴 상태
   const [contextMenu, setContextMenu] = useState<{
@@ -112,6 +119,22 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       reset();
     };
   }, [reset]);
+
+  // 필터 변경 시 선택 상태 정리 (필터된 문서에 없는 선택 제거)
+  useEffect(() => {
+    const filteredDocs = getFilteredDocuments();
+    const filteredDocIds = new Set(filteredDocs.map(doc => doc.id));
+    
+    setSelectedDocuments(prev => {
+      const newSet = new Set<number>();
+      prev.forEach(id => {
+        if (filteredDocIds.has(id)) {
+          newSet.add(id);
+        }
+      });
+      return newSet;
+    });
+  }, [statusFilter, documents]);
 
   const handleFolderClick = (clickedFolderId: string) => {
     navigate(`/folders/${clickedFolderId}`);
@@ -311,6 +334,81 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       console.error('미리보기 오류:', error);
       alert('미리보기를 불러오는 중 오류가 발생했습니다.');
     }
+  };
+
+  // 전체 문서 다운로드 핸들러 (ZIP)
+  const handleBulkDownload = async () => {
+    try {
+      // 선택된 문서가 있으면 선택된 문서만, 없으면 전체 문서
+      const documentsToDownload = selectedDocuments.size > 0 
+        ? documents.filter(doc => selectedDocuments.has(doc.id))
+        : documents;
+
+      if (documentsToDownload.length === 0) {
+        alert('다운로드할 문서가 없습니다.');
+        return;
+      }
+
+      // 사용자 확인
+      const confirmed = window.confirm(
+        `총 ${documentsToDownload.length}개의 문서를 ZIP 파일로 다운로드하시겠습니까?\n\n` +
+        '다운로드가 진행되는 동안 브라우저를 닫지 마세요.'
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      console.log('📦 ZIP 다운로드 시작:', documentsToDownload.length, '개 문서');
+      
+      await downloadAsZip(documentsToDownload, getPdfImageUrl);
+      
+    } catch (error) {
+      console.error('❌ ZIP 다운로드 실패:', error);
+      alert(`문서 다운로드 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
+  };
+
+  // 문서 선택 핸들러
+  const handleDocumentSelect = (documentId: number, checked: boolean) => {
+    setSelectedDocuments(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(documentId);
+      } else {
+        newSet.delete(documentId);
+      }
+      return newSet;
+    });
+  };
+
+  // 전체 선택/해제 핸들러
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const filteredDocs = getFilteredDocuments();
+      setSelectedDocuments(new Set(filteredDocs.map(doc => doc.id)));
+    } else {
+      setSelectedDocuments(new Set());
+    }
+  };
+
+  // 현재 필터된 문서들 중 선택된 문서 수 계산
+  const getSelectedCount = () => {
+    const filteredDocs = getFilteredDocuments();
+    return filteredDocs.filter(doc => selectedDocuments.has(doc.id)).length;
+  };
+
+  // 전체 선택 상태 확인
+  const isAllSelected = () => {
+    const filteredDocs = getFilteredDocuments();
+    return filteredDocs.length > 0 && filteredDocs.every(doc => selectedDocuments.has(doc.id));
+  };
+
+  // 일부 선택 상태 확인 (indeterminate)
+  const isSomeSelected = () => {
+    const filteredDocs = getFilteredDocuments();
+    const selectedCount = filteredDocs.filter(doc => selectedDocuments.has(doc.id)).length;
+    return selectedCount > 0 && selectedCount < filteredDocs.length;
   };
 
   // PDF 이미지 URL 생성 함수
@@ -583,19 +681,35 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
 
 
-                  {/* 문서 다운로드 버튼 (빈 껍데기) */}
+                  {/* 문서 다운로드 버튼 */}
                   {documents.length > 0 && (
                       <button
-                          onClick={() => {
-                            // TODO: 문서 다운로드 기능 구현 예정
-                            alert('문서 다운로드 기능은 개발 중입니다.');
-                          }}
-                          className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 transition-colors flex items-center"
+                          onClick={handleBulkDownload}
+                          disabled={isDownloading}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${
+                            isDownloading
+                              ? 'bg-gray-400 cursor-not-allowed text-white'
+                              : 'bg-green-600 text-white hover:bg-green-700'
+                          }`}
                       >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        문서 다운로드
+                        {isDownloading ? (
+                          <>
+                            <svg className="w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="32" strokeDashoffset="32">
+                                <animate attributeName="stroke-dasharray" dur="1s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
+                                <animate attributeName="stroke-dashoffset" dur="1s" values="0;-16;-32;-32" repeatCount="indefinite"/>
+                              </circle>
+                            </svg>
+                            다운로드 중... ({progress.current}/{progress.total})
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            문서 다운로드 ({selectedDocuments.size > 0 ? `선택된 ${selectedDocuments.size}개` : `전체 ${documents.length}개`})
+                          </>
+                        )}
                       </button>
                   )}
                 </div>
@@ -752,12 +866,28 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                         return (
                             <>
                               <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                                  <svg className="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                                  </svg>
-                                  문서 ({filteredDocuments.length}개)
-                                </h3>
+                                <div className="flex items-center">
+                                  <div className="flex items-center mr-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={isAllSelected()}
+                                      ref={(input) => {
+                                        if (input) input.indeterminate = isSomeSelected();
+                                      }}
+                                      onChange={(e) => handleSelectAll(e.target.checked)}
+                                      className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                    />
+                                    <label className="ml-2 text-sm text-gray-700">
+                                      {getSelectedCount() > 0 ? `${getSelectedCount()}개 선택됨` : '전체 선택'}
+                                    </label>
+                                  </div>
+                                  <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                                    <svg className="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                    </svg>
+                                    문서 ({filteredDocuments.length}개)
+                                  </h3>
+                                </div>
                                 {statusFilter !== 'all' && (
                                     <button
                                         onClick={() => handleStatusFilter('all')}
@@ -774,22 +904,31 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                            className="px-6 py-4 hover:bg-gray-50"
                                            onContextMenu={(e) => handleContextMenu(e, document, 'document')}>
                                         <div className="flex items-center justify-between">
-                                          <div className="flex-1">
-                                            <div className="flex items-center space-x-3 mb-2">
-                                              <h6 className="text-s font-medium text-gray-900 cursor-pointer hover:text-blue-600"
-                                                  onClick={() => handleDocumentClick(document.id.toString())}>
-                                                {document.title || document.templateName || '제목 없음'}
-                                              </h6>
-                                              <StatusBadge status={document.status} size="sm" />
-                                            </div>
-                                            <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                              <span>마지막 수정일: {new Date(document.updatedAt).toLocaleString('ko-KR', {
-                                                year: 'numeric',
-                                                month: 'numeric',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                              })}</span>
+                                          <div className="flex items-center space-x-3">
+                                            <input
+                                              type="checkbox"
+                                              checked={selectedDocuments.has(document.id)}
+                                              onChange={(e) => handleDocumentSelect(document.id, e.target.checked)}
+                                              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                                              onClick={(e) => e.stopPropagation()}
+                                            />
+                                            <div className="flex-1">
+                                              <div className="flex items-center space-x-3 mb-2">
+                                                <h6 className="text-s font-medium text-gray-900 cursor-pointer hover:text-blue-600"
+                                                    onClick={() => handleDocumentClick(document.id.toString())}>
+                                                  {document.title || document.templateName || '제목 없음'}
+                                                </h6>
+                                                <StatusBadge status={document.status} size="sm" />
+                                              </div>
+                                              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                                <span>마지막 수정일: {new Date(document.updatedAt).toLocaleString('ko-KR', {
+                                                  year: 'numeric',
+                                                  month: 'numeric',
+                                                  day: 'numeric',
+                                                  hour: '2-digit',
+                                                  minute: '2-digit'
+                                                })}</span>
+                                              </div>
                                             </div>
                                           </div>
                                           <div className="flex items-center space-x-2">
