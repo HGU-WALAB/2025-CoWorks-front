@@ -23,6 +23,21 @@ const DocumentNew: React.FC = () => {
   const [documentTitle, setDocumentTitle] = useState<string>('');
   const [stagingId, setStagingId] = useState<string | null>(null);
   const [uploadSummary, setUploadSummary] = useState<{ total: number; valid: number; invalid: number } | null>(null);
+  const [creationMode, setCreationMode] = useState<'single' | 'bulk'>('single');
+  type UploadedUser = { name: string; email: string; userStatus: 'REGISTERED' | 'UNREGISTERED' | 'UNKNOWN' };
+  const [uploadedUsers, setUploadedUsers] = useState<UploadedUser[]>([]);
+
+  type StagingItem = {
+    name?: string;
+    studentName?: string;
+    email?: string;
+    studentEmail?: string;
+    userStatus?: 'REGISTERED' | 'UNREGISTERED' | string;
+  };
+
+  const normalizeStatus = (status: unknown): UploadedUser['userStatus'] => {
+    return status === 'REGISTERED' || status === 'UNREGISTERED' ? status : 'UNKNOWN';
+  };
 
   useEffect(() => {
     getTemplates();
@@ -36,6 +51,29 @@ const DocumentNew: React.FC = () => {
       }
     }
   }, [selectedTemplateId, templates, documentTitle]);
+
+  // stagingId가 설정되면 업로드된 사용자 목록을 조회하여 페이지에 표시
+  useEffect(() => {
+    const fetchStagingItems = async () => {
+      if (!stagingId) return;
+      try {
+        const url = `${API_BASE_URL}${API_ENDPOINTS.DOCUMENTS.BULK_STAGING_ITEMS(stagingId)}`;
+        const response = await axios.get(url);
+        const items: StagingItem[] = Array.isArray(response.data?.items) ? response.data.items as StagingItem[] : [];
+        const users: UploadedUser[] = items.map((item: StagingItem) => ({
+          name: String(item.name || item.studentName || ''),
+          email: String(item.email || item.studentEmail || ''),
+          userStatus: normalizeStatus(item.userStatus),
+        }));
+        setUploadedUsers(users);
+      } catch (err) {
+        console.error('Failed to fetch staging items:', err);
+        setUploadedUsers([]);
+      }
+    };
+
+    fetchStagingItems();
+  }, [stagingId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,8 +132,7 @@ const DocumentNew: React.FC = () => {
 
         alert('문서가 생성되었습니다.');
       }
-      
-      navigate(`/tasks`);
+      navigate(`/documents`);
     } catch (error) {
       console.error('=== Document creation error details ===');
       console.error('Error type:', typeof error);
@@ -201,33 +238,64 @@ const DocumentNew: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   편집자
                 </label>
-                <UploadExcelButton 
-                  templateId={selectedTemplateId}
-                  onUploadComplete={(newStagingId, summary) => {
-                    setStagingId(newStagingId);
-                    setUploadSummary(summary);
-                    console.log('Excel upload completed:', { stagingId: newStagingId, summary });
-                  }}
-                />
-              </div>
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
-                    {user?.name?.charAt(0) || 'U'}
+                <div className="flex flex-col items-end space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCreationMode('single');
+                        // 단일 모드로 전환 시 업로드 상태 초기화
+                        setStagingId(null);
+                        setUploadSummary(null);
+                        setUploadedUsers([]);
+                      }}
+                      className={`px-3 py-1 rounded border text-sm ${creationMode === 'single' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                    >
+                      개인문서만 생성
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCreationMode('bulk')}
+                      className={`px-3 py-1 rounded border text-sm ${creationMode === 'bulk' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                    >
+                      여러 문서 생성하기
+                    </button>
                   </div>
-                  <div>
-                    <div className="font-medium text-gray-800">{user?.name || '사용자'}</div>
-                    <div className="text-sm text-gray-600">{user?.email || 'email@example.com'}</div>
-                    <div className="text-xs text-blue-600">✓ 자동 할당 (본인)</div>
-                  </div>
+                  {creationMode === 'bulk' && (
+                    <UploadExcelButton 
+                      templateId={selectedTemplateId}
+                      onUploadComplete={(newStagingId, summary) => {
+                        setStagingId(newStagingId);
+                        setUploadSummary(summary);
+                        console.log('Excel upload completed:', { stagingId: newStagingId, summary });
+                      }}
+                    />
+                  )}
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                자동으로 편집자로 할당됩니다.
-              </p>
+
+              {!(creationMode === 'bulk' && uploadedUsers.length > 0) && (
+                <>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                        {user?.name?.charAt(0) || 'U'}
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-800">{user?.name || '사용자'}</div>
+                        <div className="text-sm text-gray-600">{user?.email || 'email@example.com'}</div>
+                        <div className="text-xs text-blue-600">✓ 자동 할당 (본인)</div>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    자동으로 편집자로 할당됩니다.
+                  </p>
+                </>
+              )}
               
-              {/* 엑셀 업로드 상태 표시 */}
-              {uploadSummary && (
+              {/* 엑셀 업로드 상태 표시 (Bulk 모드에서만) */}
+              {creationMode === 'bulk' && uploadSummary && (
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -243,13 +311,56 @@ const DocumentNew: React.FC = () => {
                   </p>
                 </div>
               )}
+
+              {/* 업로드된 사용자 목록 */}
+              {creationMode === 'bulk' && uploadedUsers.length > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">업로드된 사용자</h4>
+                  <div className="space-y-2">
+                    {uploadedUsers.map((u, idx) => (
+                      <div key={`${u.email}-${idx}`} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                              {(u.name && u.name.charAt(0)) || (u.email && u.email.charAt(0)) || 'U'}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-800">{u.name || '이름 없음'}</div>
+                              <div className="text-sm text-gray-600">{u.email || '이메일 없음'}</div>
+                            </div>
+                          </div>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            u.userStatus === 'REGISTERED'
+                              ? 'bg-blue-100 text-blue-800'
+                              : u.userStatus === 'UNREGISTERED'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {u.userStatus === 'REGISTERED' ? '가입된 회원' : u.userStatus === 'UNREGISTERED' ? '회원가입 필요' : '상태 불명'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 버튼 */}
             <div className="flex space-x-4">
               <button
                 type="button"
-                onClick={() => navigate('/documents')}
+                onClick={async () => {
+                  try {
+                    if (creationMode === 'bulk' && stagingId) {
+                      await axios.post(`${API_BASE_URL}${API_ENDPOINTS.DOCUMENTS.BULK_CANCEL}`, { stagingId });
+                    }
+                  } catch (e) {
+                    console.error('Bulk cancel failed:', e);
+                  } finally {
+                    navigate('/documents');
+                  }
+                }}
                 className="btn btn-secondary flex-1"
               >
                 취소
@@ -260,7 +371,7 @@ const DocumentNew: React.FC = () => {
                 className="btn btn-primary flex-1"
               >
                 {loading ? '생성 중...' : 
-                 stagingId ? `문서 생성 (${uploadSummary?.valid || 0}개)` : '문서 생성'}
+                 creationMode === 'bulk' && stagingId ? `문서 생성 (${uploadSummary?.valid || 0}개)` : '문서 생성'}
               </button>
             </div>
           </form>
