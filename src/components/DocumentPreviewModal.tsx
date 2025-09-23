@@ -1,6 +1,6 @@
 import React from 'react';
 import { CoordinateField } from '../types/field';
-import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
+import { captureAndSaveToPDF } from '../utils/printUtils';
 
 interface SignatureField {
   id: string;
@@ -35,6 +35,9 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   const [isDragging, setIsDragging] = React.useState(false);
   const [dragStart, setDragStart] = React.useState({ x: 0, y: 0, initialScale: 1 });
   const [isPrinting, setIsPrinting] = React.useState(false);
+  
+  // PDF 문서 영역에 대한 ref
+  const documentRef = React.useRef<HTMLDivElement>(null);
 
   // ESC 키로 모달 닫기
   React.useEffect(() => {
@@ -98,62 +101,49 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
     }
   };
 
-  // 인쇄 기능 - printUtils의 공통 함수 사용
+  // 새로운 DOM 캡처 기반 인쇄 기능
   const handlePrint = React.useCallback(async () => {
     setIsPrinting(true);
 
     try {
-      console.log('🖨️ DocumentPreviewModal - 인쇄 시작:', {
-        pdfImageUrl,
-        coordinateFieldsCount: coordinateFields.length,
-        signatureFieldsCount: signatureFields.length,
-        signatureFields: signatureFields.map(sf => ({
-          id: sf.id,
-          reviewerEmail: sf.reviewerEmail,
-          reviewerName: sf.reviewerName,
-          hasSignatureData: !!sf.signatureData,
-          signatureDataLength: sf.signatureData?.length
-        })),
-        signatureFieldsWithData: signatureFields.filter(sf => sf.signatureData).length
+      console.log('🖨️ DocumentPreviewModal - 새로운 DOM 캡처 인쇄 시작:', {
+        documentRef: !!documentRef.current,
+        documentTitle
       });
 
-      // 타입 변환: CoordinateField[] → PrintField[]
-      const printFields = coordinateFields.map(field => ({
-        ...field,
-        value: field.value || ''
-      }));
+      if (!documentRef.current) {
+        throw new Error('문서 영역을 찾을 수 없습니다.');
+      }
 
-      // printUtils의 공통 함수 사용
-      const printOptions: PrintOptions = {
-        pdfImageUrl,
-        coordinateFields: printFields,
-        signatureFields,
-        signatures: {},
-        documentTitle: documentTitle
-      };
+      // DOM 캡처를 통한 PDF 저장
+      await captureAndSaveToPDF({
+        elementRef: documentRef,
+        documentTitle: documentTitle || '문서',
+        pdfPageWidth: 210, // A4 세로
+        pdfPageHeight: 297,
+        backgroundColor: '#ffffff'
+      });
 
-      console.log('🖨️ DocumentPreviewModal - 인쇄 옵션:', printOptions);
-
-      await printDocument(printOptions);
+      console.log('✅ DocumentPreviewModal - 새로운 인쇄 완료');
       setIsPrinting(false);
     } catch (error) {
-      console.error('인쇄 실패:', error);
+      console.error('❌ DocumentPreviewModal - 새로운 인쇄 실패:', error);
+      alert(`인쇄 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
       setIsPrinting(false);
     }
-  }, [pdfImageUrl, coordinateFields, signatureFields, documentTitle]);
-
+  }, [documentTitle]);
 
   return (
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-lg shadow-2xl max-w-6xl max-h-[90vh] w-full mx-4 flex flex-col">
+      <div className="bg-white rounded-lg shadow-2xl max-w-7xl max-h-[95vh] w-full mx-4 flex flex-col">
         {/* 모달 헤더 */}
         <div className="flex items-center justify-between p-4 border-b">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{documentTitle}</h2>
-            <p className="text-sm text-gray-500 mt-1">최종 출력 미리보기</p>
+            <p className="text-sm text-gray-500 mt-1">편집 페이지와 동일한 미리보기</p>
           </div>
           <div className="flex items-center gap-3">
             {/* 줌 컨트롤 */}
@@ -226,7 +216,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
           </div>
         </div>
 
-        {/* 모달 본문 - PDF 미리보기 */}
+        {/* 모달 본문 - 편집 페이지와 동일한 PDF 뷰어 */}
         <div 
           className="flex-1 overflow-auto bg-gray-100 p-4 flex justify-center items-start"
           onMouseDown={handleMouseDown}
@@ -235,6 +225,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
           style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         >
           <div 
+            ref={documentRef}
             className="relative bg-white shadow-lg select-none"
             style={{
               width: `${1240 * scale}px`,
@@ -250,365 +241,292 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               src={pdfImageUrl}
               alt="Document Preview"
               className="absolute inset-0 w-full h-full object-contain"
+              style={{
+                width: '1240px',
+                height: '1754px',
+                objectFit: 'fill'
+              }}
               onError={() => {
                 console.error('PDF 이미지 로드 실패:', pdfImageUrl);
               }}
             />
             
-            {/* 필드 컨테이너 */}
-            <div className="absolute inset-0"
-            >
-              {/* 디버깅용 - 모든 필드 표시 (개발 모드에서만, 그리고 환경변수로 제어) */}
-              {import.meta.env.DEV && import.meta.env.VITE_DEBUG_FIELDS === 'true' && (
-                <>
-                  {coordinateFields.map((field) => (
-                    <div
-                      key={`debug-${field.id}`}
-                      className="absolute border-2 border-dashed border-blue-400 bg-blue-100 bg-opacity-20 flex items-center justify-center"
-                      style={{
-                        left: `${(field.x / 1240) * 100}%`,
-                        top: `${(field.y / 1754) * 100}%`,
-                        width: `${(field.width / 1240) * 100}%`,
-                        height: `${(field.height / 1754) * 100}%`,
-                      }}
-                    >
-                      <span className="text-xs text-blue-600 font-medium bg-white px-1 rounded">
-                        {field.label} ({field.x},{field.y})
-                      </span>
-                    </div>
-                  ))}
-                </>
-              )}
-              
-              {/* 필드 값들을 자연스럽게 오버레이 - 테두리나 배경 없이 */}
+            {/* 필드 오버레이 - 편집 페이지와 동일한 렌더링 */}
+            <div className="absolute inset-0" style={{ width: '1240px', height: '1754px' }}>
               {coordinateFields
                 .filter(field => {
-                  // 편집자 서명 필드는 값이 없어도 표시
+                  // 편집자 서명 필드는 값이 있는 경우만 표시
                   if (field.type === 'editor_signature') {
-                    return true;
+                    return field.value && field.value.trim() !== '';
                   }
-                  // 일반 필드는 값이 있는 경우만 표시
+                  // 일반 필드와 테이블 필드는 값이 있는 경우만 표시
                   return field.value && field.value.trim() !== '';
                 })
                 .map((field) => {
-                  console.log('🎯 미리보기 모달 - 필드 렌더링:', {
-                    id: field.id,
-                    label: field.label,
-                    x: field.x,
-                    y: field.y,
-                    width: field.width,
-                    height: field.height,
-                    value: field.value
-                  });
-                  
-                  // 필드 타입 확인
-                  let isTableField = false;
-                  let isEditorSignature = false;
-                  let tableData = null;
+                // 필드 타입 확인 - 편집 페이지와 동일한 로직
+                let isTableField = false;
+                let isEditorSignature = false;
+                let tableInfo = null;
+                let tableData = null;
 
-                  // 편집자 서명 필드인지 확인
-                  if (field.type === 'editor_signature') {
-                    isEditorSignature = true;
-                  }
-                  
+                // 편집자 서명 필드 확인
+                if (field.type === 'editor_signature') {
+                  isEditorSignature = true;
+                }
+                
+                // 테이블 데이터 확인 - 편집 페이지와 동일한 우선순위
+                // 1. 서버에서 불러온 데이터 우선 확인 (field.value)
+                if (field.value) {
                   try {
-                    if (field.value && typeof field.value === 'string') {
-                      const parsedValue = JSON.parse(field.value);
-                      if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
-                        isTableField = true;
-                        tableData = parsedValue;
-                        
-                        // columnWidths가 없으면 기본값 설정 (균등 분배)
-                        if (!tableData.columnWidths) {
-                          tableData.columnWidths = Array(tableData.cols).fill(1 / tableData.cols);
-                        }
-                      }
+                    const parsedValue = JSON.parse(field.value);
+                    if (parsedValue.rows && parsedValue.cols) {
+                      isTableField = true;
+                      tableInfo = {
+                        rows: parsedValue.rows,
+                        cols: parsedValue.cols,
+                        columnWidths: parsedValue.columnWidths
+                      };
+                      tableData = parsedValue; // 서버에서 불러온 실제 데이터 (cells 포함)
                     }
-                  } catch (e) {
-                    // JSON 파싱 실패 시 일반 필드로 처리
-                    isTableField = false;
+                  } catch (error) {
+                    console.error('서버 테이블 데이터 파싱 실패:', error);
                   }
-                  
-                  console.log('🔍 미리보기 모달 - 테이블 필드 확인:', {
-                    fieldId: field.id,
-                    isTableField,
-                    tableData: tableData ? {
-                      rows: tableData.rows, 
-                      cols: tableData.cols,
-                      hasColumnWidths: !!tableData.columnWidths,
-                      columnWidths: tableData.columnWidths
-                    } : null
-                  });
-                  
-                  // 퍼센트 기반 위치 계산
-                  const leftPercent = (field.x / 1240) * 100;
-                  const topPercent = (field.y / 1754) * 100;
-                  const widthPercent = (field.width / 1240) * 100;
-                  const heightPercent = (field.height / 1754) * 100;
-                  
-                  return (
-                    <div
-                      key={field.id}
-                      className="absolute flex items-center"
-                      style={{
-                        left: `${leftPercent}%`,
-                        top: `${topPercent}%`,
-                        width: `${widthPercent}%`,
-                        height: `${heightPercent}%`,
-                      }}
-                    >
-                      {isEditorSignature ? (
-                        // 편집자 서명 필드 렌더링
-                        <div
-                          className="w-full h-full flex items-center justify-center"
-                          style={{
-                            background: 'transparent'
-                          }}
-                        >
-                          {field.value && field.value.startsWith('data:image') ? (
-                            <img
-                              src={field.value}
-                              alt="편집자 서명"
-                              className="w-full h-full object-contain"
-                              style={{
-                                maxWidth: '100%',
-                                maxHeight: '100%',
-                                background: 'transparent'
-                              }}
-                            />
-                          ) : (
-                            <div
-                              className="text-gray-500 text-center"
-                              style={{
-                                fontSize: `${Math.max(Math.min(12 * scale, 16 * scale), 8 * scale)}px`,
-                                fontFamily: 'Arial, sans-serif'
-                              }}
-                            >
-                              {/*편집자 서명*/}
-                            </div>
-                          )}
-                        </div>
-                      ) : isTableField && tableData ? (
-                        // 테이블 렌더링
-                        <div 
-                          className="w-full h-full" 
-                          style={{
-                            overflow: 'hidden', // 넘치는 부분 숨김
-                            maxHeight: `${field.height}px` // 절대 원래 높이를 넘지 않음
-                          }}
-                        >
-                          <table 
-                            className="w-full border-collapse"
+                }
+                
+                // 2. 서버 데이터가 없으면 템플릿 tableData 속성 확인
+                if (!isTableField && field.tableData) {
+                  isTableField = true;
+                  tableInfo = field.tableData;
+                  // 템플릿 데이터만 있고 서버 데이터가 없는 경우 빈 테이블로 초기화
+                  tableData = {
+                    rows: field.tableData.rows,
+                    cols: field.tableData.cols,
+                    cells: Array(field.tableData.rows).fill(null).map(() => 
+                      Array(field.tableData!.cols).fill('')
+                    ),
+                    columnWidths: field.tableData.columnWidths
+                  };
+                }
+
+                // 퍼센트 계산 대신 픽셀 좌표 직접 사용 (편집 페이지와 동일)
+                const leftPercent = field.x;
+                const topPercent = field.y;
+                const widthPercent = field.width;
+                const heightPercent = field.height;
+
+                console.log('🎯 미리보기 모달 - 필드 렌더링:', {
+                  id: field.id,
+                  label: field.label,
+                  x: field.x,
+                  y: field.y,
+                  width: field.width,
+                  height: field.height,
+                  value: field.value,
+                  isTableField,
+                  isEditorSignature
+                });
+
+                return (
+                  <div
+                    key={field.id}
+                    className="absolute"
+                    style={{
+                      left: `${leftPercent}px`,
+                      top: `${topPercent}px`,
+                      width: `${widthPercent}px`,
+                      height: `${heightPercent}px`,
+                    }}
+                  >
+                    {isEditorSignature ? (
+                      // 편집자 서명 필드 렌더링 - 편집 페이지와 동일
+                      <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
+                        {field.value && field.value.startsWith('data:image') ? (
+                          <img
+                            src={field.value}
+                            alt="편집자 서명"
+                            className="max-w-full h-full object-contain bg-transparent"
                             style={{
-                              tableLayout: 'fixed', // 고정 레이아웃으로 컬럼 너비 적용
-                              border: '2px solid #6b7280', // 외곽 테두리를 더 두껍게
-                              height: '100%' // 테이블이 컨테이너 높이를 넘지 않도록 고정
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              background: 'transparent'
+                            }}
+                          />
+                        ) : field.value ? (
+                          <div
+                            className="text-center text-gray-800"
+                            style={{
+                              fontSize: `${(field.fontSize || 14)}px !important`,
+                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
+                              fontWeight: '500 !important',
+                              color: '#1f2937 !important'
                             }}
                           >
-                            {/* 컬럼 너비를 위한 colgroup */}
-                            {tableData.columnWidths && (
-                              <colgroup>
-                                {tableData.columnWidths.map((width: number, index: number) => (
-                                  <col key={index} style={{ width: `${width * 100}%` }} />
-                                ))}
-                              </colgroup>
-                            )}
-                            <tbody>
-                              {Array(tableData.rows).fill(null).map((_, rowIndex) => {
-                                // 테이블 테두리와 여유 공간을 고려한 실제 사용 가능한 높이 계산
-                                const availableHeight = Math.max(field.height - 8, 20); // 테두리와 여유 공간 8px 제외, 최소 20px
-                                const rowHeight = Math.max(Math.floor(availableHeight / tableData.rows), 15); // 최소 15px 행 높이
-                                
-                                return (
-                                  <tr 
-                                    key={rowIndex}
-                                    style={{
-                                      height: `${rowHeight}px`, // 계산된 행 높이
-                                      maxHeight: `${rowHeight}px` // 최대 높이도 제한
-                                    }}
-                                  >
-                                    {Array(tableData.cols).fill(null).map((_, colIndex) => {
-                                      // 강화된 셀 값 추출 로직
-                                      let cellValue = '';
-                                      try {
-                                        // 1차 시도: 직접 접근
-                                        if (tableData.cells && Array.isArray(tableData.cells)) {
-                                          if (tableData.cells[rowIndex] && Array.isArray(tableData.cells[rowIndex])) {
-                                            const rawValue = tableData.cells[rowIndex][colIndex];
-                                            if (rawValue !== undefined && rawValue !== null) {
-                                              cellValue = String(rawValue).trim();
-                                            }
-                                          }
-                                        }
-                                        
-                                        // 2차 시도: field.value를 다시 파싱
-                                        if (!cellValue && field.value) {
-                                          try {
-                                            const reparsed = JSON.parse(field.value);
-                                            if (reparsed.cells && Array.isArray(reparsed.cells)) {
-                                              if (reparsed.cells[rowIndex] && Array.isArray(reparsed.cells[rowIndex])) {
-                                                const fallbackValue = reparsed.cells[rowIndex][colIndex];
-                                                if (fallbackValue !== undefined && fallbackValue !== null) {
-                                                  cellValue = String(fallbackValue).trim();
-                                                }
-                                              }
-                                            }
-                                          } catch (parseError) {
-                                            console.warn(`📊 DocumentPreviewModal 미리보기 재파싱 실패 [${rowIndex}][${colIndex}]:`, parseError);
-                                          }
-                                        }
-                                      } catch (error) {
-                                        console.error(`📊 DocumentPreviewModal 미리보기 셀 값 추출 실패 [${rowIndex}][${colIndex}]:`, error);
-                                      }
-                                      
-                                      return (
-                                        <td 
-                                          key={colIndex}
-                                          className="text-center text-gray-900 font-medium"
-                                          style={{
-                                            fontSize: `${Math.max(Math.min((field.fontSize || 14) * scale, 20 * scale), 8 * scale)}px !important`, // 기본 14px, 최소 8px, 최대 20px
-                                            fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`, // 폰트 패밀리 적용
-                                            fontWeight: '500 !important',
-                                            padding: `${Math.min(2 * scale, rowHeight * 0.1)}px`, // 패딩 조금 늘림
-                                            lineHeight: '1.2', // 라인 높이 조금 늘림
-                                            wordBreak: 'break-all',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis', // 긴 텍스트는 생략 표시
-                                            border: '1.5px solid #6b7280',
-                                            height: `${rowHeight}px`,
-                                            maxHeight: `${rowHeight}px`,
-                                            minHeight: `${rowHeight}px`, // 최소 높이도 고정
-                                            verticalAlign: 'middle',
-                                            boxSizing: 'border-box', // 테두리 포함하여 크기 계산
-                                            color: '#111827 !important' // 진한 회색으로 텍스트 색상 고정
-                                          }}
-                                        >
-                                          {cellValue}
-                                        </td>
-                                      );
-                                    })}
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        // 일반 필드 렌더링
+                            서명됨: {new Date().toLocaleDateString()}
+                          </div>
+                        ) : (
+                          <div
+                            className="text-center text-gray-500"
+                            style={{
+                              fontSize: `${(field.fontSize || 12)}px !important`,
+                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`
+                            }}
+                          >
+                            {/* 빈 서명 영역 - 표시하지 않음 */}
+                          </div>
+                        )}
+                      </div>
+                    ) : isTableField && tableInfo && tableData ? (
+                      // 테이블 렌더링 - 배경색 제거, 테두리만 유지
+                      <div className="w-full h-full p-1">
                         <div 
-                          className="text-gray-900 font-medium leading-tight w-full"
+                          className="grid"
                           style={{
-                            fontSize: `${Math.max(Math.min((field.fontSize || 14) * scale, 20 * scale), 8 * scale)}px !important`, // 기본 14px, 최소 8px, 최대 20px
-                            fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`, // 폰트 패밀리 적용
-                            fontWeight: '500 !important',
-                            lineHeight: '1.2',
-                            textAlign: 'center',
-                            overflow: 'hidden',
-                            wordBreak: 'keep-all',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#111827 !important' // 진한 회색으로 텍스트 색상 고정
+                            gridTemplateColumns: tableInfo.columnWidths 
+                              ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
+                              : `repeat(${tableInfo.cols}, 1fr)`,
+                            height: '100%',
+                            gap: '0px' // 셀 간격 완전 제거
                           }}
                         >
-                          {(() => {
-                            console.log('🔍 미리보기 일반 필드 폰트 정보:', {
-                              fieldId: field.id,
-                              fontSize: field.fontSize,
-                              fontFamily: field.fontFamily,
-                              appliedFontSize: `${Math.max(Math.min((field.fontSize || 14) * scale, 20 * scale), 8 * scale)}px`,
-                              appliedFontFamily: field.fontFamily || 'Arial',
-                              value: field.value
-                            });
-                            return field.value;
-                          })()}
+                          {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>
+                            Array(tableInfo.cols).fill(null).map((_, colIndex) => {
+                              let cellText = '';
+                              
+                              try {
+                                // 편집 페이지와 동일한 셀 값 추출 로직
+                                if (tableData.cells && 
+                                    Array.isArray(tableData.cells) && 
+                                    tableData.cells[rowIndex] && 
+                                    Array.isArray(tableData.cells[rowIndex])) {
+                                  cellText = tableData.cells[rowIndex][colIndex] || '';
+                                }
+                              } catch (error) {
+                                cellText = '';
+                              }
+
+                              return (
+                                <div 
+                                  key={`${rowIndex}-${colIndex}`}
+                                  className="border border-gray-800 flex items-center justify-center"
+                                  style={{ 
+                                    minHeight: '20px',
+                                    fontSize: `${(field.fontSize || 14)}px !important`,
+                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
+                                    color: '#1f2937', // 진한 회색 텍스트
+                                    fontWeight: '500 !important',
+                                    backgroundColor: 'transparent', // 배경색 완전 제거
+                                    lineHeight: '1.4 !important',
+                                    textAlign: 'center',
+                                    overflow: 'visible',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    whiteSpace: 'nowrap',
+                                    textRendering: 'optimizeLegibility',
+                                    WebkitFontSmoothing: 'antialiased',
+                                    MozOsxFontSmoothing: 'grayscale',
+                                    padding: '2px 4px'
+                                  }}
+                                >
+                                  <span 
+                                    className="text-center truncate leading-tight"
+                                    style={{
+                                      display: 'block',
+                                      width: '100%',
+                                      fontSize: `${(field.fontSize || 14)}px !important`,
+                                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
+                                      fontWeight: '500 !important',
+                                      color: '#1f2937 !important',
+                                      lineHeight: '1.4 !important',
+                                      textAlign: 'center',
+                                      wordBreak: 'keep-all',
+                                      whiteSpace: 'nowrap',
+                                      textRendering: 'optimizeLegibility',
+                                      WebkitFontSmoothing: 'antialiased',
+                                      MozOsxFontSmoothing: 'grayscale'
+                                    }}
+                                  >
+                                    {cellText}
+                                  </span>
+                                </div>
+                              );
+                            })
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              
-              {/* 빈 필드 표시 (디버깅 목적으로만 환경변수로 제어) */}
-              {import.meta.env.DEV && import.meta.env.VITE_DEBUG_FIELDS === 'true' && (
-                <>
-                  {coordinateFields
-                    .filter(field => !field.value || field.value.trim() === '')
-                    .map((field) => (
-                      <div
-                        key={`empty-${field.id}`}
-                        className="absolute border border-dashed border-red-300 bg-red-50 bg-opacity-20 flex items-center justify-center"
+                      </div>
+                    ) : field.value ? (
+                      // 일반 필드 - 값이 있는 경우 (편집 페이지와 동일)
+                      <div 
+                        className="text-gray-900 flex items-center justify-center w-full h-full"
                         style={{
-                          left: field.x,
-                          top: field.y,
-                          width: field.width,
-                          height: field.height,
+                          fontSize: `${(field.fontSize || 14)}px !important`,
+                          fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
+                          fontWeight: '500 !important',
+                          color: '#111827 !important',
+                          lineHeight: '1.4 !important',
+                          textAlign: 'center',
+                          wordBreak: 'keep-all',
+                          overflow: 'visible',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          whiteSpace: 'nowrap',
+                          textRendering: 'optimizeLegibility',
+                          WebkitFontSmoothing: 'antialiased',
+                          MozOsxFontSmoothing: 'grayscale',
+                          padding: '2px 4px'
                         }}
                       >
-                        <span className="text-xs text-red-400 font-medium">
-                          {field.label} (빈 필드)
-                        </span>
+                        {field.value}
                       </div>
-                    ))}
-                </>
-              )}
+                    ) : (
+                      // 일반 필드 - 값이 없는 경우 (빈 상태) - 미리보기에서는 아무것도 표시하지 않음
+                      <div className="w-full h-full">
+                        {/* 빈 필드는 미리보기에서 표시하지 않음 */}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* 서명 필드 렌더링 - 서명이 있는 경우만 표시 */}
               {signatureFields
-                .filter(signatureField => signatureField.signatureData) // 서명 데이터가 있는 경우만 필터링
-                .map((signatureField) => {
-                  console.log('🖋️ 미리보기 모달 - 서명 필드 렌더링:', {
-                    id: signatureField.id,
-                    reviewerName: signatureField.reviewerName,
-                    x: signatureField.x,
-                    y: signatureField.y,
-                    width: signatureField.width,
-                    height: signatureField.height,
-                    hasSignatureData: !!signatureField.signatureData
-                  });
-
-                  // 퍼센트 기반 위치 계산
-                  const leftPercent = (signatureField.x / 1240) * 100;
-                  const topPercent = (signatureField.y / 1754) * 100;
-                  const widthPercent = (signatureField.width / 1240) * 100;
-                  const heightPercent = (signatureField.height / 1754) * 100;
-
-                  return (
-                    <div
-                      key={signatureField.id}
-                      className="absolute"
-                      style={{
-                        left: `${leftPercent}%`,
-                        top: `${topPercent}%`,
-                        width: `${widthPercent}%`,
-                        height: `${heightPercent}%`,
-                        background: 'transparent',
+                .filter(signatureField => signatureField.signatureData)
+                .map((signatureField) => (
+                  <div
+                    key={signatureField.id}
+                    className="absolute"
+                    style={{
+                      left: `${signatureField.x}px`,
+                      top: `${signatureField.y}px`,
+                      width: `${signatureField.width}px`,
+                      height: `${signatureField.height}px`,
+                      background: 'transparent',
+                    }}
+                  >
+                    <img
+                      src={signatureField.signatureData}
+                      alt={`${signatureField.reviewerName}의 서명`}
+                      className="w-full h-full object-contain"
+                      style={{ 
+                        maxWidth: '100%', 
+                        maxHeight: '100%',
+                        background: 'transparent'
                       }}
-                    >
-                      {/* 서명 이미지 표시 (완전히 투명한 배경) */}
-                      <img
-                        src={signatureField.signatureData}
-                        alt={`${signatureField.reviewerName}의 서명`}
-                        className="w-full h-full object-contain"
-                        style={{ 
-                          maxWidth: '100%', 
-                          maxHeight: '100%',
-                          background: 'transparent'
-                        }}
-                      />
-                    </div>
-                  );
-                })}
+                    />
+                  </div>
+                ))}
             </div>
           </div>
         </div>
 
         {/* 모달 푸터 */}
         <div className="p-4 border-t bg-gray-50">
-          <div className="flex justify-between items-center mb-2">
-            <div className="text-sm text-gray-600 space-y-1">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600">
               <div>입력된 필드: {coordinateFields.filter(f => f.value?.trim()).length} / {coordinateFields.length}</div>
               {signatureFields.length > 0 && (
-                <div>서명 필드: {signatureFields.filter(f => f.signatureData).length} / {signatureFields.length}</div>
+                <div className="mt-1">서명 필드: {signatureFields.filter(f => f.signatureData).length} / {signatureFields.length}</div>
               )}
             </div>
             <div className="flex gap-2">
