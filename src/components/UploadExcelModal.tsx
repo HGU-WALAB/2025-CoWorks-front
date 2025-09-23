@@ -306,24 +306,14 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({
       console.log('First few rows:', transformedResult.rows.slice(0, 3));
       console.log('========================');
       
-      // stagingId가 있으면 실제 DB에서 데이터 조회 (우선순위)
+      // Modal에서는 결과를 표시하지 않고 즉시 상위로 전달 후 닫기
       if (transformedResult.stagingId && transformedResult.stagingId !== 'temp-id') {
-        console.log('stagingId로 실제 데이터 조회 시작:', transformedResult.stagingId);
-        await fetchStagingItems(transformedResult.stagingId, transformedResult.summary);
-      } else {
-        console.log('stagingId가 없거나 임시 ID, 변환된 결과 사용');
-        setPreviewResult(transformedResult);
-        setCurrentStep('result');
+        console.log('Upload completed. Passing staging info to parent and closing modal.');
+        isConfirmedRef.current = true; // unmount 시 cancel 방지
+        onUploadComplete(transformedResult.stagingId, transformedResult.summary);
+        onClose();
+        return;
       }
-      
-      // 상태 변경 후 확인
-      setTimeout(() => {
-        console.log('상태 변경 후 확인:', {
-          currentStep: 'result',
-          previewResultSet: true,
-          rowsInState: transformedResult.rows.length
-        });
-      }, 100);
     } catch (error: unknown) {
       console.error('=== 업로드 에러 디버깅 ===');
       console.error('Error type:', typeof error);
@@ -366,107 +356,7 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({
     }
   };
 
-  // stagingId로 실제 DB에서 데이터 조회
-  const fetchStagingItems = async (stagingId: string, summary: { total: number; valid: number; invalid: number }) => {
-    try {
-      console.log('=== stagingId로 데이터 조회 시작 ===');
-      console.log('Staging ID:', stagingId);
-      
-      const response = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.DOCUMENTS.BULK_STAGING_ITEMS(stagingId)}`);
-      
-      console.log('Staging items response:', response.data);
-      console.log('Response status:', response.status);
-      
-      const responseData = response.data;
-      console.log('Response data structure:', responseData);
-      
-      // 백엔드 응답에서 items 배열 추출
-      const stagingItems = responseData.items || responseData.data || responseData;
-      
-      console.log('Extracted staging items:', stagingItems);
-      console.log('Items type:', typeof stagingItems);
-      console.log('Items isArray:', Array.isArray(stagingItems));
-      console.log('Items length:', stagingItems?.length);
-      
-      // 아이템이 없는 경우 오류 발생
-      if (!Array.isArray(stagingItems) || stagingItems.length === 0) {
-        console.error('stagingId로 조회된 아이템이 없음:', stagingId);
-        alert(`업로드된 데이터를 찾을 수 없습니다. (stagingId: ${stagingId})`);
-        setIsUploading(false);
-        return;
-      }
-      
-      // 백엔드 응답을 PreviewRow 형태로 변환
-      const transformedRows: PreviewRow[] = stagingItems.map((item: Record<string, unknown>, index: number) => {
-        console.log(`Processing staging item ${index}:`, item);
-        
-        const transformedRow = {
-          row: typeof item.rowNumber === 'number' ? item.rowNumber : typeof item.row === 'number' ? item.row : index + 1,
-          id: String(item.studentId || item.id || item.student_id || ''),
-          name: String(item.name || item.studentName || item.student_name || ''),
-          email: String(item.email || item.studentEmail || item.student_email || ''),
-          course: String(item.course || item.department || item.dept || item.major || ''),
-          status: (item.isValid === true ? 'VALID' : 'INVALID') as 'VALID' | 'INVALID',
-          reason: item.reason ? String(item.reason) : item.error ? String(item.error) : undefined,
-          userStatus: (item.userStatus === 'REGISTERED' || item.userStatus === 'UNREGISTERED') ? 
-                     item.userStatus as 'REGISTERED' | 'UNREGISTERED' : 'UNKNOWN' as const
-        };
-        
-        console.log(`Transformed staging row ${index}:`, transformedRow);
-        return transformedRow;
-      });
-      
-      console.log('Transformed staging rows:', transformedRows);
-      
-      // 최종 결과 생성 (백엔드에서 이미 userStatus를 제공하므로 별도 API 호출 불필요)
-      const finalResult: PreviewResult = {
-        stagingId: stagingId,
-        summary: summary,
-        rows: transformedRows,
-        expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString()
-      };
-      
-      console.log('Final result with user status:', finalResult);
-      
-      setPreviewResult(finalResult);
-      setCurrentStep('result');
-      
-    } catch (error) {
-      console.error('Staging items fetch error:', error);
-      
-      // 조회 실패 시 오류 메시지 표시
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { 
-          response?: { 
-            status?: number; 
-            statusText?: string;
-            data?: { message?: string; error?: string };
-          } 
-        };
-        
-        if (axiosError.response?.status === 404) {
-          alert(`업로드된 데이터를 찾을 수 없습니다. (stagingId: ${stagingId})`);
-        } else {
-          alert(`데이터 조회 중 오류가 발생했습니다: ${axiosError.response?.data?.message || axiosError.response?.statusText || '알 수 없는 오류'}`);
-        }
-    } else {
-        alert(`데이터 조회 중 오류가 발생했습니다. (stagingId: ${stagingId})`);
-      }
-      
-      setIsUploading(false);
-    }
-  };
-
-
-  // 업로드 완료 처리 - stagingId를 상위 컴포넌트로 전달
-  const handleUploadComplete = () => {
-    if (previewResult?.stagingId && previewResult?.summary) {
-      console.log('User confirmed upload - setting isConfirmedRef to true');
-      isConfirmedRef.current = true; // ref 업데이트
-      onUploadComplete(previewResult.stagingId, previewResult.summary);
-    }
-  };
-
+  
   const handleClose = () => {
     onClose();
   };
@@ -479,114 +369,7 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // 뽑아낸 학생들 테이블
-  const PreviewTable: React.FC<{ rows: PreviewRow[] }> = ({ rows }) => {
-    console.log('PreviewTable 렌더링:', { rowsLength: rows.length, rows });
-    
-    if (rows.length === 0) {
-      console.log('PreviewTable: rows가 비어있음, 빈 테이블 표시');
-      return (
-        <div className="text-center py-8 text-gray-500">
-          <div className="text-4xl mb-2">📋</div>
-          <p>표시할 데이터가 없습니다.</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg">
-          <thead className="bg-gray-50 dark:bg-gray-600">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                행
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                ID
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                이름
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                이메일
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                과정
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                데이터 상태
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                사용자 상태
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-600">
-            {rows.map((row, index) => (
-              <tr key={`${row.row}-${index}`} className="hover:bg-gray-50 dark:hover:bg-gray-600">
-                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 font-medium">
-                  {row.row}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                  {row.id || <span className="text-gray-400 italic">ID 없음</span>}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                  {row.name || <span className="text-gray-400 italic">이름 없음</span>}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {row.email || <span className="text-gray-400 italic">이메일 없음</span>}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
-                  {row.course || <span className="text-gray-400 italic">과정 정보 없음</span>}
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <div className="flex items-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      row.status === 'VALID' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                    }`}>
-                      {row.status === 'VALID' ? '유효' : '오류'}
-                    </span>
-                    {row.status === 'INVALID' && row.reason && (
-                      <span 
-                        className="ml-2 text-gray-400 cursor-help" 
-                        title={row.reason}
-                      >
-                        ⚠️
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <div className="flex items-center">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      row.userStatus === 'REGISTERED' 
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                        : row.userStatus === 'UNREGISTERED'
-                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                    }`}>
-                      {row.userStatus === 'REGISTERED' ? '등록된 사용자' : 
-                       row.userStatus === 'UNREGISTERED' ? '미등록 사용자' : '상태 불명'}
-                    </span>
-                    {row.userStatus === 'UNREGISTERED' && (
-                      <span 
-                        className="ml-2 text-orange-500 cursor-help" 
-                        title="회원가입 후 자동으로 문서가 할당됩니다"
-                      >
-                        📝
-                      </span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
+  // 결과 테이블은 페이지에서 표시하므로 모달에는 포함하지 않음
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -714,119 +497,17 @@ const UploadExcelModal: React.FC<UploadExcelModalProps> = ({
             </>
           )}
 
-          {/* 2단계: 업로드 결과 */}
-          {(() => {
-            console.log('조건부 렌더링 확인:', {
-              currentStep,
-              hasPreviewResult: !!previewResult,
-              previewResultKeys: previewResult ? Object.keys(previewResult) : null
-            });
-            return currentStep === 'result' && previewResult;
-          })() && (
-            <>
-              <div>
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-                업로드 결과
-              </h3>
-
-                {/* 요약 정보 */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {previewResult?.summary?.total || 0}
-                    </div>
-                    <div className="text-sm text-blue-600 dark:text-blue-400">총 행수</div>
-                  </div>
-                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {previewResult?.summary?.valid || 0}
-                </div>
-                    <div className="text-sm text-green-600 dark:text-green-400">문서 생성 가능</div>
-                </div>
-                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-                  <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                      {previewResult?.summary?.invalid || 0}
-                    </div>
-                    <div className="text-sm text-red-600 dark:text-red-400">오류 데이터</div>
-                  </div>
-                </div>
-
-                {/* 업로드된 데이터 테이블 */}
-                {(() => {
-                  console.log('테이블 렌더링 전 데이터 확인:', {
-                    previewResult,
-                    rows: previewResult?.rows,
-                    rowsLength: previewResult?.rows?.length,
-                    summary: previewResult?.summary
-                  });
-                  return <PreviewTable rows={previewResult?.rows || []} />;
-                })()}
-
-                {/* 안내 메시지 */}
-                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
-                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-              </div>
-                <div>
-                      <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                        업로드가 완료되었습니다
-                  </h4>
-                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                        "확인" 버튼을 클릭한 후 문서 생성 페이지에서 "문서 생성" 버튼을 눌러 실제 문서를 생성하세요.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-            </div>
-            </>
-          )}
+          {/* 모달은 결과를 보여주지 않음 */}
         </div>
 
         {/* 모달 푸터 */}
-        <div className="flex justify-between p-6 border-t border-gray-200 dark:border-gray-700">
-          {/* 왼쪽 버튼들 */}
-          <div className="flex space-x-3">
-            {currentStep === 'result' && previewResult && (
-              <button
-                onClick={() => {
-                  console.log('User clicked re-upload - resetting states');
-                  setCurrentStep('upload');
-                  setPreviewResult(null);
-                  isConfirmedRef.current = false; // ref 리셋
-                }}
-                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
-              >
-                다시 업로드
-              </button>
-            )}
-          </div>
-
-          {/* 오른쪽 버튼들 */}
-          <div className="flex space-x-3">
-            {currentStep === 'upload' && (
+        <div className="flex justify-end p-6 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={handleClose}
             className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200"
           >
             닫기
           </button>
-            )}
-            
-            {currentStep === 'result' && previewResult && (
-              <button
-                onClick={() => {
-                  handleUploadComplete();
-                  handleClose();
-                }}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200"
-              >
-                확인
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>
