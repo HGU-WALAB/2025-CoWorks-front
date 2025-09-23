@@ -7,7 +7,7 @@ export interface TemplateField {
   height: number;
   page: number;
   required: boolean;
-  type?: 'field' | 'table';
+  type?: 'field' | 'table' | 'editor_signature';
   fontSize?: number;
   fontFamily?: string;
   tableData?: {
@@ -27,7 +27,7 @@ export interface CoordinateField {
   height: number;
   page: number;
   required: boolean;
-  type?: 'field' | 'table';
+  type?: 'field' | 'table' | 'editor_signature';
   value?: string;
   fontSize?: number;
   fontFamily?: string;

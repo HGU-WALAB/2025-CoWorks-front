@@ -23,6 +23,15 @@ export interface SignatureField {
   signatureData?: string;
 }
 
+export interface DocumentStatusLog {
+  id: number;
+  status: 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
+  timestamp: string;
+  changedByEmail?: string;
+  changedByName?: string;
+  comment?: string;
+}
+
 export interface TaskInfo {
   id: number;
   role: string;
@@ -58,6 +67,7 @@ export interface Document {
   deadline?: string;
   tasks?: TaskInfo[];
   template?: TemplateInfo;
+  statusLogs?: DocumentStatusLog[];
   // 폴더 관련 필드
   folderId?: string | null;
   folderName?: string | null;

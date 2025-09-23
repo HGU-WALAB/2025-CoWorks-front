@@ -6,11 +6,12 @@ import {
   DocumentCreateRequest, 
   DocumentUpdateRequest,
   TaskInfo,
-  TemplateInfo
+  TemplateInfo,
+  DocumentStatusLog
 } from '../types/document';
 
 // Re-export types for other components
-export type { Document, DocumentData, TaskInfo, TemplateInfo };
+export type { Document, DocumentData, TaskInfo, TemplateInfo, DocumentStatusLog };
 
 interface DocumentStore {
   documents: Document[];
@@ -24,6 +25,7 @@ interface DocumentStore {
   getDocument: (id: number) => Promise<Document>;
   updateDocument: (id: number, request: DocumentUpdateRequest) => Promise<Document>;
   updateDocumentSilently: (id: number, request: DocumentUpdateRequest) => Promise<boolean>; // 자동 저장용 - 성공 여부 반환
+  deleteDocument: (id: number) => Promise<void>;
   submitForReview: (id: number) => Promise<Document>;
   assignEditor: (id: number, editorEmail: string) => Promise<Document>;
   assignReviewer: (id: number, reviewerEmail: string) => Promise<Document>;
@@ -242,6 +244,26 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
   clearCurrentDocument: () => {
     console.log('🧹 DocumentStore: currentDocument 상태 초기화');
     set({ currentDocument: null, error: null });
+  },
+
+  deleteDocument: async (id: number) => {
+    set({ loading: true, error: null });
+    try {
+      console.log('🗑️ DocumentStore: 문서 삭제 시도:', id);
+      await axios.delete(`${API_BASE_URL}/documents/${id}`);
+      
+      set((state) => ({
+        documents: state.documents.filter((doc) => doc.id !== id),
+        currentDocument: state.currentDocument?.id === id ? null : state.currentDocument,
+        loading: false,
+      }));
+      
+      console.log('✅ DocumentStore: 문서 삭제 완료:', id);
+    } catch (error: any) {
+      console.error('DocumentStore: Delete error:', error);
+      set({ error: '문서 삭제에 실패했습니다.', loading: false });
+      throw error;
+    }
   },
 
   clearError: () => {

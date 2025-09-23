@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useDocumentStore, type Document } from '../stores/documentStore';
+import { useDocumentStore, type Document, type DocumentStatusLog } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 // import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
@@ -123,7 +123,11 @@ const DocumentList: React.FC = () => {
         console.log('🖋️ DocumentList - 서명 필드 처리:', {
           originalSignatureFields: docSignatureFields,
           signatures: docSignatures,
-          processedSignatureFields
+          processedSignatureFields,
+          signatureFieldsWithData: processedSignatureFields.filter(sf => sf.signatureData).length,
+          reviewerEmails: Object.keys(docSignatures),
+          hasSignatures: Object.keys(docSignatures).length > 0,
+          documentStatus: document.status
         });
 
         setSignatureFields(processedSignatureFields);
@@ -257,6 +261,24 @@ const DocumentList: React.FC = () => {
     const steps = getWorkflowSteps();
     const currentIndex = steps.findIndex(step => step.key === status);
     return currentIndex >= 0 ? currentIndex : 0;
+  };
+
+  // 특정 상태의 완료 시간을 가져오는 함수
+  const getStatusCompletionTime = (statusLogs: DocumentStatusLog[] | undefined, status: string): string | null => {
+    if (!statusLogs) return null;
+    
+    const statusLog = statusLogs.find(log => log.status === status);
+    if (statusLog?.timestamp) {
+      return new Date(statusLog.timestamp).toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    }
+    return null;
   };
 
   if (loading) {
@@ -641,7 +663,7 @@ const DocumentList: React.FC = () => {
               <div>
                 <h2 className="text-xl font-bold text-gray-800">작업 현황</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                  {selectedWorkflowDocument.title || selectedWorkflowDocument.templateName}의 진행 상황을 확인하세요
+                  {selectedWorkflowDocument.title}
                 </p>
               </div>
               <button
@@ -684,7 +706,7 @@ const DocumentList: React.FC = () => {
                             {isCompleted ? '✓' : index + 1}
                           </div>
 
-                          <div className="h-[80px] flex flex-col justify-start items-center">
+                          <div className="h-[100px] flex flex-col justify-start items-center">
                             <div className={`font-medium text-sm mb-1 text-center ${
                               isCompleted || isActive
                                 ? 'text-gray-900'
@@ -701,16 +723,26 @@ const DocumentList: React.FC = () => {
                             </div>
 
                             {/* 상태 표시 - 고정된 높이 영역 */}
-                            <div className="h-6 flex items-center justify-center">
+                            <div className="h-12 flex flex-col items-center justify-center">
                               {isActive && (
-                                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full mb-1">
                                   진행중
                                 </span>
                               )}
                               {isCompleted && (
-                                <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                                  완료
-                                </span>
+                                <>
+                                  <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full mb-1">
+                                    완료
+                                  </span>
+                                  {(() => {
+                                    const completionTime = getStatusCompletionTime(selectedWorkflowDocument.statusLogs, step.key);
+                                    return completionTime && (
+                                      <div className="text-xs text-gray-500 text-center">
+                                        {completionTime}
+                                      </div>
+                                    );
+                                  })()}
+                                </>
                               )}
                             </div>
                           </div>
