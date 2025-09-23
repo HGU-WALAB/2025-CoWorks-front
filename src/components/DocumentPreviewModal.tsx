@@ -31,9 +31,6 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   documentTitle = "문서 미리보기"
 }) => {
   // Hook들을 항상 호출 (조건문 이전에)
-  const [scale, setScale] = React.useState(1);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [dragStart, setDragStart] = React.useState({ x: 0, y: 0, initialScale: 1 });
   const [isPrinting, setIsPrinting] = React.useState(false);
   
   // PDF 문서 영역에 대한 ref
@@ -52,47 +49,6 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
 
   // 조건부 렌더링은 Hook 호출 이후에
   if (!isOpen) return null;
-
-  // 마우스 드래그로 줌 조절
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0 && e.target === e.currentTarget) { // 왼쪽 마우스 버튼만, PDF 영역에서만
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX,
-        y: e.clientY,
-        initialScale: scale
-      });
-      e.preventDefault();
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-
-    const deltaY = e.clientY - dragStart.y;
-    const scaleDelta = deltaY * 0.003; // 드래그 감도 조정
-    const newScale = Math.max(0.3, Math.min(2.5, dragStart.initialScale + scaleDelta));
-    
-    setScale(newScale);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // 줌 리셋
-  const resetZoom = () => {
-    setScale(1);
-  };
-
-  // 줌 버튼들
-  const zoomIn = () => {
-    setScale(prev => Math.min(2.5, prev + 0.1));
-  };
-
-  const zoomOut = () => {
-    setScale(prev => Math.max(0.3, prev - 0.1));
-  };
 
   // 모달 배경 클릭 시 닫기
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -143,40 +99,9 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         <div className="flex items-center justify-between p-4 border-b">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{documentTitle}</h2>
-            <p className="text-sm text-gray-500 mt-1">편집 페이지와 동일한 미리보기</p>
+            <p className="text-sm text-gray-500 mt-1">미리보기</p>
           </div>
           <div className="flex items-center gap-3">
-            {/* 줌 컨트롤 */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
-              <button
-                onClick={zoomOut}
-                className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition-colors"
-                title="축소 (30%~250%)"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                </svg>
-              </button>
-              <span className="text-sm font-medium text-gray-700 min-w-[4rem] text-center">
-                {Math.round(scale * 100)}%
-              </span>
-              <button
-                onClick={zoomIn}
-                className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition-colors"
-                title="확대 (30%~250%)"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-              <button
-                onClick={resetZoom}
-                className="ml-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded transition-colors"
-                title="원본 크기로 리셋"
-              >
-                리셋
-              </button>
-            </div>
             <button
               onClick={handlePrint}
               disabled={isPrinting}
@@ -217,23 +142,16 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         </div>
 
         {/* 모달 본문 - 편집 페이지와 동일한 PDF 뷰어 */}
-        <div 
-          className="flex-1 overflow-auto bg-gray-100 p-4 flex justify-center items-start"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-        >
+        <div className="flex-1 overflow-auto bg-gray-100 p-4 flex justify-center items-start">
           <div 
             ref={documentRef}
             className="relative bg-white shadow-lg select-none"
             style={{
-              width: `${1240 * scale}px`,
-              height: `${1754 * scale}px`,
-              minWidth: `${1240 * scale}px`,
-              minHeight: `${1754 * scale}px`,
-              flexShrink: 0,
-              transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+              width: '1240px',
+              height: '1754px',
+              minWidth: '1240px',
+              minHeight: '1754px',
+              flexShrink: 0
             }}
           >
             {/* PDF 배경 이미지 */}
