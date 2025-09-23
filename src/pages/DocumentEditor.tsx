@@ -330,11 +330,16 @@ const DocumentEditor: React.FC = () => {
   const isEditor = useMemo(() => {
     if (!currentDocument || !user) return false;
 
-    // 문서 생성자이거나 EDITOR 역할을 가진 사용자
-    return currentDocument.createdBy === user.email ||
-           currentDocument.tasks?.some(task =>
-             task.assignedUserEmail === user.email && task.role === 'EDITOR'
-           );
+    // CREATOR 역할을 가진 사용자이거나 EDITOR 역할을 가진 사용자
+    const isCreator = currentDocument.tasks?.some(task =>
+      task.assignedUserEmail && task.assignedUserEmail === user.email && task.role === 'CREATOR'
+    ) || false;
+    
+    const hasEditorRole = currentDocument.tasks?.some(task =>
+      task.assignedUserEmail && task.assignedUserEmail === user.email && task.role === 'EDITOR'
+    ) || false;
+
+    return isCreator || hasEditorRole;
   }, [currentDocument, user]);
 
 
