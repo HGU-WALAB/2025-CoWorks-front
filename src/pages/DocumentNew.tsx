@@ -14,7 +14,8 @@ const DocumentNew: React.FC = () => {
 
   const { templates, getTemplates } = useTemplateStore();
   const { createDocument, loading } = useDocumentStore();
-  const { user } = useAuthStore();
+  const { user, refreshUser } = useAuthStore();
+  const hasFolderAccess: boolean = (user as unknown as { hasFolderAccess?: boolean })?.hasFolderAccess === true;
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     preselectedTemplateId || ''
@@ -43,6 +44,12 @@ const DocumentNew: React.FC = () => {
     getTemplates();
   }, [getTemplates]);
   
+  // 페이지 진입 시 최신 사용자 권한 동기화 (has_folder_access)
+  useEffect(() => {
+    refreshUser();
+    console.log('[DocumentNew] refreshUser called');
+  }, [refreshUser]);
+
   useEffect(() => {
     if (selectedTemplateId) {
       const template = templates.find(t => t.id === parseInt(selectedTemplateId));
@@ -253,15 +260,17 @@ const DocumentNew: React.FC = () => {
                     >
                       개인문서만 생성
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setCreationMode('bulk')}
-                      className={`px-3 py-1 rounded border text-sm ${creationMode === 'bulk' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
-                    >
-                      여러 문서 생성하기
-                    </button>
+                    {hasFolderAccess && (
+                      <button
+                        type="button"
+                        onClick={() => setCreationMode('bulk')}
+                        className={`px-3 py-1 rounded border text-sm ${creationMode === 'bulk' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                      >
+                        여러 문서 생성하기
+                      </button>
+                    )}
                   </div>
-                  {creationMode === 'bulk' && (
+                  {hasFolderAccess && creationMode === 'bulk' && (
                     <UploadExcelButton 
                       templateId={selectedTemplateId}
                       onUploadComplete={(newStagingId, summary) => {
@@ -274,7 +283,7 @@ const DocumentNew: React.FC = () => {
                 </div>
               </div>
 
-              {!(creationMode === 'bulk' && uploadedUsers.length > 0) && (
+              {!(hasFolderAccess && creationMode === 'bulk' && uploadedUsers.length > 0) && (
                 <>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                     <div className="flex items-center space-x-3">
@@ -295,7 +304,7 @@ const DocumentNew: React.FC = () => {
               )}
               
               {/* 엑셀 업로드 상태 표시 (Bulk 모드에서만) */}
-              {creationMode === 'bulk' && uploadSummary && (
+              {hasFolderAccess && creationMode === 'bulk' && uploadSummary && (
                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex items-center space-x-2">
                     <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -313,7 +322,7 @@ const DocumentNew: React.FC = () => {
               )}
 
               {/* 업로드된 사용자 목록 */}
-              {creationMode === 'bulk' && uploadedUsers.length > 0 && (
+              {hasFolderAccess && creationMode === 'bulk' && uploadedUsers.length > 0 && (
                 <div className="mt-4">
                   <h4 className="text-sm font-semibold text-gray-700 mb-2">업로드된 사용자</h4>
                   <div className="space-y-2">

@@ -15,6 +15,7 @@ interface AuthStore {
   
   // Actions
   initialize: () => void;
+  refreshUser: () => Promise<void>;
   signup: (request: SignupRequest) => Promise<void>;
   login: (request: LoginRequest) => Promise<void>;
   hisnetLogin: (hisnetToken: string) => Promise<void>;
@@ -59,6 +60,28 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
+      refreshUser: async () => {
+        try {
+          const { token } = get();
+          if (token && !axios.defaults.headers.common['Authorization']) {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          }
+          const res = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.AUTH.ME}`, {
+            headers: axios.defaults.headers.common['Authorization']
+              ? undefined
+              : token
+              ? { Authorization: `Bearer ${token}` }
+              : undefined,
+          });
+          const data = res.data as Partial<User> & { hasFolderAccess?: boolean };
+          set((state) => ({
+            user: state.user ? { ...state.user, ...data } : (data as User),
+          }));
+        } catch {
+          // ignore
+        }
+      },
+
       signup: async (request: SignupRequest) => {
         set({ loading: true, error: null });
         try {
@@ -72,6 +95,7 @@ export const useAuthStore = create<AuthStore>()(
               name: authData.name,
               position: authData.position,
               role: authData.role,
+              hasFolderAccess: authData.hasFolderAccess,
             },
             token: authData.token,
             isAuthenticated: true,
@@ -107,6 +131,7 @@ export const useAuthStore = create<AuthStore>()(
               name: authData.name,
               position: authData.position,
               role: authData.role,
+              hasFolderAccess: authData.hasFolderAccess,
             },
             token: authData.token,
             isAuthenticated: true,
@@ -166,7 +191,7 @@ export const useAuthStore = create<AuthStore>()(
           console.error("Full error object:", error);
           
           if (error && typeof error === 'object' && 'response' in error) {
-            const axiosError = error as { response?: { status?: number; data?: any; statusText?: string } };
+            const axiosError = error as { response?: { status?: number; data?: unknown; statusText?: string } };
             console.error("Error response status:", axiosError.response?.status);
             console.error("Error response data:", axiosError.response?.data);
             console.error("Error response statusText:", axiosError.response?.statusText);
