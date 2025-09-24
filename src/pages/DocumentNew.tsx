@@ -258,7 +258,7 @@ const DocumentNew: React.FC = () => {
                       }}
                       className={`px-3 py-1 rounded border text-sm ${creationMode === 'single' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
                     >
-                      개인문서만 생성
+                      개인 문서 생성
                     </button>
                     {hasFolderAccess && (
                       <button
@@ -266,7 +266,7 @@ const DocumentNew: React.FC = () => {
                         onClick={() => setCreationMode('bulk')}
                         className={`px-3 py-1 rounded border text-sm ${creationMode === 'bulk' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
                       >
-                        여러 문서 생성하기
+                        일괄 문서 생성
                       </button>
                     )}
                   </div>
@@ -283,7 +283,7 @@ const DocumentNew: React.FC = () => {
                 </div>
               </div>
 
-              {!(hasFolderAccess && creationMode === 'bulk' && uploadedUsers.length > 0) && (
+              {creationMode === 'single' && (
                 <>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                     <div className="flex items-center space-x-3">
@@ -301,6 +301,24 @@ const DocumentNew: React.FC = () => {
                     자동으로 편집자로 할당됩니다.
                   </p>
                 </>
+              )}
+
+              {creationMode === 'bulk' && hasFolderAccess && !uploadSummary && uploadedUsers.length === 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
+                      📋
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-blue-900 mb-2">일괄 문서 일괄 생성 안내</h4>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li>• 엑셀 파일을 업로드하여 일괄적으로 문서를 한번에 생성할 수 있습니다</li>
+                        <li>• 각 문서는 엑셀의 해당 행 정보를 바탕으로 생성됩니다</li>
+                        <li>• 편집자는 각 문서 생성 시 개별적으로 지정됩니다</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               )}
               
               {/* 엑셀 업로드 상태 표시 (Bulk 모드에서만) */}
@@ -367,7 +385,7 @@ const DocumentNew: React.FC = () => {
                   } catch (e) {
                     console.error('Bulk cancel failed:', e);
                   } finally {
-                    navigate('/documents');
+                    navigate('/templates');
                   }
                 }}
                 className="btn btn-secondary flex-1"
