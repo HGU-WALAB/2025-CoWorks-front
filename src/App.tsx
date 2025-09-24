@@ -6,6 +6,7 @@ import TemplateUpload from './pages/TemplateUpload';
 import DocumentList from './pages/DocumentList';
 import DocumentEditor from './pages/DocumentEditor.tsx';
 import DocumentReview from './pages/DocumentReview';
+import DocumentSignerAssignment from './pages/DocumentSignerAssignment';
 import DocumentNew from './pages/DocumentNew';
 import TaskDashboard from './pages/TaskDashboard';
 import FolderPage from './pages/FolderPage';
@@ -116,6 +117,16 @@ function App() {
           element={
             <ProtectedRoute>
               <DocumentEditor />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/documents/:id/signer-assignment" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DocumentSignerAssignment />
+              </Layout>
             </ProtectedRoute>
           } 
         />
