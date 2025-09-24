@@ -17,6 +17,7 @@ export interface AuthResponse {
   position: string;
   role: string;
   token: string;
+  hasFolderAccess?: boolean;
 }
 
 export interface HisnetAuthResponse {
@@ -32,4 +33,5 @@ export interface User {
   name: string;
   position: string;
   role: string;
+  hasFolderAccess?: boolean;
 }
