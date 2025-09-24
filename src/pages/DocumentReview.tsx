@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDocumentStore, type Document } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { SignatureModal } from '../components/SignatureModal';
-import UserSearchInput from '../components/UserSearchInput';
 import axios from 'axios';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 
@@ -74,225 +73,14 @@ const DocumentReview: React.FC = () => {
   // 모달 상태
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showCompleteSignatureSetupModal, setShowCompleteSignatureSetupModal] = useState(false);
-  const [selectedReviewer, setSelectedReviewer] = useState('');
-  const [isAssigningReviewer, setIsAssigningReviewer] = useState(false);
-  const [isCompletingSetup, setIsCompletingSetup] = useState(false);
 
-  // 서명 필드 관련 상태
-  const [signatureFields, setSignatureFields] = useState<any[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0, fieldX: 0, fieldY: 0 });
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
+  // 문서별 서명 필드를 로컬 스토리지에서 로드 (제거됨 - 서명자 지정은 별도 페이지에서 처리)
 
-  // 문서별 서명 필드를 로컬 스토리지에서 로드
-  useEffect(() => {
-    if (id) {
-      const savedFields = localStorage.getItem(`signatureFields_${id}`);
-      if (savedFields) {
-        try {
-          setSignatureFields(JSON.parse(savedFields));
-        } catch (error) {
-          console.error('서명 필드 로드 실패:', error);
-        }
-      }
-    }
-  }, [id]);
+  // 문서 로드 시 기존 서명 필드는 그대로 두고, 새로운 필드만 추가 가능하도록 설정 (제거됨)
 
-  // 문서 로드 시 기존 서명 필드는 그대로 두고, 새로운 필드만 추가 가능하도록 설정
-  useEffect(() => {
-    // 로컬 스토리지에서 임시 작업 중인 서명 필드만 로드
-    // DB의 기존 서명 필드는 읽기 전용으로 표시됨
-  }, [currentDocument]);
+  // 서명 필드 변경 시 로컬 스토리지에 저장 (제거됨)
 
-  // 서명 필드 변경 시 로컬 스토리지에 저장 (자동 임시 저장 제거)
-  useEffect(() => {
-    if (id && signatureFields.length > 0) {
-      localStorage.setItem(`signatureFields_${id}`, JSON.stringify(signatureFields));
-    }
-  }, [id, signatureFields]);
-
-  // 서명 필드 추가 함수
-  const addSignatureField = (reviewerEmail: string, reviewerName: string) => {
-    const newField = {
-      id: `signature-${Date.now()}`,
-      x: 100, // 기본 위치
-      y: 100,
-      width: 200, // 기본 크기
-      height: 80,
-      reviewerEmail,
-      reviewerName,
-    };
-
-    setSignatureFields(prev => [...prev, newField]);
-  };
-
-  // 드래그 시작
-  const handleMouseDown = (e: React.MouseEvent, fieldId: string, action: 'drag' | 'resize') => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const field = signatureFields.find(f => f.id === fieldId);
-    if (!field) return;
-
-    setActiveFieldId(fieldId);
-
-    if (action === 'drag') {
-      setIsDragging(true);
-      setDragStart({
-        x: e.clientX,
-        y: e.clientY,
-        fieldX: field.x,
-        fieldY: field.y
-      });
-    } else {
-      setIsResizing(true);
-      setResizeStart({
-        x: e.clientX,
-        y: e.clientY,
-        width: field.width,
-        height: field.height
-      });
-    }
-  };
-
-  // 마우스 이동
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!activeFieldId) return;
-
-    if (isDragging) {
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
-
-      setSignatureFields(prev =>
-        prev.map(field =>
-          field.id === activeFieldId
-            ? {
-                ...field,
-                x: Math.max(0, dragStart.fieldX + deltaX),
-                y: Math.max(0, dragStart.fieldY + deltaY)
-              }
-            : field
-        )
-      );
-    } else if (isResizing) {
-      const deltaX = e.clientX - resizeStart.x;
-      const deltaY = e.clientY - resizeStart.y;
-
-      setSignatureFields(prev =>
-        prev.map(field =>
-          field.id === activeFieldId
-            ? {
-                ...field,
-                width: Math.max(50, resizeStart.width + deltaX),
-                height: Math.max(30, resizeStart.height + deltaY)
-              }
-            : field
-        )
-      );
-    }
-  };
-
-  // 마우스 업
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-    setActiveFieldId(null);
-  };
-
-  // 서명 필드 삭제
-  const removeSignatureField = (fieldId: string) => {
-    setSignatureFields(prev => {
-      const updated = prev.filter(f => f.id !== fieldId);
-      // 로컬 스토리지 업데이트
-      if (id) {
-        if (updated.length === 0) {
-          localStorage.removeItem(`signatureFields_${id}`);
-        } else {
-          localStorage.setItem(`signatureFields_${id}`, JSON.stringify(updated));
-        }
-      }
-      return updated;
-    });
-  };
-
-  // 서명 배치 완료 처리
-  const handleCompleteSignatureSetup = async () => {
-    if (!currentDocument) return;
-
-    setIsCompletingSetup(true);
-    try {
-      // 서명 필드를 로컬 상태에서 관리하면서 DB에도 저장
-      console.log('서명 필드 배치 완료:', signatureFields);
-
-      // 서명 필드를 문서의 signatureFields에 추가
-      const updatedSignatureFields = [
-        ...(currentDocument.data?.signatureFields || []),
-        ...signatureFields.map(field => ({
-          ...field,
-          id: field.id,
-          x: field.x,
-          y: field.y,
-          width: field.width,
-          height: field.height,
-          reviewerEmail: field.reviewerEmail,
-          reviewerName: field.reviewerName
-        }))
-      ];
-
-      // 문서 데이터 업데이트 (기존 데이터 + 새로운 서명 필드)
-      const updatedDocumentData = {
-        ...currentDocument.data,
-        signatureFields: updatedSignatureFields
-      };
-
-      // API 호출로 문서 데이터 업데이트
-      await axios.put(`http://localhost:8080/api/documents/${id}`, {
-        data: updatedDocumentData
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      console.log('DB에 서명 필드 저장 완료:', updatedSignatureFields);
-
-      setShowCompleteSignatureSetupModal(false);
-      setSignatureFields([]); // 로컬 상태 초기화
-
-      // 로컬 스토리지에서도 제거
-      if (id) {
-        localStorage.removeItem(`signatureFields_${id}`);
-      }
-
-      // 문서 정보 새로고침
-      await getDocument(Number(id));
-
-      // 성공 메시지 표시
-      alert('서명 필드 배치가 완료되었습니다. 이제 리뷰어들이 검토를 시작할 수 있습니다.');
-
-    } catch (error) {
-      console.error('서명 필드 저장 실패:', error);
-      if (axios.isAxiosError(error)) {
-        if (error.response?.status === 401) {
-          alert('인증이 만료되었습니다. 다시 로그인해주세요.');
-        } else if (error.response?.status === 403) {
-          alert('권한이 없습니다.');
-        } else if (error.response?.status === 404) {
-          alert('문서를 찾을 수 없습니다.');
-        } else {
-          alert('서명 필드 저장에 실패했습니다. 다시 시도해주세요.');
-        }
-      } else {
-        alert('네트워크 오류가 발생했습니다.');
-      }
-    } finally {
-      setIsCompletingSetup(false);
-    }
-  };
+  // 서명 필드 관련 함수들 (제거됨 - 서명자 지정은 별도 페이지에서 처리)
 
   // 디버깅용 로그
   useEffect(() => {
@@ -344,18 +132,10 @@ const DocumentReview: React.FC = () => {
     );
   };
 
-  // 검토자 지정 권한 확인
-  const canAssignReviewer = () => {
-    if (!currentDocument || !user) return false;
-    return currentDocument.tasks?.some(task =>
-      (task.role === 'CREATOR' || (task.role === 'EDITOR' && task.canAssignReviewer))
-    );
-  };
-
   // 검토 가능한 상태인지 확인
   const canReview = () => {
     if (!currentDocument || !user) return false;
-    return isReviewer() && (currentDocument.status === 'REVIEWING' || currentDocument.status === 'READY_FOR_REVIEW');
+    return isReviewer() && currentDocument.status === 'REVIEWING';
   };
 
   // 승인 핸들러
@@ -452,59 +232,6 @@ const DocumentReview: React.FC = () => {
     setShowRejectModal(true);
   };
 
-  // 검토자 지정 핸들러
-  const handleAssignReviewer = async () => {
-    if (!selectedReviewer.trim()) {
-      alert('검토자 이메일을 입력해주세요.');
-      return;
-    }
-
-    if (!currentDocument) {
-      alert('문서 정보를 찾을 수 없습니다.');
-      return;
-    }
-
-    setIsAssigningReviewer(true);
-
-    try {
-      const { token, user: currentUser } = useAuthStore.getState();
-
-      // 디버깅 로그 추가
-      console.log('🔍 검토자 지정 시도:', {
-        documentId: currentDocument.id,
-        selectedReviewer,
-        currentUser: currentUser?.email,
-        token: token ? `${token.substring(0, 20)}...` : 'null',
-        canAssignReviewer: canAssignReviewer(),
-        documentStatus: currentDocument.status,
-        documentTasks: currentDocument.tasks
-      });
-
-      const response = await axios.post(
-        `http://localhost:8080/api/documents/${currentDocument.id}/assign-reviewer`,
-        { reviewerEmail: selectedReviewer },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.status === 200) {
-        alert('검토자가 성공적으로 지정되었습니다.');
-        setSelectedReviewer('');
-        // 문서 정보 다시 로드
-        getDocument(parseInt(id!));
-      }
-    } catch (error: any) {
-      console.error('검토자 지정 실패:', error);
-      alert(`검토자 지정에 실패했습니다: ${error.response?.data?.error || error.message}`);
-    } finally {
-      setIsAssigningReviewer(false);
-    }
-  };
-
   // 반려 실행
   const executeReject = async (reason: string) => {
     if (!currentDocument || !user) return;
@@ -582,36 +309,19 @@ const DocumentReview: React.FC = () => {
     );
   }
 
-  // 디버깅 정보 표시 (개발용)
-  const showDebugInfo = import.meta.env.DEV;
-
-  if (!isReviewer() && !canAssignReviewer()) {
+  if (!isReviewer()) {
     return (
       <div className="container mx-auto px-4 py-8">
-        {showDebugInfo && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-            <h3 className="font-bold text-yellow-800 mb-2">🔍 디버깅 정보</h3>
-            <div className="text-sm space-y-1">
-              <div>현재 사용자: {user?.email || 'null'}</div>
-              <div>토큰 상태: {token ? '있음' : '없음'}</div>
-              <div>인증 상태: {isAuthenticated ? '인증됨' : '인증 안됨'}</div>
-              <div>검토자 권한: {isReviewer() ? '있음' : '없음'}</div>
-              <div>검토자 지정 권한: {canAssignReviewer() ? '있음' : '없음'}</div>
-              <div>문서 상태: {currentDocument.status}</div>
-              <div>문서 작업:</div>
-              <ul className="ml-4">
-                {currentDocument.tasks?.map((task, idx) => (
-                  <li key={idx}>
-                    {task.role}: {task.assignedUserEmail}
-                    {task.role === 'EDITOR' && ` (검토자 지정 권한: ${task.canAssignReviewer ? '있음' : '없음'})`}
-                  </li>
-                )) || <li>작업 없음</li>}
-              </ul>
-            </div>
-          </div>
-        )}
         <div className="flex justify-center items-center h-64">
-          <div className="text-red-500">이 문서의 검토 권한이나 검토자 지정 권한이 없습니다.</div>
+          <div className="text-center">
+            <div className="text-red-500 text-lg mb-4">이 문서의 검토 권한이 없습니다.</div>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              뒤로가기
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -635,38 +345,6 @@ const DocumentReview: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* 서명 배치 완료 버튼 - 서명 필드가 있을 때만 표시 */}
-          {signatureFields.length > 0 && (
-            <button
-              onClick={() => setShowCompleteSignatureSetupModal(true)}
-              disabled={isCompletingSetup}
-              className={`px-4 py-2 text-white rounded-lg font-medium flex items-center gap-2 transition-colors ${
-                isCompletingSetup 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-purple-600 hover:bg-purple-700'
-              }`}
-            >
-              {isCompletingSetup ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="32" strokeDashoffset="32">
-                      <animate attributeName="stroke-dasharray" dur="1s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
-                      <animate attributeName="stroke-dashoffset" dur="1s" values="0;-16;-32;-32" repeatCount="indefinite"/>
-                    </circle>
-                  </svg>
-                  처리 중
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  서명 배치 완료
-                </>
-              )}
-            </button>
-          )}
-
           {/* 검토 액션 버튼들 */}
           {canReview() && (
             <>
@@ -699,44 +377,8 @@ const DocumentReview: React.FC = () => {
         </div>
       </div>
 
-      {/* 검토자 지정 섹션 (헤더 아래 고정) */}
-      {canAssignReviewer() && currentDocument.status === 'READY_FOR_REVIEW' && !currentDocument.tasks?.some(task => task.role === 'REVIEWER') && (
-        <div className="fixed top-20 left-0 right-0 z-40 bg-yellow-50 border-b border-yellow-200 px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-yellow-800">👤 검토자 지정</h3>
-              <p className="text-sm text-yellow-700">검토를 진행하기 위해 검토자를 지정해주세요.</p>
-            </div>
-            <div className="flex items-end space-x-3">
-              <div className="w-64">
-                <UserSearchInput
-                  value={selectedReviewer}
-                  onChange={setSelectedReviewer}
-                  placeholder="검토자 이메일을 입력하세요"
-                />
-              </div>
-              <button
-                onClick={handleAssignReviewer}
-                disabled={isAssigningReviewer || !selectedReviewer.trim()}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  isAssigningReviewer || !selectedReviewer.trim()
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-              >
-                {isAssigningReviewer ? '지정 중...' : '검토자 지정'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 메인 컨텐츠 - 헤더 아래 고정 레이아웃 */}
-      <div className={`fixed left-0 right-0 bottom-0 flex w-full ${
-        canAssignReviewer() && currentDocument.status === 'READY_FOR_REVIEW' && !currentDocument.tasks?.some(task => task.role === 'REVIEWER') 
-          ? 'top-40' 
-          : 'top-24'
-      }`}>
+      <div className="fixed left-0 right-0 bottom-0 flex w-full top-24">
         {/* 왼쪽 패널 - PDF 뷰어 */}
         <div className="flex-1 bg-gray-100 overflow-auto flex justify-center items-start p-4">
           {/* PDF 컨테이너 - 고정 크기 */}
@@ -765,14 +407,8 @@ const DocumentReview: React.FC = () => {
               }}
             />
 
-            {/* 필드 컨테이너 */}
-            <div
-              className="absolute inset-0"
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-            >
-              {/* 기존 필드 오버레이 */}
+            {/* 기존 필드 오버레이 */}
+            <div className="absolute inset-0">
               {(currentDocument.data?.coordinateFields || []).map((field: any) => {
                 console.log('🎯 검토 화면 - 필드 렌더링:', {
                   id: field.id,
@@ -991,44 +627,6 @@ const DocumentReview: React.FC = () => {
                   );
                 });
               })()}
-
-              {/* 새로 추가된 서명 필드 렌더링 */}
-              {signatureFields.map((field) => (
-                <div
-                  key={field.id}
-                  className={`absolute border-2 border-orange-500 flex flex-col justify-center items-center p-1 cursor-move ${
-                    activeFieldId === field.id ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                  style={{
-                    left: `${field.x}px`,
-                    top: `${field.y}px`,
-                    width: `${field.width}px`,
-                    height: `${field.height}px`,
-                  }}
-                  onMouseDown={(e) => handleMouseDown(e, field.id, 'drag')}
-                >
-                  {/* 서명 필드 내용 */}
-                  <div className="text-xs text-orange-700 font-medium text-center pointer-events-none">
-                    {field.reviewerName} 서명
-                    <div className="text-orange-600">드래그 가능</div>
-                  </div>
-
-                  {/* 리사이즈 핸들 */}
-                  <div
-                    className="absolute bottom-0 right-0 w-3 h-3 bg-orange-500 cursor-se-resize"
-                    onMouseDown={(e) => handleMouseDown(e, field.id, 'resize')}
-                  />
-
-                  {/* 삭제 버튼 */}
-                  <button
-                    className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-xs flex items-center justify-center rounded-full transform translate-x-1 -translate-y-1 hover:bg-red-600"
-                    onClick={() => removeSignatureField(field.id)}
-                    title="서명 필드 삭제"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -1060,13 +658,6 @@ const DocumentReview: React.FC = () => {
                             <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
                               검토자
                             </span>
-                            <button
-                              onClick={() => addSignatureField(reviewer.assignedUserEmail, reviewer.assignedUserName || '검토자')}
-                              className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded transition-colors"
-                              title="서명 필드 추가"
-                            >
-                              + 서명 필드
-                            </button>
                           </div>
                           <div className="text-sm font-medium text-gray-900 mt-1">
                             {reviewer.assignedUserName || '이름 없음'}
@@ -1127,49 +718,6 @@ const DocumentReview: React.FC = () => {
           </div>
         </div>
       </div>
-
-
-      {/* 서명 배치 완료 확인 모달 */}
-      {showCompleteSignatureSetupModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">서명 배치 완료 확인</h3>
-
-            <div className="space-y-4">
-              <p className="text-gray-600">
-                서명 필드 배치를 완료하시겠습니까?
-              </p>
-              <p className="text-sm text-blue-600">
-                ✓ 총 {signatureFields.length}개의 서명 필드가 배치되었습니다.
-              </p>
-              <p className="text-sm text-amber-600">
-                ⚠️ 완료 후에는 서명 필드를 수정할 수 없으며, 리뷰어들이 검토를 시작할 수 있습니다.
-              </p>
-
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowCompleteSignatureSetupModal(false)}
-                  disabled={isCompletingSetup}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleCompleteSignatureSetup}
-                  disabled={isCompletingSetup}
-                  className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors ${
-                    isCompletingSetup 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-purple-600 hover:bg-purple-700'
-                  }`}
-                >
-                  {isCompletingSetup ? '처리 중...' : '완료'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 서명 모달 */}
       {showSignatureModal && (

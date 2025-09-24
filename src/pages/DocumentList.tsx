@@ -571,7 +571,7 @@ const DocumentList: React.FC = () => {
                     ) : document.status === 'READY_FOR_REVIEW' ? (
                       // 서명자 지정 상태
                       <Link
-                        to={`/documents/${document.id}/review`}
+                        to={`/documents/${document.id}/signer-assignment`}
                         className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center"
                       >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
