@@ -325,9 +325,26 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       console.log('🔍 FolderPage - 설정된 필드들:', allFields);
       setCoordinateFields(allFields);
 
-      // 서명 필드 설정
-      const sigFields = document.data?.signatureFields || [];
-      setSignatureFields(sigFields);
+      // 서명 필드 처리
+      const docSignatureFields = document.data?.signatureFields || [];
+      const docSignatures = document.data?.signatures || {};
+
+      const processedSignatureFields = docSignatureFields.map((field: any) => ({
+        ...field,
+        signatureData: docSignatures[field.reviewerEmail]
+      }));
+
+      console.log('🖋️ FolderPage - 서명 필드 처리:', {
+        originalSignatureFields: docSignatureFields,
+        signatures: docSignatures,
+        processedSignatureFields,
+        signatureFieldsWithData: processedSignatureFields.filter(sf => sf.signatureData).length,
+        reviewerEmails: Object.keys(docSignatures),
+        hasSignatures: Object.keys(docSignatures).length > 0,
+        documentStatus: document.status
+      });
+
+      setSignatureFields(processedSignatureFields);
 
       setShowPreview(true);
     } catch (error) {
