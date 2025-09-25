@@ -89,7 +89,7 @@ const DocumentSignerAssignment: React.FC = () => {
   // 서명자 지정 핸들러
   const handleAssignReviewer = async () => {
     if (!selectedReviewer.trim()) {
-      alert('검토자 이메일을 입력해주세요.');
+      alert('서명자 이메일을 입력해주세요.');
       return;
     }
 
@@ -119,20 +119,20 @@ const DocumentSignerAssignment: React.FC = () => {
         // 문서 정보 다시 로드하고 결과를 받아서 처리
         const updatedDocument = await getDocument(parseInt(id!));
         
-        // 새로 로드된 문서에서 방금 지정한 검토자의 이름을 찾기
+        // 새로 로드된 문서에서 방금 지정한 서명자의 이름을 찾기
         const assignedReviewer = updatedDocument?.tasks?.find(
           task => task.role === 'REVIEWER' && task.assignedUserEmail === reviewerEmail
         );
         const reviewerName = assignedReviewer?.assignedUserName || reviewerEmail;
         
-        // 서명 필드를 검토자에게 추가
+        // 서명 필드를 서명자에게 추가
         addSignatureField(reviewerEmail, reviewerName);
         
-        alert('검토자가 성공적으로 지정되었습니다.');
+        alert('서명자가 성공적으로 지정되었습니다.');
       }
     } catch (error: any) {
-      console.error('검토자 지정 실패:', error);
-      alert(`검토자 지정에 실패했습니다: ${error.response?.data?.error || error.message}`);
+      console.error('서명자 지정 실패:', error);
+      alert(`서명자 지정에 실패했습니다: ${error.response?.data?.error || error.message}`);
     } finally {
       setIsAssigningReviewer(false);
     }
@@ -304,7 +304,7 @@ const DocumentSignerAssignment: React.FC = () => {
         localStorage.removeItem(`signatureFields_${id}`);
       }
 
-      alert('서명자 지정이 완료되었습니다. 이제 리뷰 단계로 이동합니다.');
+      alert('서명자 지정이 완료되었습니다. 이제 검토 단계로 이동합니다.');
       
       // 문서 리스트 페이지로 이동
       navigate('/documents');
