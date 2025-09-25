@@ -10,6 +10,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import RenameModal from '../components/RenameModal';
 import MoveToFolderModal from '../components/MoveToFolderModal';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import WorkflowModal from '../components/WorkflowModal';
 import FolderSidebar from '../components/FolderSidebar';
 import { FolderPageProps, Folder } from '../types/folder';
 import { Document } from '../types/document';
@@ -61,6 +62,10 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [coordinateFields, setCoordinateFields] = useState<any[]>([]);
   const [signatureFields, setSignatureFields] = useState<any[]>([]);
 
+  // 작업현황 모달 상태
+  const [showWorkflowModal, setShowWorkflowModal] = useState(false);
+  const [selectedWorkflowDocument, setSelectedWorkflowDocument] = useState<Document | null>(null);
+
   // 대량 다운로드 훅
   const { isDownloading, progress, downloadAsZip } = useBulkDownload();
 
@@ -83,6 +88,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showDownloadAlertModal, setShowDownloadAlertModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [renameLoading, setRenameLoading] = useState(false);
   const [moveLoading, setMoveLoading] = useState(false);
@@ -325,9 +331,26 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       console.log('🔍 FolderPage - 설정된 필드들:', allFields);
       setCoordinateFields(allFields);
 
-      // 서명 필드 설정
-      const sigFields = document.data?.signatureFields || [];
-      setSignatureFields(sigFields);
+      // 서명 필드 처리
+      const docSignatureFields = document.data?.signatureFields || [];
+      const docSignatures = document.data?.signatures || {};
+
+      const processedSignatureFields = docSignatureFields.map((field: any) => ({
+        ...field,
+        signatureData: docSignatures[field.reviewerEmail]
+      }));
+
+      console.log('🖋️ FolderPage - 서명 필드 처리:', {
+        originalSignatureFields: docSignatureFields,
+        signatures: docSignatures,
+        processedSignatureFields,
+        signatureFieldsWithData: processedSignatureFields.filter(sf => sf.signatureData).length,
+        reviewerEmails: Object.keys(docSignatures),
+        hasSignatures: Object.keys(docSignatures).length > 0,
+        documentStatus: document.status
+      });
+
+      setSignatureFields(processedSignatureFields);
 
       setShowPreview(true);
     } catch (error) {
@@ -336,22 +359,32 @@ const FolderPage: React.FC<FolderPageProps> = () => {
     }
   };
 
+  // 작업현황 모달 핸들러
+  const handleWorkflow = (document: Document) => {
+    setSelectedWorkflowDocument(document);
+    setShowWorkflowModal(true);
+  };
+
   // 전체 문서 다운로드 핸들러 (ZIP)
   const handleBulkDownload = async () => {
     try {
-      // 선택된 문서가 있으면 선택된 문서만, 없으면 전체 문서
-      const documentsToDownload = selectedDocuments.size > 0 
-        ? documents.filter(doc => selectedDocuments.has(doc.id))
-        : documents;
+      // 선택된 문서가 없으면 알림 모달 표시
+      if (selectedDocuments.size === 0) {
+        setShowDownloadAlertModal(true);
+        return;
+      }
+
+      // 선택된 문서만 다운로드
+      const documentsToDownload = documents.filter(doc => selectedDocuments.has(doc.id));
 
       if (documentsToDownload.length === 0) {
-        alert('다운로드할 문서가 없습니다.');
+        setShowDownloadAlertModal(true);
         return;
       }
 
       // 사용자 확인
       const confirmed = window.confirm(
-        `총 ${documentsToDownload.length}개의 문서를 ZIP 파일로 다운로드하시겠습니까?\n\n` +
+        `총 ${documentsToDownload.length}개의 선택된 문서를 ZIP 파일로 다운로드하시겠습니까?\n\n` +
         '다운로드가 진행되는 동안 브라우저를 닫지 마세요.'
       );
 
@@ -460,10 +493,19 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
   // 필터링된 문서 목록 계산 함수
   const getFilteredDocuments = () => {
+    let filtered;
     if (statusFilter === 'all') {
-      return documents;
+      filtered = documents;
+    } else {
+      filtered = documents.filter(doc => doc.status === statusFilter);
     }
-    return documents.filter(doc => doc.status === statusFilter);
+    
+    // 마지막 수정일 기준으로 최신순 정렬 (updatedAt이 없으면 createdAt 사용)
+    return [...filtered].sort((a, b) => {
+      const aDate = new Date(a.updatedAt || a.createdAt).getTime();
+      const bDate = new Date(b.updatedAt || b.createdAt).getTime();
+      return bDate - aDate; // 내림차순 (최신이 먼저)
+    });
   };
 
   // 필터 버튼 클릭 핸들러
@@ -707,7 +749,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            문서 다운로드 ({selectedDocuments.size > 0 ? `선택된 ${selectedDocuments.size}개` : `전체 ${documents.length}개`})
+                            {selectedDocuments.size > 0 ? `문서 다운로드 (선택된 ${selectedDocuments.size}개)` : '문서 다운로드'}
                           </>
                         )}
                       </button>
@@ -914,8 +956,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                             />
                                             <div className="flex-1">
                                               <div className="flex items-center space-x-3 mb-2">
-                                                <h6 className="text-s font-medium text-gray-900 cursor-pointer hover:text-blue-600"
-                                                    onClick={() => handleDocumentClick(document.id.toString())}>
+                                                <h6 className="text-s font-medium text-gray-900">
                                                   {document.title || document.templateName || '제목 없음'}
                                                 </h6>
                                                 <StatusBadge status={document.status} size="sm" />
@@ -933,8 +974,18 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                           </div>
                                           <div className="flex items-center space-x-2">
                                             <button
+                                                onClick={() => handleWorkflow(document)}
+                                                className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center"
+                                            >
+                                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                              </svg>
+                                              작업현황
+                                            </button>
+
+                                            <button
                                                 onClick={() => handleDocumentPreview(document)}
-                                                className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors flex items-center"
+                                                className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center"
                                             >
                                               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -1051,6 +1102,40 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                   signatureFields={signatureFields}
                   documentTitle={previewDocument.title || previewDocument.template?.name || '문서'}
               />
+          )}
+
+          {/* 작업현황 모달 */}
+          <WorkflowModal
+            isOpen={showWorkflowModal}
+            onClose={() => setShowWorkflowModal(false)}
+            document={selectedWorkflowDocument}
+          />
+
+          {/* 다운로드 안내 모달 */}
+          {showDownloadAlertModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-md w-full p-6">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-yellow-100 rounded-full">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">문서를 선택해주세요</h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    다운로드할 문서를 먼저 선택하신 후 다운로드 버튼을 클릭해주세요.
+                  </p>
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setShowDownloadAlertModal(false)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      확인
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
