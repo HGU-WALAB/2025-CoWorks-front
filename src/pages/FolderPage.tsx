@@ -477,10 +477,19 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
   // 필터링된 문서 목록 계산 함수
   const getFilteredDocuments = () => {
+    let filtered;
     if (statusFilter === 'all') {
-      return documents;
+      filtered = documents;
+    } else {
+      filtered = documents.filter(doc => doc.status === statusFilter);
     }
-    return documents.filter(doc => doc.status === statusFilter);
+    
+    // 마지막 수정일 기준으로 최신순 정렬 (updatedAt이 없으면 createdAt 사용)
+    return [...filtered].sort((a, b) => {
+      const aDate = new Date(a.updatedAt || a.createdAt).getTime();
+      const bDate = new Date(b.updatedAt || b.createdAt).getTime();
+      return bDate - aDate; // 내림차순 (최신이 먼저)
+    });
   };
 
   // 필터 버튼 클릭 핸들러
@@ -931,8 +940,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                             />
                                             <div className="flex-1">
                                               <div className="flex items-center space-x-3 mb-2">
-                                                <h6 className="text-s font-medium text-gray-900 cursor-pointer hover:text-blue-600"
-                                                    onClick={() => handleDocumentClick(document.id.toString())}>
+                                                <h6 className="text-s font-medium text-gray-900">
                                                   {document.title || document.templateName || '제목 없음'}
                                                 </h6>
                                                 <StatusBadge status={document.status} size="sm" />
