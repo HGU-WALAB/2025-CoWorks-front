@@ -88,6 +88,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showDownloadAlertModal, setShowDownloadAlertModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [renameLoading, setRenameLoading] = useState(false);
   const [moveLoading, setMoveLoading] = useState(false);
@@ -367,19 +368,23 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   // 전체 문서 다운로드 핸들러 (ZIP)
   const handleBulkDownload = async () => {
     try {
-      // 선택된 문서가 있으면 선택된 문서만, 없으면 전체 문서
-      const documentsToDownload = selectedDocuments.size > 0 
-        ? documents.filter(doc => selectedDocuments.has(doc.id))
-        : documents;
+      // 선택된 문서가 없으면 알림 모달 표시
+      if (selectedDocuments.size === 0) {
+        setShowDownloadAlertModal(true);
+        return;
+      }
+
+      // 선택된 문서만 다운로드
+      const documentsToDownload = documents.filter(doc => selectedDocuments.has(doc.id));
 
       if (documentsToDownload.length === 0) {
-        alert('다운로드할 문서가 없습니다.');
+        setShowDownloadAlertModal(true);
         return;
       }
 
       // 사용자 확인
       const confirmed = window.confirm(
-        `총 ${documentsToDownload.length}개의 문서를 ZIP 파일로 다운로드하시겠습니까?\n\n` +
+        `총 ${documentsToDownload.length}개의 선택된 문서를 ZIP 파일로 다운로드하시겠습니까?\n\n` +
         '다운로드가 진행되는 동안 브라우저를 닫지 마세요.'
       );
 
@@ -744,7 +749,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            문서 다운로드 ({selectedDocuments.size > 0 ? `선택된 ${selectedDocuments.size}개` : `전체 ${documents.length}개`})
+                            {selectedDocuments.size > 0 ? `문서 다운로드 (선택된 ${selectedDocuments.size}개)` : '문서 다운로드'}
                           </>
                         )}
                       </button>
@@ -1105,6 +1110,33 @@ const FolderPage: React.FC<FolderPageProps> = () => {
             onClose={() => setShowWorkflowModal(false)}
             document={selectedWorkflowDocument}
           />
+
+          {/* 다운로드 안내 모달 */}
+          {showDownloadAlertModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-md w-full p-6">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-yellow-100 rounded-full">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">문서를 선택해주세요</h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    다운로드할 문서를 먼저 선택하신 후 다운로드 버튼을 클릭해주세요.
+                  </p>
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setShowDownloadAlertModal(false)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      확인
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
   );
