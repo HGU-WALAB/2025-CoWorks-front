@@ -10,6 +10,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import RenameModal from '../components/RenameModal';
 import MoveToFolderModal from '../components/MoveToFolderModal';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import WorkflowModal from '../components/WorkflowModal';
 import FolderSidebar from '../components/FolderSidebar';
 import { FolderPageProps, Folder } from '../types/folder';
 import { Document } from '../types/document';
@@ -60,6 +61,10 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
   const [coordinateFields, setCoordinateFields] = useState<any[]>([]);
   const [signatureFields, setSignatureFields] = useState<any[]>([]);
+
+  // 작업현황 모달 상태
+  const [showWorkflowModal, setShowWorkflowModal] = useState(false);
+  const [selectedWorkflowDocument, setSelectedWorkflowDocument] = useState<Document | null>(null);
 
   // 대량 다운로드 훅
   const { isDownloading, progress, downloadAsZip } = useBulkDownload();
@@ -351,6 +356,12 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       console.error('미리보기 오류:', error);
       alert('미리보기를 불러오는 중 오류가 발생했습니다.');
     }
+  };
+
+  // 작업현황 모달 핸들러
+  const handleWorkflow = (document: Document) => {
+    setSelectedWorkflowDocument(document);
+    setShowWorkflowModal(true);
   };
 
   // 전체 문서 다운로드 핸들러 (ZIP)
@@ -958,6 +969,16 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                           </div>
                                           <div className="flex items-center space-x-2">
                                             <button
+                                                onClick={() => handleWorkflow(document)}
+                                                className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors flex items-center"
+                                            >
+                                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                              </svg>
+                                              작업현황
+                                            </button>
+
+                                            <button
                                                 onClick={() => handleDocumentPreview(document)}
                                                 className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors flex items-center"
                                             >
@@ -1077,6 +1098,13 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                   documentTitle={previewDocument.title || previewDocument.template?.name || '문서'}
               />
           )}
+
+          {/* 작업현황 모달 */}
+          <WorkflowModal
+            isOpen={showWorkflowModal}
+            onClose={() => setShowWorkflowModal(false)}
+            document={selectedWorkflowDocument}
+          />
         </div>
       </div>
   );
