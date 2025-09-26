@@ -211,7 +211,7 @@ const DocumentNew: React.FC = () => {
             {/* 문서 제목 입력 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                문서 제목 *
+                제목 *
               </label>
               <input
                 type="text"
@@ -227,7 +227,7 @@ const DocumentNew: React.FC = () => {
             {selectedTemplate && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  템플릿 설명
+                  설명
                 </label>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                   <p className="text-gray-700 text-sm leading-relaxed">
@@ -236,6 +236,44 @@ const DocumentNew: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   이 설명은 선택된 템플릿의 정보입니다. (수정 불가)
+                </p>
+              </div>
+            )}
+
+            {/* 선택된 템플릿 만료일 (읽기 전용) */}
+            {selectedTemplate && selectedTemplate.deadline && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  만료일
+                </label>
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                  <div className="flex items-center space-x-2">
+                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className={`text-sm font-medium ${
+                      new Date(selectedTemplate.deadline) < new Date() 
+                        ? 'text-red-600' 
+                        : 'text-orange-700'
+                    }`}>
+                      {new Date(selectedTemplate.deadline).toLocaleString('ko-KR', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      })}
+                      {new Date(selectedTemplate.deadline) < new Date() && (
+                        <span className="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
+                          만료됨
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  이 문서는 위 날짜까지 편집을 완료해야 합니다. (수정 불가)
                 </p>
               </div>
             )}
@@ -258,7 +296,7 @@ const DocumentNew: React.FC = () => {
                       }}
                       className={`px-3 py-1 rounded border text-sm ${creationMode === 'single' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
                     >
-                      개인문서만 생성
+                      개인 문서 생성
                     </button>
                     {hasFolderAccess && (
                       <button
@@ -266,7 +304,7 @@ const DocumentNew: React.FC = () => {
                         onClick={() => setCreationMode('bulk')}
                         className={`px-3 py-1 rounded border text-sm ${creationMode === 'bulk' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
                       >
-                        여러 문서 생성하기
+                        일괄 문서 생성
                       </button>
                     )}
                   </div>
@@ -283,7 +321,7 @@ const DocumentNew: React.FC = () => {
                 </div>
               </div>
 
-              {!(hasFolderAccess && creationMode === 'bulk' && uploadedUsers.length > 0) && (
+              {creationMode === 'single' && (
                 <>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
                     <div className="flex items-center space-x-3">
@@ -301,6 +339,24 @@ const DocumentNew: React.FC = () => {
                     자동으로 편집자로 할당됩니다.
                   </p>
                 </>
+              )}
+
+              {creationMode === 'bulk' && hasFolderAccess && !uploadSummary && uploadedUsers.length === 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
+                      📋
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-blue-900 mb-2">일괄 문서 일괄 생성 안내</h4>
+                      <ul className="text-sm text-blue-700 space-y-1">
+                        <li>• 엑셀 파일을 업로드하여 일괄적으로 문서를 한번에 생성할 수 있습니다</li>
+                        <li>• 각 문서는 엑셀의 해당 행 정보를 바탕으로 생성됩니다</li>
+                        <li>• 편집자는 각 문서 생성 시 개별적으로 지정됩니다</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               )}
               
               {/* 엑셀 업로드 상태 표시 (Bulk 모드에서만) */}
@@ -367,7 +423,7 @@ const DocumentNew: React.FC = () => {
                   } catch (e) {
                     console.error('Bulk cancel failed:', e);
                   } finally {
-                    navigate('/documents');
+                    navigate('/templates');
                   }
                 }}
                 className="btn btn-secondary flex-1"

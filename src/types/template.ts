@@ -5,6 +5,7 @@ export interface Template {
   isPublic?: boolean;
   pdfFilePath?: string;
   pdfImagePath?: string;
+  deadline?: string; // 만료일 추가
   defaultFolderId?: string | null;
   defaultFolderName?: string | null;
   createdById: string;
@@ -19,5 +20,6 @@ export interface TemplateCreateRequest {
   isPublic?: boolean;
   pdfFilePath?: string;
   pdfImagePath?: string;
+  deadline?: string; // 만료일 추가
   defaultFolderId?: string | null;
 }

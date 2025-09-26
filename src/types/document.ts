@@ -50,6 +50,7 @@ export interface TemplateInfo {
   pdfFilePath?: string;
   pdfImagePath?: string;
   coordinateFields?: string;
+  deadline?: string; // 만료일 추가
   createdAt: string;
   updatedAt: string;
 }

@@ -623,10 +623,10 @@ const DocumentEditor: React.FC = () => {
         );
 
         if (hasAssignReviewerPermission) {
-          alert('편집이 완료되었습니다. 검토자 지정 단계로 이동합니다.');
-          navigate(`/documents/${id}/review`);
+          alert('편집이 완료되었습니다. 서명자 지정 단계로 이동합니다.');
+          navigate(`/documents/${id}/signer-assignment`);
         } else {
-          alert('편집이 완료되었습니다. 생성자 또는 권한이 있는 편집자가 검토자를 지정할 수 있습니다.');
+          alert('편집이 완료되었습니다. 생성자 또는 권한이 있는 편집자가 서명자를 지정할 수 있습니다.');
           navigate('/documents');
         }
       }

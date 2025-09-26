@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useDocumentStore, type Document, type DocumentStatusLog } from '../stores/documentStore';
+import { useDocumentStore, type Document } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import WorkflowModal from '../components/WorkflowModal';
 // import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
-import { StatusBadge, getStatusText } from '../utils/documentStatusUtils';
+import { StatusBadge, getStatusText, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
@@ -234,41 +235,6 @@ const DocumentList: React.FC = () => {
   const handleWorkflow = (document: Document) => {
     setSelectedWorkflowDocument(document);
     setShowWorkflowModal(true);
-  };
-
-  // 워크플로우 단계 정의
-  const getWorkflowSteps = () => {
-    return [
-      { key: 'EDITING', label: '편집중', description: '문서 내용 편집 및 수정' },
-      { key: 'READY_FOR_REVIEW', label: '서명자 지정', description: '서명자 지정 및 설정' },
-      { key: 'REVIEWING', label: '검토중', description: '검토자가 문서 검토' },
-      { key: 'COMPLETED', label: '완료', description: '모든 작업 완료' }
-    ];
-  };
-
-  // 현재 단계 인덱스 가져오기
-  const getCurrentStepIndex = (status: string) => {
-    const steps = getWorkflowSteps();
-    const currentIndex = steps.findIndex(step => step.key === status);
-    return currentIndex >= 0 ? currentIndex : 0;
-  };
-
-  // 특정 상태의 완료 시간을 가져오는 함수
-  const getStatusCompletionTime = (statusLogs: DocumentStatusLog[] | undefined, status: string): string | null => {
-    if (!statusLogs) return null;
-    
-    const statusLog = statusLogs.find(log => log.status === status);
-    if (statusLog?.timestamp) {
-      return new Date(statusLog.timestamp).toLocaleString('ko-KR', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-    }
-    return null;
   };
 
   if (loading) {
@@ -512,7 +478,7 @@ const DocumentList: React.FC = () => {
                       })}</span>
                       </div>
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span>마지막 수정일: {new Date(document.updatedAt || document.createdAt).toLocaleString('ko-KR', { 
+                      <span>수정일: {new Date(document.updatedAt || document.createdAt).toLocaleString('ko-KR', { 
                         year: 'numeric', 
                         month: '2-digit', 
                         day: '2-digit', 
@@ -521,6 +487,29 @@ const DocumentList: React.FC = () => {
                         hour12: false
                       })}</span>
                     </div>
+                    {document.deadline && (
+                      <div className="flex items-center space-x-4 text-sm">
+                        <span className={`${
+                          new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED
+                            ? 'text-red-600 font-medium' 
+                            : 'text-orange-600'
+                        }`}>
+                          만료일: {new Date(document.deadline).toLocaleString('ko-KR', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit', 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: false
+                          })}
+                          {new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED && (
+                            <span className="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              만료됨
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
 
                     {/* 모든 담당자 정보 표시 */}
                     <div className="mt-3 space-y-1">
@@ -551,7 +540,7 @@ const DocumentList: React.FC = () => {
                       // 검토중 상태
                       <Link
                         to={`/documents/${document.id}/review`}
-                        className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center"
+                        className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center"
                       >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
@@ -561,8 +550,8 @@ const DocumentList: React.FC = () => {
                     ) : document.status === 'READY_FOR_REVIEW' ? (
                       // 서명자 지정 상태
                       <Link
-                        to={`/documents/${document.id}/review`}
-                        className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center"
+                        to={`/documents/${document.id}/signer-assignment`}
+                        className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center"
                       >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -573,7 +562,7 @@ const DocumentList: React.FC = () => {
                       // 편집 가능한 상태
                       <Link
                         to={`/documents/${document.id}/edit`}
-                        className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors flex items-center"
+                        className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center"
                       >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -584,7 +573,7 @@ const DocumentList: React.FC = () => {
 
                     <button
                       onClick={() => handleWorkflow(document)}
-                      className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors flex items-center"
+                      className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -594,13 +583,13 @@ const DocumentList: React.FC = () => {
 
                     <button
                       onClick={() => handlePreview(document.id)}
-                      className="px-3 py-1.5 text-sm text-black bg-white border border-gray-400 rounded-md hover:bg-gray-50 transition-colors flex items-center"
+                      className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center"
                     >
                       <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
-                      보기
+                      미리보기
                     </button>
                   </div>
                 </div>
@@ -646,119 +635,11 @@ const DocumentList: React.FC = () => {
       )}
 
       {/* 작업현황 모달 */}
-      {showWorkflowModal && selectedWorkflowDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">작업 현황</h2>
-                <p className="text-sm text-gray-600 mt-1">
-                  {selectedWorkflowDocument.title}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowWorkflowModal(false)}
-                className="btn btn-primary text-sm"
-              >
-                닫기
-              </button>
-            </div>
-            <div className="p-6">
-              {/* <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-sm text-gray-600">현재 상태</div>
-                  <StatusBadge status={selectedWorkflowDocument.status} size="sm" />
-                </div>
-              </div> */}
-
-              {/* Horizontal Stepper */}
-              <div className="flex justify-center py-8">
-                <div className="flex items-start max-w-4xl w-full px-8">
-                  {getWorkflowSteps().map((step, index) => {
-                    const currentIndex = getCurrentStepIndex(selectedWorkflowDocument.status);
-                    const isCompleted = selectedWorkflowDocument.status === 'COMPLETED' 
-                      ? index <= currentIndex  // COMPLETED 상태일 때는 해당 단계까지 모두 완료로 표시
-                      : index < currentIndex;
-                    const isActive = selectedWorkflowDocument.status !== 'COMPLETED' && index === currentIndex;
-                    const isLastStep = index === getWorkflowSteps().length - 1;
-
-                    return (
-                      <React.Fragment key={step.key}>
-                        {/* Step Circle and Content */}
-                        <div className="flex flex-col items-center text-center">
-                          <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center font-medium text-sm mb-2 ${
-                            isCompleted
-                              ? 'bg-green-500 text-white border-green-500'
-                              : isActive
-                              ? 'bg-blue-500 text-white border-blue-500'
-                              : 'bg-gray-200 text-gray-500 border-gray-300'
-                          }`}>
-                            {isCompleted ? '✓' : index + 1}
-                          </div>
-
-                          <div className="h-[100px] flex flex-col justify-start items-center">
-                            <div className={`font-medium text-sm mb-1 text-center ${
-                              isCompleted || isActive
-                                ? 'text-gray-900'
-                                : 'text-gray-500'
-                            }`}>
-                              {step.label}
-                            </div>
-                            <div className={`text-xs text-center px-2 mb-2 ${
-                              isCompleted || isActive
-                                ? 'text-gray-600'
-                                : 'text-gray-400'
-                            }`}>
-                              {step.description}
-                            </div>
-
-                            {/* 상태 표시 - 고정된 높이 영역 */}
-                            <div className="h-12 flex flex-col items-center justify-center">
-                              {isActive && (
-                                <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full mb-1">
-                                  진행중
-                                </span>
-                              )}
-                              {isCompleted && (
-                                <>
-                                  <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full mb-1">
-                                    완료
-                                  </span>
-                                  {(() => {
-                                    const completionTime = getStatusCompletionTime(selectedWorkflowDocument.statusLogs, step.key);
-                                    return completionTime && (
-                                      <div className="text-xs text-gray-500 text-center">
-                                        {completionTime}
-                                      </div>
-                                    );
-                                  })()}
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Connector Line */}
-                        {!isLastStep && (
-                          <div className="flex-1 flex items-center justify-center mx-6" style={{ marginTop: '20px' }}>
-                            <div className={`h-0.5 w-full ${
-                              index < currentIndex
-                                ? 'bg-green-500'
-                                : index === currentIndex
-                                ? 'bg-blue-500'
-                                : 'bg-gray-300'
-                            }`}></div>
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <WorkflowModal
+        isOpen={showWorkflowModal}
+        onClose={() => setShowWorkflowModal(false)}
+        document={selectedWorkflowDocument}
+      />
 
       {/* 미리보기 모달 */}
       {showPreview && previewDocument && previewDocument.template?.pdfImagePath && (

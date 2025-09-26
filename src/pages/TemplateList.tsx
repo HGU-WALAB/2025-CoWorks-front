@@ -1,13 +1,24 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTemplateStore } from '../stores/templateStore';
 import { useAuthStore } from '../stores/authStore';
 import { Template } from '../types/template';
+import TemplateDuplicateModal from '../components/TemplateDuplicateModal';
 
 const TemplateList: React.FC = () => {
   const navigate = useNavigate();
-  const { templates, loading, error, getTemplates, deleteTemplate } = useTemplateStore();
+  const { templates, loading, error, getTemplates, deleteTemplate, duplicateTemplate } = useTemplateStore();
   const { user } = useAuthStore();
+  
+  // 복제 모달 상태
+  const [duplicateModal, setDuplicateModal] = useState<{
+    isOpen: boolean;
+    template: Template | null;
+  }>({
+    isOpen: false,
+    template: null,
+  });
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
 
   useEffect(() => {
     getTemplates();
@@ -26,10 +37,38 @@ const TemplateList: React.FC = () => {
       try {
         await deleteTemplate(templateId);
         alert('템플릿이 삭제되었습니다.');
-      } catch (error) {
-        alert('템플릿 삭제에 실패했습니다.');
+      } catch (error: any) {
+        // 서버에서 오는 구체적인 오류 메시지 사용
+        const errorMessage = error?.response?.data?.error || '템플릿 삭제에 실패했습니다.';
+        alert(errorMessage);
       }
     }
+  };
+
+  const handleDuplicateTemplate = (template: Template) => {
+    setDuplicateModal({
+      isOpen: true,
+      template,
+    });
+  };
+
+  const handleConfirmDuplicate = async (newName: string, description: string, folderId: string | null) => {
+    if (!duplicateModal.template) return;
+
+    setDuplicateLoading(true);
+    try {
+      await duplicateTemplate(duplicateModal.template.id, newName, description, folderId);
+      alert(`"${newName}" 템플릿이 복제되었습니다.`);
+      setDuplicateModal({ isOpen: false, template: null });
+    } catch (error) {
+      alert('템플릿 복제에 실패했습니다.');
+    } finally {
+      setDuplicateLoading(false);
+    }
+  };
+
+  const handleCloseDuplicateModal = () => {
+    setDuplicateModal({ isOpen: false, template: null });
   };
 
   if (loading) {
@@ -76,73 +115,84 @@ const TemplateList: React.FC = () => {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {templates.map((template) => (
                 <div key={template.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border">
-                  <div className="p-6">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
                       {template.name}
                     </h3>
                     
-                    <div className="h-10 mb-4">
+                    <div className="h-8 mb-3">
                       <p 
-                        className="text-gray-400 text-sm leading-5 overflow-hidden"
+                        className="text-gray-400 text-sm leading-4 overflow-hidden"
                         style={{
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
-                          lineHeight: '1.25rem',
-                          maxHeight: '2.5rem'
+                          lineHeight: '1rem',
+                          maxHeight: '2rem'
                         }}
                       >
                         {template.description || '(없음)'}
                       </p>
                     </div>
 
-
-
                     {/* 메타 정보 */}
-                    <div className="mb-4 text-xs text-gray-400">
+                    <div className="mb-3 text-xs text-gray-400">
                       <div>생성자: {template.createdByName}</div>
                       <div>생성일: {new Date(template.createdAt).toLocaleDateString()}</div>
                     </div>
 
                     {/* 액션 버튼들 */}
-                    <div className="flex space-x-2">
+                    <div className="space-y-2">
                       <button
                         onClick={() => handleCreateDocument(template.id)}
-                        className="px-3 py-1.5 text-sm bg-white border border-gray-500 rounded-md hover:bg-blue-50 transition-colors flex items-center justify-center flex-1"
-                        style={{ color: '#333333' }}
+                        className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center justify-center"
                       >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                         </svg>
                         문서 생성
                       </button>
-                      {isTemplateOwner(template) && (
-                        <>
-                          <Link
-                            to={`/templates/edit/${template.id}`}
-                            className="px-3 py-1.5 text-sm  bg-white border border-gray-500 rounded-md hover:bg-gray-50 transition-colors flex items-center justify-center"
-                            title="템플릿 편집"
-                            style={{ color: '#333333' }}
-                          >
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                            편집
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteTemplate(template.id, template.name)}
-                            className="px-3 py-1.5 text-sm text-red-600 bg-white border border-red-400 rounded-md hover:bg-red-50 transition-colors flex items-center justify-center"
-                            title="템플릿 삭제"
-                          >
-                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            삭제
-                          </button>
-                        </>
-                      )}
+                      
+                      <div className="flex space-x-2">
+                        {isTemplateOwner(template) && (
+                          <>
+                            <Link
+                              to={`/templates/edit/${template.id}`}
+                              className="flex-1 px-2 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center justify-center"
+                              title="템플릿 편집"
+                            >
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                              편집
+                            </Link>
+                            
+                            <button
+                              onClick={() => handleDuplicateTemplate(template)}
+                              className="flex-1 px-2 py-1.5 text-sm text-blue-600 bg-white border border-blue-300 rounded-md hover:bg-blue-50 transition-colors flex items-center justify-center"
+                              title="템플릿 복제"
+                            >
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                              복제
+                            </button>
+                            
+                            <button
+                              onClick={() => handleDeleteTemplate(template.id, template.name)}
+                              className="flex-1 px-2 py-1.5 text-sm text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50 transition-colors flex items-center justify-center"
+                              title="템플릿 삭제"
+                            >
+                              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              삭제
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -151,6 +201,17 @@ const TemplateList: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* 복제 확인 모달 */}
+      <TemplateDuplicateModal
+        isOpen={duplicateModal.isOpen}
+        onClose={handleCloseDuplicateModal}
+        onConfirm={handleConfirmDuplicate}
+        originalName={duplicateModal.template?.name || ''}
+        originalDescription={duplicateModal.template?.description || ''}
+        originalFolderId={duplicateModal.template?.defaultFolderId || null}
+        loading={duplicateLoading}
+      />
     </div>
   );
 };

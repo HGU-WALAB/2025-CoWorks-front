@@ -36,6 +36,7 @@ const TemplateUpload: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [templateName, setTemplateName] = useState('');
   const [description, setDescription] = useState('');
+  const [deadline, setDeadline] = useState(''); // 만료일 상태 추가
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +140,7 @@ const TemplateUpload: React.FC = () => {
         name: templateName,
         description,
         coordinateFields: JSON.stringify(fields),
+        deadline: deadline || null, // 만료일 추가
         defaultFolderId: selectedFolderId
       };
 
@@ -243,6 +245,7 @@ const TemplateUpload: React.FC = () => {
           // 기본 정보 설정
           setTemplateName(template.name || '');
           setDescription(template.description || '');
+          setDeadline(template.deadline || ''); // 만료일 설정
           setSelectedFolderId(template.defaultFolderId || null);
           
           console.log('📁 기본 폴더 설정:', template.defaultFolderId, template.defaultFolderName);
@@ -475,6 +478,77 @@ const TemplateUpload: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   placeholder="이 템플릿의 용도나 특징을 간단히 설명해주세요"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  만료일
+                  {/* {deadline && (
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                      {new Date(deadline).toLocaleString('ko-KR', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  )} */}
+                </label>
+                
+                {/* 빠른 선택 버튼들 */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {[
+                    { label: '1일 후', days: 1 },
+                    { label: '3일 후', days: 3 },
+                    { label: '7일 후', days: 7 },
+                  ].map((option) => {
+                    // 한국 시간 기준으로 현재 시간 계산
+                    const now = new Date();
+                    const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+                    const targetDate = new Date(koreaTime.getTime() + (option.days * 24 * 60 * 60 * 1000));
+                    const targetValue = targetDate.toISOString().slice(0, 16);
+                    const isSelected = deadline === targetValue;
+                    
+                    return (
+                      <button
+                        key={option.days}
+                        type="button"
+                        onClick={() => setDeadline(targetValue)}
+                        className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
+                          isSelected
+                            ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500 shadow-sm'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-sm'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                  {deadline && (
+                    <button
+                      type="button"
+                      onClick={() => setDeadline('')}
+                      className="px-4 py-2 text-sm font-medium bg-red-50 hover:bg-red-100 text-red-600 rounded-full transition-all duration-200 hover:shadow-sm"
+                    >
+                      초기화
+                    </button>
+                  )}
+                </div>
+                
+                <input
+                  type="datetime-local"
+                  value={deadline}
+                  min={(() => {
+                    const now = new Date();
+                    const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+                    return koreaTime.toISOString().slice(0, 16);
+                  })()}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  placeholder="직접 날짜와 시간을 선택하세요"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  편집자가 문서 편집을 완료해야 하는 마감일을 지정할 수 있습니다. 현재 시간 이후로만 선택 가능합니다.
+                </p>
               </div>
             </div>
           </div>

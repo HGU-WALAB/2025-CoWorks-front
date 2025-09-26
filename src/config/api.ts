@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
   TEMPLATES: {
     BASE: '/templates',
     BY_ID: (id: number | string) => `/templates/${id}`,
+    DUPLICATE: (id: number | string) => `/templates/${id}/duplicate`,
   },
   PDF: {
     CONVERT_TO_IMAGE: '/pdf/convert-to-image',
