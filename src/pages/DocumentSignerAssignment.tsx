@@ -81,7 +81,7 @@ const DocumentSignerAssignment: React.FC = () => {
   const canAssignReviewer = () => {
     if (!currentDocument || !user) return false;
     return currentDocument.tasks?.some(task =>
-      (task.role === 'CREATOR' || (task.role === 'EDITOR' && task.canAssignReviewer)) &&
+      (task.role === 'CREATOR' || (task.role === 'EDITOR')) &&
       task.assignedUserEmail === user.email
     );
   };

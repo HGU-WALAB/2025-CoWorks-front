@@ -704,7 +704,7 @@ const DocumentReview: React.FC = () => {
                             {editor.assignedUserEmail}
                           </div>
                         </div>
-                        {editor.canAssignReviewer && (
+                        {(
                           <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                             리뷰어 지정 권한
                           </div>

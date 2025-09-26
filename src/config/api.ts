@@ -4,7 +4,7 @@ export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/auth/login',
     SIGNUP: '/auth/signup',
-    HISNET_LOGIN: '/auth/login',
+    HISNET_LOGIN: '/auth/hisnet-login',
     ME: '/auth/me',
   },
   DOCUMENTS: {

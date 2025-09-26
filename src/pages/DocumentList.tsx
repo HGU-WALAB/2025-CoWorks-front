@@ -57,16 +57,6 @@ const DocumentList: React.FC = () => {
       filtered = filtered.filter(doc => doc.status === statusFilter);
     }
 
-    // 검토자 필터링 (검토 중인 문서에서 현재 사용자가 검토자인 경우만)
-    const reviewerParam = searchParams.get('reviewer');
-    if (reviewerParam === 'me' && statusFilter === 'REVIEWING' && currentUser) {
-      filtered = filtered.filter(doc => {
-        return doc.tasks?.some(task => 
-          task.role === 'REVIEWER' && task.assignedUserEmail === currentUser.email
-        ) || false;
-      });
-    }
-
     // 정렬
     const sorted = [...filtered].sort((a, b) => {
       switch (sortOption) {
