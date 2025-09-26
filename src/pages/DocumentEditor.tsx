@@ -229,6 +229,20 @@ const DocumentEditor: React.FC = () => {
     setIsResizing(false);
   }, []);
 
+  // 이메일이 비어있으면 사용자 정보 다시 불러오기 (회원가입 안한 유저가 문서 할당 받았을시에 사용)
+  useEffect(() => {
+    const { refreshUser, setAuthHeader } = useAuthStore.getState();
+    try {
+      setAuthHeader();
+    } catch {}
+    if (user && (!user.email || user.email.trim() === '')) {
+      console.log('DocumentEditor: user.email empty, refreshing user info...');
+      refreshUser().catch((e) => {
+        console.warn('DocumentEditor: refreshUser failed', e);
+      });
+    }
+  }, [user?.id]);
+
   // 마우스 이벤트 리스너 등록
   useEffect(() => {
     if (isResizing) {
