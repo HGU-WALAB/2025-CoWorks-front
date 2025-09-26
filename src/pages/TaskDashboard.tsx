@@ -148,14 +148,10 @@ const TaskDashboard: React.FC = () => {
       ['DRAFT', 'EDITING'].includes(doc.status)
     );
 
-    // 검토 중인 문서 (REVIEWING 상태이면서 현재 사용자가 검토자인 경우)
-    const reviewingTasks = myDocuments.filter(doc => {
-      if (doc.status !== 'REVIEWING') return false;
-      // 현재 사용자가 검토자(REVIEWER 역할)인지 확인
-      return doc.tasks?.some(task => 
-        task.role === 'REVIEWER' && task.assignedUserEmail === currentUserEmail
-      ) || false;
-    });
+    // 검토 중인 문서 (REVIEWING 상태)
+    const reviewingTasks = myDocuments.filter(doc => 
+      doc.status === 'REVIEWING'
+    );
 
     // 반려된 문서 (REJECTED 상태)
     const rejectedTasks = myDocuments.filter(doc => 
@@ -215,7 +211,7 @@ const TaskDashboard: React.FC = () => {
            </Link>
 
            {/* 2. 검토 중인 문서 - 노란색 */}
-           <Link to="/documents?status=REVIEWING&reviewer=me" className="block">
+           <Link to="/documents?status=REVIEWING" className="block">
              <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500 hover:bg-gray-50 transition-colors cursor-pointer">
                <div className="flex items-center">
                  <div className="flex-shrink-0">

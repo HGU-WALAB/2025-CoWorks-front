@@ -348,7 +348,7 @@ const DocumentReview: React.FC = () => {
   const canAssignReviewer = () => {
     if (!currentDocument || !user) return false;
     return currentDocument.tasks?.some(task =>
-      (task.role === 'CREATOR' || (task.role === 'EDITOR' && task.canAssignReviewer))
+      task.role === 'CREATOR' || task.role === 'EDITOR'
     );
   };
 
@@ -475,7 +475,6 @@ const DocumentReview: React.FC = () => {
         selectedReviewer,
         currentUser: currentUser?.email,
         token: token ? `${token.substring(0, 20)}...` : 'null',
-        canAssignReviewer: canAssignReviewer(),
         documentStatus: currentDocument.status,
         documentTasks: currentDocument.tasks
       });
@@ -603,7 +602,6 @@ const DocumentReview: React.FC = () => {
                 {currentDocument.tasks?.map((task, idx) => (
                   <li key={idx}>
                     {task.role}: {task.assignedUserEmail}
-                    {task.role === 'EDITOR' && ` (검토자 지정 권한: ${task.canAssignReviewer ? '있음' : '없음'})`}
                   </li>
                 )) || <li>작업 없음</li>}
               </ul>
@@ -1113,11 +1111,6 @@ const DocumentReview: React.FC = () => {
                             {editor.assignedUserEmail}
                           </div>
                         </div>
-                        {editor.canAssignReviewer && (
-                          <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                            리뷰어 지정 권한
-                          </div>
-                        )}
                       </div>
                     ))
                   }
