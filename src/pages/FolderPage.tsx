@@ -967,8 +967,33 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                                   month: 'numeric',
                                                   day: 'numeric',
                                                   hour: '2-digit',
-                                                  minute: '2-digit'
+                                                  minute: '2-digit',
+                                                  hour12: false
                                                 })}</span>
+                                                {document.deadline && (
+                                                  <span className={`flex items-center space-x-1 ${
+                                                    new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED ? 'text-red-600' : 'text-orange-600'
+                                                  }`}>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <span>
+                                                      만료일: {new Date(document.deadline).toLocaleString('ko-KR', {
+                                                        year: 'numeric',
+                                                        month: 'numeric',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        hour12: false
+                                                      })}
+                                                      {new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED && (
+                                                        <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-800 text-xs font-medium rounded">
+                                                          만료됨
+                                                        </span>
+                                                      )}
+                                                    </span>
+                                                  </span>
+                                                )}
                                               </div>
                                             </div>
                                           </div>

@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import WorkflowModal from '../components/WorkflowModal';
 // import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
-import { StatusBadge, getStatusText } from '../utils/documentStatusUtils';
+import { StatusBadge, getStatusText, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
@@ -488,7 +488,7 @@ const DocumentList: React.FC = () => {
                       })}</span>
                       </div>
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      <span>마지막 수정일: {new Date(document.updatedAt || document.createdAt).toLocaleString('ko-KR', { 
+                      <span>수정일: {new Date(document.updatedAt || document.createdAt).toLocaleString('ko-KR', { 
                         year: 'numeric', 
                         month: '2-digit', 
                         day: '2-digit', 
@@ -497,6 +497,29 @@ const DocumentList: React.FC = () => {
                         hour12: false
                       })}</span>
                     </div>
+                    {document.deadline && (
+                      <div className="flex items-center space-x-4 text-sm">
+                        <span className={`${
+                          new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED
+                            ? 'text-red-600 font-medium' 
+                            : 'text-orange-600'
+                        }`}>
+                          만료일: {new Date(document.deadline).toLocaleString('ko-KR', { 
+                            year: 'numeric', 
+                            month: '2-digit', 
+                            day: '2-digit', 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            hour12: false
+                          })}
+                          {new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED && (
+                            <span className="ml-1 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              만료됨
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
 
                     {/* 모든 담당자 정보 표시 */}
                     <div className="mt-3 space-y-1">
