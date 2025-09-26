@@ -37,7 +37,6 @@ export interface TaskInfo {
   role: string;
   assignedUserName: string;
   assignedUserEmail: string;
-  canAssignReviewer?: boolean;
   status?: string;
   createdAt: string;
   updatedAt: string;
