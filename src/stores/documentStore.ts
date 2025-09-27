@@ -23,6 +23,7 @@ interface DocumentStore {
   fetchDocuments: () => Promise<void>;
   createDocument: (request: DocumentCreateRequest) => Promise<Document>;
   getDocument: (id: number) => Promise<Document>;
+  markAsViewed: (id: number) => Promise<void>;
   updateDocument: (id: number, request: DocumentUpdateRequest) => Promise<Document>;
   updateDocumentSilently: (id: number, request: DocumentUpdateRequest) => Promise<boolean>; // 자동 저장용 - 성공 여부 반환
   deleteDocument: (id: number) => Promise<void>;
@@ -100,10 +101,46 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       });
       
       set({ currentDocument: document, loading: false });
+      
+      // 문서 조회 시 자동으로 markAsViewed 호출
+      try {
+        await get().markAsViewed(id);
+        console.log('📅 DocumentStore: 문서 조회 표시 성공:', id);
+        
+        // 조회 표시 후 현재 문서의 tasks 정보 업데이트 (NEW 태그 즉시 제거를 위해)
+        set((state) => {
+          if (state.currentDocument && state.currentDocument.id === id) {
+            const updatedDocument = {
+              ...state.currentDocument,
+              tasks: state.currentDocument.tasks?.map(task => ({
+                ...task,
+                isNew: false // 조회했으므로 더 이상 새로운 할당이 아님
+              }))
+            };
+            return { ...state, currentDocument: updatedDocument };
+          }
+          return state;
+        });
+        
+      } catch (viewError) {
+        console.warn('📅 DocumentStore: 문서 조회 표시 실패 (무시):', viewError);
+        // 조회 표시 실패는 무시하고 계속 진행
+      }
+      
       return document;
     } catch (error) {
       console.error('📄 DocumentStore: 문서 로드 실패:', { id, error });
       set({ error: '문서를 불러오는데 실패했습니다.', loading: false, currentDocument: null });
+      throw error;
+    }
+  },
+
+  markAsViewed: async (id: number) => {
+    try {
+      await axios.post(`${API_BASE_URL}${API_ENDPOINTS.DOCUMENTS.MARK_AS_VIEWED(id)}`);
+      console.log('📅 DocumentStore: 문서 조회 표시 성공:', id);
+    } catch (error) {
+      console.error('DocumentStore: Mark as viewed error:', error);
       throw error;
     }
   },
