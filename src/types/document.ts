@@ -37,9 +37,11 @@ export interface TaskInfo {
   role: string;
   assignedUserName: string;
   assignedUserEmail: string;
+  lastViewedAt?: string;
   status?: string;
   createdAt: string;
   updatedAt: string;
+  isNew?: boolean; // 새로운 할당인지 확인하는 필드
 }
 
 export interface TemplateInfo {
