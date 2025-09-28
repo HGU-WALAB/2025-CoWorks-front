@@ -13,15 +13,19 @@ import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 interface TableEditComponentProps {
   tableInfo: { rows: number; cols: number; columnWidths?: number[] };
   tableData: any;
+  fieldId: string;
   onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
   onBulkInput?: () => void;
+  onCellKeyDown?: (fieldId: string, rowIndex: number, colIndex: number, event: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 const TableEditComponent: React.FC<TableEditComponentProps> = ({
   tableInfo,
   tableData,
+  fieldId,
   onCellChange,
-  onBulkInput
+  onBulkInput,
+  onCellKeyDown
 }) => {
   return (
     <div className="space-y-2">
@@ -53,14 +57,20 @@ const TableEditComponent: React.FC<TableEditComponentProps> = ({
                   } catch (e) {
                     console.error('테이블 셀 값 파싱 실패:', e);
                   }
-                  
+
                   return (
                     <TableCell
                       key={`${rowIndex}-${colIndex}`}
                       initialValue={cellValue}
                       rowIndex={rowIndex}
                       colIndex={colIndex}
+                      tableRows={tableInfo.rows}
+                      tableCols={tableInfo.cols}
+                      fieldId={fieldId}
                       onCellChange={onCellChange}
+                      onCellKeyDown={(row, col, event) => {
+                        onCellKeyDown?.(fieldId, row, col, event);
+                      }}
                     />
                   );
                 })}
@@ -78,34 +88,76 @@ interface TableCellProps {
   initialValue: string;
   rowIndex: number;
   colIndex: number;
+  tableRows: number;
+  tableCols: number;
+  fieldId: string;
   onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
+  onCellKeyDown?: (rowIndex: number, colIndex: number, event: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 const TableCell: React.FC<TableCellProps> = ({
   initialValue,
   rowIndex,
   colIndex,
-  onCellChange
+  tableRows,
+  tableCols,
+  fieldId,
+  onCellChange,
+  onCellKeyDown
 }) => {
   const [value, setValue] = useState(initialValue);
-  
+
   // initialValue가 변경될 때만 상태 업데이트
   useEffect(() => {
     setValue(initialValue);
   }, [initialValue]);
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setValue(newValue); // 즉시 로컬 상태 업데이트
     onCellChange(rowIndex, colIndex, newValue); // 부모로 변경사항 전달
   };
-  
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+
+      // 다음 셀 계산
+      let nextRow = rowIndex;
+      let nextCol = colIndex + 1;
+
+      // 다음 열이 테이블 범위를 벗어나면 다음 행의 첫 번째 열로
+      if (nextCol >= tableCols) {
+        nextCol = 0;
+        nextRow = rowIndex + 1;
+      }
+
+      // 다음 행이 테이블 범위를 벗어나면 다음 필드로 이동
+      if (nextRow >= tableRows) {
+        // 부모 컴포넌트에 다음 필드로 이동 요청
+        onCellKeyDown?.(rowIndex, colIndex, e);
+        return;
+      }
+
+      // 같은 테이블 내 다음 셀로 포커스 이동
+      setTimeout(() => {
+        const nextCellInput = document.querySelector(`input[data-cell-id="${fieldId}-${nextRow}-${nextCol}"]`) as HTMLInputElement;
+        if (nextCellInput) {
+          nextCellInput.focus();
+          nextCellInput.select();
+        }
+      }, 0);
+    }
+  };
+
   return (
     <td className="border border-gray-300 p-1" style={{ minWidth: '120px', minHeight: '36px' }}>
       <input
         type="text"
         value={value}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        data-cell-id={`${fieldId}-${rowIndex}-${colIndex}`}
         className="w-full h-full px-2 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
         placeholder={`${rowIndex + 1}-${colIndex + 1}`}
         style={{ minHeight: '28px' }}
@@ -1093,6 +1145,120 @@ const DocumentEditor: React.FC = () => {
     }
   }, [templateFields, loadDocumentFieldValues]);
 
+  // 엔터키로 다음 필드 이동 핸들러
+  const handleFieldKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>, currentFieldId: string) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+
+      // 현재 필드의 인덱스 찾기
+      const currentIndex = coordinateFields.findIndex(field => field.id === currentFieldId);
+
+      if (currentIndex !== -1) {
+        // 다음 입력 가능한 필드 찾기 (테이블이나 서명 필드가 아닌 일반 입력 필드)
+        let nextIndex = currentIndex + 1;
+        let nextField = null;
+
+        while (nextIndex < coordinateFields.length) {
+          const field = coordinateFields[nextIndex];
+          // 일반 텍스트나 날짜 필드만 포커스 이동 대상
+          if (field.type !== 'editor_signature' && !field.tableData &&
+              (!field.value || !field.value.includes('rows'))) {
+            nextField = field;
+            break;
+          }
+          nextIndex++;
+        }
+
+        if (nextField) {
+          // 다음 필드로 포커스 이동
+          setTimeout(() => {
+            const nextInput = document.querySelector(`input[data-field-id="${nextField.id}"]`) as HTMLInputElement;
+            if (nextInput) {
+              nextInput.focus();
+              nextInput.select();
+            }
+          }, 0);
+        } else {
+          // 마지막 필드인 경우 첫 번째 필드로 이동
+          const firstField = coordinateFields.find(field =>
+            field.type !== 'editor_signature' && !field.tableData &&
+            (!field.value || !field.value.includes('rows'))
+          );
+
+          if (firstField) {
+            setTimeout(() => {
+              const firstInput = document.querySelector(`input[data-field-id="${firstField.id}"]`) as HTMLInputElement;
+              if (firstInput) {
+                firstInput.focus();
+                firstInput.select();
+              }
+            }, 0);
+          }
+        }
+      }
+    }
+  }, [coordinateFields]);
+
+  // 테이블 셀에서 Enter 키 핸들링 (다음 필드로 이동)
+  const handleTableCellKeyDown = useCallback((
+    fieldId: string,
+    tableInfo: { rows: number; cols: number },
+    rowIndex: number,
+    colIndex: number,
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+
+      // 현재 테이블 필드의 인덱스 찾기
+      const currentFieldIndex = coordinateFields.findIndex(field => field.id === fieldId);
+
+      if (currentFieldIndex !== -1) {
+        // 다음 입력 가능한 필드 찾기 (테이블이나 서명 필드가 아닌 일반 입력 필드)
+        let nextIndex = currentFieldIndex + 1;
+        let nextField = null;
+
+        while (nextIndex < coordinateFields.length) {
+          const field = coordinateFields[nextIndex];
+          // 일반 텍스트나 날짜 필드만 포커스 이동 대상
+          if (field.type !== 'editor_signature' && !field.tableData &&
+              (!field.value || !field.value.includes('rows'))) {
+            nextField = field;
+            break;
+          }
+          nextIndex++;
+        }
+
+        if (nextField) {
+          // 다음 필드로 포커스 이동
+          setTimeout(() => {
+            const nextInput = document.querySelector(`input[data-field-id="${nextField.id}"]`) as HTMLInputElement;
+            if (nextInput) {
+              nextInput.focus();
+              nextInput.select();
+            }
+          }, 0);
+        } else {
+          // 마지막 필드인 경우 첫 번째 필드로 이동
+          const firstField = coordinateFields.find(field =>
+            field.type !== 'editor_signature' && !field.tableData &&
+            (!field.value || !field.value.includes('rows'))
+          );
+
+          if (firstField) {
+            setTimeout(() => {
+              const firstInput = document.querySelector(`input[data-field-id="${firstField.id}"]`) as HTMLInputElement;
+              if (firstInput) {
+                firstInput.focus();
+                firstInput.select();
+              }
+            }, 0);
+          }
+        }
+      }
+    }
+  }, [coordinateFields]);
+
   // 키보드 단축키 (Ctrl+S / Cmd+S로 저장)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1928,7 +2094,9 @@ const DocumentEditor: React.FC = () => {
                     <TableEditComponent
                       tableInfo={tableInfo}
                       tableData={tableData}
+                      fieldId={field.id}
                       onBulkInput={() => handleTableBulkInputOpen(field.id)}
+                      onCellKeyDown={(rowIndex, colIndex, event) => handleTableCellKeyDown(field.id, tableInfo, rowIndex, colIndex, event)}
                       onCellChange={(rowIndex, colIndex, newValue) => {
                         // coordinateFields 상태 업데이트
                         setCoordinateFields(prev => {
@@ -1985,6 +2153,7 @@ const DocumentEditor: React.FC = () => {
                       value={field.value || ''}
                       data-field-id={field.id}
                       onChange={(e) => handleCoordinateFieldChange(field.id, e.target.value)}
+                      onKeyDown={(e) => handleFieldKeyDown(e, field.id)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   ) : (
@@ -1993,6 +2162,7 @@ const DocumentEditor: React.FC = () => {
                       value={field.value || ''}
                       data-field-id={field.id}
                       onChange={(e) => handleCoordinateFieldChange(field.id, e.target.value)}
+                      onKeyDown={(e) => handleFieldKeyDown(e, field.id)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder={`${field.label} 입력`}
                     />
