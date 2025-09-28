@@ -15,7 +15,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigation = [
     { name: '작업 현황', href: '/tasks' },
     { name: '템플릿 관리', href: '/templates' },
-    { name: '작업 관리', href: '/documents' },
+    { name: '문서 관리', href: '/documents' },
     { name: '폴더 관리', href: '/folders' },
   ];
 

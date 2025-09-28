@@ -50,7 +50,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">작업 현황</h2>
+            <h2 className="text-xl font-bold text-gray-800">문서 현황</h2>
             <p className="text-sm text-gray-600 mt-1">
               {document.title}
             </p>
