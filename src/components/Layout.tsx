@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import NotificationDropdown from './NotificationDropdown';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -56,6 +57,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             )}
 
             <div className="flex items-center space-x-4">
+              {isAuthenticated && <NotificationDropdown />}
+              
               {isAuthenticated ? (
                 <div className="relative">
                   <button
