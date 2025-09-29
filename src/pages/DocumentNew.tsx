@@ -279,48 +279,56 @@ const DocumentNew: React.FC = () => {
             )}
 
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  편집자
-                </label>
-                <div className="flex flex-col items-end space-y-2">
+              <div className="mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    편집자
+                  </label>
                   <div className="flex items-center space-x-2">
                     <button
-                      type="button"
-                      onClick={() => {
-                        setCreationMode('single');
-                        // 단일 모드로 전환 시 업로드 상태 초기화
-                        setStagingId(null);
-                        setUploadSummary(null);
-                        setUploadedUsers([]);
-                      }}
-                      className={`px-3 py-1 rounded border text-sm ${creationMode === 'single' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                        type="button"
+                        onClick={() => {
+                          setCreationMode('single');
+                          setStagingId(null);
+                          setUploadSummary(null);
+                          setUploadedUsers([]);
+                        }}
+                        className={`px-3 py-1 rounded border text-sm ${
+                            creationMode === 'single'
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-gray-700 border-gray-300'
+                        }`}
                     >
                       개인 문서 생성
                     </button>
                     {hasFolderAccess && (
-                      <button
-                        type="button"
-                        onClick={() => setCreationMode('bulk')}
-                        className={`px-3 py-1 rounded border text-sm ${creationMode === 'bulk' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
-                      >
-                        일괄 문서 생성
-                      </button>
+                        <button
+                            type="button"
+                            onClick={() => setCreationMode('bulk')}
+                            className={`px-3 py-1 rounded border text-sm ${
+                                creationMode === 'bulk'
+                                    ? 'bg-blue-600 text-white border-blue-600'
+                                    : 'bg-white text-gray-700 border-gray-300'
+                            }`}
+                        >
+                          일괄 문서 생성
+                        </button>
                     )}
                   </div>
-                  {hasFolderAccess && creationMode === 'bulk' && (
-                    <UploadExcelButton 
-                      templateId={selectedTemplateId}
-                      onUploadComplete={(newStagingId, summary) => {
-                        setStagingId(newStagingId);
-                        setUploadSummary(summary);
-                        console.log('Excel upload completed:', { stagingId: newStagingId, summary });
-                      }}
-                    />
-                  )}
                 </div>
+                {hasFolderAccess && creationMode === 'bulk' && (
+                    <div className="flex justify-end">
+                      <UploadExcelButton
+                          templateId={selectedTemplateId}
+                          onUploadComplete={(newStagingId, summary) => {
+                            setStagingId(newStagingId);
+                            setUploadSummary(summary);
+                            console.log('Excel upload completed:', { stagingId: newStagingId, summary });
+                          }}
+                      />
+                    </div>
+                )}
               </div>
-
               {creationMode === 'single' && (
                 <>
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
