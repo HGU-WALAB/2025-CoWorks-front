@@ -15,12 +15,14 @@ export type { Document, DocumentData, TaskInfo, TemplateInfo, DocumentStatusLog 
 
 interface DocumentStore {
   documents: Document[];
+  todoDocuments: Document[];
   currentDocument: Document | null;
   loading: boolean;
   error: string | null;
 
   // Actions
   fetchDocuments: () => Promise<void>;
+  fetchTodoDocuments: () => Promise<void>;
   createDocument: (request: DocumentCreateRequest) => Promise<Document>;
   getDocument: (id: number) => Promise<Document>;
   markAsViewed: (id: number) => Promise<void>;
@@ -40,6 +42,7 @@ import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
 
 export const useDocumentStore = create<DocumentStore>((set, get) => ({
   documents: [],
+  todoDocuments: [],
   currentDocument: null,
   loading: false,
   error: null,
@@ -53,10 +56,25 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       const response = await axios.get(`${API_BASE_URL}/documents`);
       console.log('DocumentStore: Documents fetched successfully:', response.data);
       set({ documents: response.data, loading: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('DocumentStore: Error fetching documents:', error);
-      console.error('DocumentStore: Error response:', error.response?.data);
+      const axiosError = error as { response?: { data?: unknown } };
+      console.error('DocumentStore: Error response:', axiosError.response?.data);
       set({ error: '문서를 불러오는데 실패했습니다.', loading: false });
+    }
+  },
+
+  fetchTodoDocuments: async () => {
+    try {
+      console.log('DocumentStore: Fetching todo documents...');
+      const response = await axios.get(`${API_BASE_URL}/documents/todo`);
+      console.log('DocumentStore: Todo documents fetched successfully:', response.data);
+      set({ todoDocuments: response.data });
+    } catch (error: unknown) {
+      console.error('DocumentStore: Error fetching todo documents:', error);
+      const axiosError = error as { response?: { data?: unknown } };
+      console.error('DocumentStore: Error response:', axiosError.response?.data);
+      set({ error: '할 일 문서를 불러오는데 실패했습니다.' });
     }
   },
 
@@ -160,9 +178,10 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       }));
       
       return updatedDocument;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('DocumentStore: Update error:', error);
-      console.error('DocumentStore: Update response:', error.response?.data);
+      const axiosError = error as { response?: { data?: unknown } };
+      console.error('DocumentStore: Update response:', axiosError.response?.data);
       set({ error: '문서 수정에 실패했습니다.', loading: false });
       throw error;
     }
@@ -173,7 +192,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     try {
       await axios.put(`${API_BASE_URL}/documents/${id}`, request);
       return true; // 성공
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('DocumentStore: Silent update error:', error);
       return false; // 실패
     }
@@ -194,9 +213,10 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       }));
       
       return updatedDocument;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('DocumentStore: Submit for review error:', error);
-      console.error('DocumentStore: Submit for review response:', error.response?.data);
+      const axiosError = error as { response?: { data?: unknown } };
+      console.error('DocumentStore: Submit for review response:', axiosError.response?.data);
       set({ error: '검토 요청에 실패했습니다.', loading: false });
       throw error;
     }
@@ -266,9 +286,10 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       window.URL.revokeObjectURL(url);
       
       set({ loading: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('DocumentStore: Download PDF error:', error);
-      console.error('DocumentStore: Download PDF response:', error.response?.data);
+      const axiosError = error as { response?: { data?: unknown } };
+      console.error('DocumentStore: Download PDF response:', axiosError.response?.data);
       set({ error: 'PDF 다운로드에 실패했습니다.', loading: false });
       throw error;
     }
@@ -296,7 +317,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       }));
       
       console.log('✅ DocumentStore: 문서 삭제 완료:', id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('DocumentStore: Delete error:', error);
       set({ error: '문서 삭제에 실패했습니다.', loading: false });
       throw error;

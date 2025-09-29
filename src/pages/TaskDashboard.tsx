@@ -4,7 +4,7 @@ import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 
 const TaskDashboard: React.FC = () => {
-  const { documents, fetchDocuments, loading } = useDocumentStore();
+  const { documents, todoDocuments, fetchDocuments, fetchTodoDocuments, loading } = useDocumentStore();
   const { user, isAuthenticated } = useAuthStore();
   const location = useLocation();
 
@@ -15,10 +15,11 @@ const TaskDashboard: React.FC = () => {
     if (isAuthenticated && currentUserEmail) {
       console.log('TaskDashboard: Fetching documents for user:', currentUserEmail);
       fetchDocuments();
+      fetchTodoDocuments();
     } else {
       console.log('TaskDashboard: Not authenticated or no user email', { isAuthenticated, currentUserEmail });
     }
-  }, [fetchDocuments, isAuthenticated, currentUserEmail]);
+  }, [fetchDocuments, fetchTodoDocuments, isAuthenticated, currentUserEmail]);
 
   // 라우터 location이 변경될 때마다 데이터 새로고침 (페이지 이동 감지)
   useEffect(() => {
@@ -26,8 +27,9 @@ const TaskDashboard: React.FC = () => {
     if (location.pathname === '/tasks' && isAuthenticated && currentUserEmail) {
       console.log('📍 TaskDashboard: Refreshing due to location change...');
       fetchDocuments();
+      fetchTodoDocuments();
     }
-  }, [location, isAuthenticated, currentUserEmail, fetchDocuments]);
+  }, [location, isAuthenticated, currentUserEmail, fetchDocuments, fetchTodoDocuments]);
 
   // 컴포넌트가 마운트될 때마다 강제로 데이터 새로고침
   useEffect(() => {
@@ -35,6 +37,7 @@ const TaskDashboard: React.FC = () => {
     if (isAuthenticated && currentUserEmail) {
       console.log('🎯 TaskDashboard: Fetching on mount...');
       fetchDocuments();
+      fetchTodoDocuments();
     }
 
     return () => {
@@ -49,6 +52,7 @@ const TaskDashboard: React.FC = () => {
       if (!document.hidden && isAuthenticated && currentUserEmail) {
         console.log('TaskDashboard: Page became visible, refreshing...');
         fetchDocuments();
+        fetchTodoDocuments();
       }
     };
 
@@ -56,6 +60,7 @@ const TaskDashboard: React.FC = () => {
       if (isAuthenticated && currentUserEmail) {
         console.log('TaskDashboard: Window focused, refreshing...');
         fetchDocuments();
+        fetchTodoDocuments();
       }
     };
 
@@ -65,6 +70,7 @@ const TaskDashboard: React.FC = () => {
       if (isAuthenticated && currentUserEmail) {
         console.log('📄 TaskDashboard: Refreshing after document creation...');
         fetchDocuments();
+        fetchTodoDocuments();
       }
     };
 
@@ -74,6 +80,7 @@ const TaskDashboard: React.FC = () => {
       if (isAuthenticated && currentUserEmail) {
         console.log('🔄 TaskDashboard: Force refreshing...');
         fetchDocuments();
+        fetchTodoDocuments();
       }
     };
 
@@ -88,7 +95,7 @@ const TaskDashboard: React.FC = () => {
       window.removeEventListener('documentCreated', handleDocumentCreated as EventListener);
       window.removeEventListener('forceRefreshTasks', handleForceRefresh);
     };
-  }, [isAuthenticated, currentUserEmail, fetchDocuments]);
+  }, [isAuthenticated, currentUserEmail, fetchDocuments, fetchTodoDocuments]);
 
   // 디버깅을 위한 로그
   useEffect(() => {
@@ -117,7 +124,7 @@ const TaskDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">로그인이 필요합니다</h2>
-            <p className="text-gray-600">작업 현황을 확인하려면 먼저 로그인해주세요.</p>
+            <p className="text-gray-600">문서 현황을 확인하려면 먼저 로그인해주세요.</p>
           </div>
         </div>
     );
@@ -129,7 +136,7 @@ const TaskDashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">작업 현황을 불러오는 중...</p>
+            <p className="text-gray-600">문서 현황을 불러오는 중...</p>
           </div>
         </div>
     );
@@ -173,16 +180,169 @@ const TaskDashboard: React.FC = () => {
 
   const tasks = getUserTasks();
 
+  // TodoList 컴포넌트
+  const TodoList = () => {
+    if (todoDocuments.length === 0) {
+      return (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-center py-8">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">모든 할 일을 완료했습니다!</h3>
+            <p className="text-gray-500">처리해야 할 문서가 없습니다.</p>
+          </div>
+        </div>
+      );
+    }
 
+    return (
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center">
+            <h2 className="text-2xl font-semibold text-gray-900">To Do List</h2>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 ml-2">
+              {todoDocuments.length}개
+            </span>
+          </div>
+        </div>
+        <div className="divide-y divide-gray-200">
+          {todoDocuments.map((doc) => {
+            const myTask = doc.tasks?.find(task => task.assignedUserEmail === currentUserEmail);
+            const isNewTask = myTask?.isNew;
+            const taskRole = myTask?.role;
+            
+            // 상태에 따른 색상과 아이콘 설정
+            const getStatusInfo = (status: string) => {
+              switch (status) {
+                case 'DRAFT':
+                case 'EDITING':
+                  return {
+                    color: 'blue',
+                    bgColor: 'bg-blue-50',
+                    textColor: 'text-blue-700',
+                    borderColor: 'border-blue-200',
+                    icon: '✏️',
+                    label: '문서 편집 필요'
+                  };
+                case 'REVIEWING':
+                  return {
+                    color: 'yellow',
+                    bgColor: 'bg-yellow-50',
+                    textColor: 'text-yellow-700',
+                    borderColor: 'border-yellow-200',
+                    icon: '👀',
+                    label: '문서 검토 필요'
+                  };
+                case 'REJECTED':
+                  return {
+                    color: 'red',
+                    bgColor: 'bg-red-50',
+                    textColor: 'text-red-700',
+                    borderColor: 'border-red-200',
+                    icon: '❌',
+                    label: '문서 수정 필요'
+                  };
+                default:
+                  return {
+                    color: 'gray',
+                    bgColor: 'bg-gray-50',
+                    textColor: 'text-gray-700',
+                    borderColor: 'border-gray-200',
+                    icon: '📄',
+                    label: '처리 필요'
+                  };
+              }
+            };
 
+            const statusInfo = getStatusInfo(doc.status);
+            const deadlineDate = doc.deadline ? new Date(doc.deadline) : null;
+            const isOverdue = deadlineDate && deadlineDate < new Date();
+
+            return (
+              <div key={doc.id} className="p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <Link 
+                        to={`/documents/${doc.id}`}
+                        className="text-2xl font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+                      >
+                        {doc.title || doc.templateName}
+                      </Link>
+                      {isNewTask && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 animate-pulse">
+                          NEW
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor}`}>
+                        {statusInfo.icon} {statusInfo.label}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
+                      <span>템플릿: {doc.templateName}</span>
+                      {taskRole && (
+                        <span className="px-2 py-1 bg-gray-100 rounded-md text-xs">
+                          {taskRole}
+                        </span>
+                      )}
+                      {deadlineDate && (
+                        <span className={`px-2 py-1 rounded-md text-xs ${
+                          isOverdue 
+                            ? 'bg-red-100 text-red-700' 
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          마감일: {deadlineDate.toLocaleDateString()}
+                          {isOverdue && ' (지연)'}
+                        </span>
+                      )}
+                      {/* 액션 버튼을 taskRole 오른쪽으로 이동 */}
+                      <span className="ml-auto flex items-center space-x-2">
+                        <Link
+                          to={`/documents/${doc.id}`}
+                          className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                        >
+                          {doc.status === 'REVIEWING' ? '검토하기' : 
+                           doc.status === 'REJECTED' ? '수정하기' : '편집하기'}
+                        </Link>
+                        {doc.status === 'REVIEWING' && (
+                          <Link
+                            to={`/documents/${doc.id}/review`}
+                            className="inline-flex items-center px-4 py-2.5 border border-gray-300 text-base leading-5 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                          >
+                            상세 검토
+                          </Link>
+                        )}
+                      </span>
+                    </div>
+                    {/* 생성일/수정일을 템플릿 라인 아래로 이동 */}
+                    <div className="text-xs text-gray-500 space-x-4 mt-2">
+                      <span>생성일: {new Date(doc.createdAt).toLocaleDateString()}</span>
+                      {doc.updatedAt && (
+                        <span>수정일: {new Date(doc.updatedAt).toLocaleDateString()}</span>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   // 문서 현황 카드 UI
   return (
       <div className="space-y-8">
         {/* 페이지 헤더 */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">작업 현황</h1>
-          <p className="mt-2 text-gray-500">내가 관련된 모든 작업들을 확인하고 관리하세요</p>
+          <h1 className="text-3xl font-bold text-gray-900">문서 현황</h1>
+          <p className="mt-2 text-gray-500">내가 관련된 모든 문서들을 확인하고 관리하세요</p>
         </div>
 
          {/* 통계 카드 */}
@@ -281,9 +441,13 @@ const TaskDashboard: React.FC = () => {
          </div>
 
 
-        {/* 작업 생성 방법 섹션 */}
+        {/* TodoList 섹션 */}
+        <TodoList />
+
+        
+        {/* 문서 생성 방법 섹션 */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-6 text-center">작업 생성 방법</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-6 text-center">문서 생성 방법</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Step 1 */}
             <div className="bg-blue-50 rounded-xl p-6 text-center transition-transform hover:-translate-y-1 hover:shadow-lg">
