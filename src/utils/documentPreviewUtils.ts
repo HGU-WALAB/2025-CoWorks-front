@@ -1,4 +1,5 @@
 import { Document } from '../types/document';
+import { API_BASE_URL } from '../config/api';
 
 export interface ProcessedSignatureField {
   id: string;
@@ -71,5 +72,5 @@ export const getPdfImageUrl = (document: Document): string => {
   }
 
   const filename = document.template.pdfImagePath.split('/').pop();
-  return `http://localhost:8080/api/files/pdf-template-images/${filename}`;
+  return `${API_BASE_URL.replace('/api', '')}/api/files/pdf-template-images/${filename}`;
 };

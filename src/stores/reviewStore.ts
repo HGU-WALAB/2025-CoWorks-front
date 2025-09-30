@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 export interface ReviewRequest {
   signatureText?: string;
@@ -17,8 +18,6 @@ interface ReviewStore {
   canReview: (documentId: number) => Promise<boolean>;
   clearError: () => void;
 }
-
-const API_BASE_URL = 'http://localhost:8080/api';
 
 export const useReviewStore = create<ReviewStore>((set, get) => ({
   loading: false,
