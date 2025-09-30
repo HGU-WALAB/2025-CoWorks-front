@@ -335,8 +335,8 @@ const DocumentSignerAssignment: React.FC = () => {
 
       // 작업 대시보드로 이동
       setTimeout(() => {
-        navigate('/documents');
-      }, 400);
+        navigate('/tasks');
+      });
 
     } catch (error) {
       console.error('서명자 지정 완료 실패:', error);
@@ -468,7 +468,7 @@ const DocumentSignerAssignment: React.FC = () => {
             {isCompletingAssignment ? '처리 중...' : '서명자 지정 완료'}
           </button>
           <button
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate(-1)}
             className="px-4 py-2 text-gray-600 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
           >
             돌아가기

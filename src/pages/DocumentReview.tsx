@@ -213,7 +213,7 @@ const DocumentReview: React.FC = () => {
 
       // 작업 대시보드로 이동
       setTimeout(() => {
-        navigate('/documents');
+        navigate(-1);
       }, 400);
 
     } catch (error: any) {
@@ -505,22 +505,25 @@ const DocumentReview: React.FC = () => {
                   >
                     {isEditorSignature ? (
                       // 편집자 서명 필드 렌더링
-                      <div className="w-full h-full p-2 flex flex-col items-center justify-center">
-                        <div className="text-xs font-medium mb-1 text-green-700 truncate">
-                          ✍️ {field.label}
-                          {field.required && <span className="text-red-500">*</span>}
-                        </div>
+                      <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
                         {field.value && field.value.startsWith('data:image') ? (
-                          <div className="flex items-center justify-center">
-                            <img
-                              src={field.value}
-                              alt="편집자 서명"
-                              className="max-w-full h-8 border border-transparent rounded bg-transparent"
-                            />
+                          <img
+                            src={field.value}
+                            alt="편집자 서명"
+                            className="max-w-full h-full object-contain bg-transparent"
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              background: 'transparent'
+                            }}
+                          />
+                        ) : field.value ? (
+                          <div className="text-xs text-gray-600 text-center">
+                            서명됨
                           </div>
                         ) : (
-                          <div className="text-xs text-gray-600 mt-1 text-center">
-                            {field.value ? '서명됨' : '미서명'}
+                          <div className="text-xs text-gray-500 text-center">
+                            미서명
                           </div>
                         )}
                       </div>
