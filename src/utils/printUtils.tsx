@@ -537,6 +537,113 @@ export interface CaptureToImageOptions {
 }
 
 /**
+ * 여러 DOM 요소를 캡처하여 하나의 PDF로 합치는 함수
+ */
+export const captureMultiplePagesToPDF = async (
+  pageElements: HTMLElement[],
+  documentTitle: string = '문서',
+  pdfPageWidth: number = 210,
+  pdfPageHeight: number = 297
+): Promise<void> => {
+  if (!pageElements || pageElements.length === 0) {
+    throw new Error('캡처할 페이지가 없습니다.');
+  }
+
+  try {
+
+    // PDF 생성
+    const pdf = new jsPDF({
+      orientation: pdfPageHeight > pdfPageWidth ? 'portrait' : 'landscape',
+      unit: 'mm',
+      format: [pdfPageWidth, pdfPageHeight]
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+    // 각 페이지를 순회하며 캡처
+    for (let i = 0; i < pageElements.length; i++) {
+      const pageElement = pageElements[i];
+
+      // 캡처 옵션 설정
+      const captureOptions = {
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        scale: 3,
+        width: pageElement.scrollWidth,
+        height: pageElement.scrollHeight,
+        scrollX: 0,
+        scrollY: 0,
+        letterRendering: true,
+        logging: false,
+        removeContainer: true,
+        imageTimeout: 15000,
+        onclone: (clonedDoc: Document) => {
+          const style = clonedDoc.createElement('style');
+          style.textContent = `
+            * {
+              -webkit-font-smoothing: antialiased !important;
+              -moz-osx-font-smoothing: grayscale !important;
+              font-variant-ligatures: none !important;
+              text-rendering: optimizeLegibility !important;
+              font-feature-settings: "kern" 1 !important;
+              line-height: 1.4 !important;
+              overflow: visible !important;
+            }
+            div, span, p, td {
+              white-space: nowrap !important;
+              overflow: visible !important;
+              text-overflow: clip !important;
+            }
+          `;
+          clonedDoc.head.appendChild(style);
+        }
+      };
+
+      // DOM을 캔버스로 캡처
+      const canvas = await html2canvas(pageElement, captureOptions);
+
+      // 캔버스를 이미지 데이터로 변환
+      const imageData = canvas.toDataURL('image/png');
+
+      // 첫 페이지가 아니면 새 페이지 추가
+      if (i > 0) {
+        pdf.addPage();
+      }
+
+      // 이미지 비율 계산
+      const imageAspectRatio = canvas.width / canvas.height;
+      const pdfAspectRatio = pdfWidth / pdfHeight;
+
+      let imgWidth = pdfWidth;
+      let imgHeight = pdfHeight;
+
+      // 비율에 맞춰 크기 조정
+      if (imageAspectRatio > pdfAspectRatio) {
+        imgHeight = pdfWidth / imageAspectRatio;
+      } else {
+        imgWidth = pdfHeight * imageAspectRatio;
+      }
+
+      // 이미지를 PDF 중앙에 배치
+      const x = (pdfWidth - imgWidth) / 2;
+      const y = (pdfHeight - imgHeight) / 2;
+
+      // PDF에 이미지 추가
+      pdf.addImage(imageData, 'PNG', x, y, imgWidth, imgHeight);
+    }
+
+    // PDF 저장
+    const filename = `${documentTitle}_${new Date().toISOString().split('T')[0]}.pdf`;
+    pdf.save(filename);
+
+  } catch (error) {
+    throw new Error(`인쇄 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+  }
+};
+
+/**
  * DOM 요소를 캡처하여 이미지로 변환 후 PDF로 저장하는 함수
  * 미리보기 모달에서 보이는 내용 그대로를 PDF로 저장
  */
