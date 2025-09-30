@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDocumentStore, type Document } from '../stores/documentStore';
+import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { SignatureModal } from '../components/SignatureModal';
+import { API_BASE_URL } from '../config/api';
+import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 
@@ -170,7 +172,7 @@ const DocumentReview: React.FC = () => {
       console.log('📤 요청 본문:', requestBody);
 
       const response = await axios.post(
-        `http://localhost:8080/api/documents/${currentDocument.id}/approve`,
+        `${API_BASE_URL}/documents/${currentDocument.id}/approve`,
         requestBody,
         {
           headers: {
@@ -209,10 +211,10 @@ const DocumentReview: React.FC = () => {
 
       alert('✅ 문서가 승인되었습니다! 서명이 문서에 추가되었습니다.');
 
-      // 사용자가 직접 페이지를 이동할 수 있도록 자동 이동 제거
-      // setTimeout(() => {
-      //   navigate('/tasks');
-      // }, 2000);
+      // 작업 대시보드로 이동
+      setTimeout(() => {
+        navigate('/documents');
+      }, 400);
 
     } catch (error: any) {
       console.error('❌ 승인 실패:', error);
@@ -240,7 +242,7 @@ const DocumentReview: React.FC = () => {
       const { token } = useAuthStore.getState();
 
       await axios.post(
-        `http://localhost:8080/api/documents/${currentDocument.id}/reject`,
+        `${API_BASE_URL}/documents/${currentDocument.id}/reject`,
         {
           reason,
           reviewerEmail: user.email
@@ -254,35 +256,33 @@ const DocumentReview: React.FC = () => {
 
       alert('❌ 문서가 반려되었습니다.');
       setShowRejectModal(false);
-      navigate('/tasks');
+      navigate('/documents');
     } catch (error) {
       console.error('반려 실패:', error);
       alert('반려 처리에 실패했습니다.');
     }
   };
 
-  // PDF 이미지 URL 생성
-  const getPdfImageUrl = (document: Document) => {
-    console.log('🔍 DocumentReview - PDF 이미지 URL 생성:', {
-      template: document.template,
-      pdfImagePath: document.template?.pdfImagePath
-    });
+  // PDF 페이지 관리 훅 사용
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages: getTotalPages,
+    pdfPages,
+    nextPage,
+    previousPage,
+    hasNextPage,
+    hasPreviousPage
+  } = usePdfPages(currentDocument?.template, []);
 
-    if (!document.template?.pdfImagePath) {
-      console.warn('⚠️ DocumentReview - PDF 이미지 경로가 없습니다');
-      return '';
+  // PDF 이미지 URL 생성 (현재 페이지에 맞게)
+  const getPdfImageUrl = () => {
+    if (pdfPages.length === 0) return '';
+    const pageIndex = currentPage - 1;
+    if (pageIndex >= 0 && pageIndex < pdfPages.length) {
+      return `${API_BASE_URL.replace('/api', '')}${pdfPages[pageIndex]}`;
     }
-
-    const filename = document.template.pdfImagePath.split('/').pop();
-    const url = `http://localhost:8080/api/files/pdf-template-images/${filename}`;
-
-    console.log('📄 DocumentReview - 생성된 PDF 이미지 URL:', {
-      originalPath: document.template.pdfImagePath,
-      filename: filename,
-      url: url
-    });
-
-    return url;
+    return '';
   };
 
   if (loading) {
@@ -380,7 +380,30 @@ const DocumentReview: React.FC = () => {
       {/* 메인 컨텐츠 - 헤더 아래 고정 레이아웃 */}
       <div className="fixed left-0 right-0 bottom-0 flex w-full top-24">
         {/* 왼쪽 패널 - PDF 뷰어 */}
-        <div className="flex-1 bg-gray-100 overflow-auto flex justify-center items-start p-4">
+        <div className="flex-1 bg-gray-100 overflow-auto flex flex-col items-center p-4">
+          {/* 페이지 네비게이션 (다중 페이지인 경우에만 표시) */}
+          {getTotalPages > 1 && (
+            <div className="mb-4 flex items-center gap-4 bg-white px-6 py-3 rounded-lg shadow">
+              <button
+                onClick={previousPage}
+                disabled={!hasPreviousPage}
+                className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+              >
+                ← 이전
+              </button>
+              <span className="text-sm font-medium">
+                페이지 {currentPage} / {getTotalPages}
+              </span>
+              <button
+                onClick={nextPage}
+                disabled={!hasNextPage}
+                className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+              >
+                다음 →
+              </button>
+            </div>
+          )}
+
           {/* PDF 컨테이너 - 고정 크기 */}
           <div
             className="relative bg-white shadow-sm border"
@@ -394,7 +417,7 @@ const DocumentReview: React.FC = () => {
           >
             {/* PDF 배경 이미지 */}
             <img
-              src={getPdfImageUrl(currentDocument)}
+              src={getPdfImageUrl()}
               alt="PDF Preview"
               className="absolute inset-0"
               style={{
@@ -403,13 +426,15 @@ const DocumentReview: React.FC = () => {
                 objectFit: 'fill'
               }}
               onError={() => {
-                console.error('PDF 이미지 로드 실패:', getPdfImageUrl(currentDocument));
+                console.error('PDF 이미지 로드 실패:', getPdfImageUrl());
               }}
             />
 
             {/* 기존 필드 오버레이 */}
             <div className="absolute inset-0">
-              {(currentDocument.data?.coordinateFields || []).map((field: any) => {
+              {(currentDocument.data?.coordinateFields || [])
+                .filter((field: any) => !field.page || field.page === currentPage)
+                .map((field: any) => {
                 console.log('🎯 검토 화면 - 필드 렌더링:', {
                   id: field.id,
                   label: field.label,
@@ -593,12 +618,14 @@ const DocumentReview: React.FC = () => {
                 );
               })}
 
-              {/* 기존 서명 필드 렌더링 */}
+              {/* 기존 서명 필드 렌더링 - 현재 페이지만 표시 */}
               {(() => {
                 const existingSignatureFields = currentDocument.data?.signatureFields || [];
                 const signatures = currentDocument.data?.signatures || {};
 
-                return existingSignatureFields.map((field: any) => {
+                return existingSignatureFields
+                  .filter((field: any) => !field.page || field.page === currentPage)
+                  .map((field: any) => {
                   const signatureData = signatures[field.reviewerEmail];
 
                   return (
