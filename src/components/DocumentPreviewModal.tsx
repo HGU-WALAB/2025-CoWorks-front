@@ -1,6 +1,6 @@
 import React from 'react';
 import { CoordinateField } from '../types/field';
-import { captureAndSaveToPDF } from '../utils/printUtils';
+import { captureAndSaveToPDF, captureMultiplePagesToPDF } from '../utils/printUtils';
 
 interface SignatureField {
   id: string;
@@ -17,6 +17,7 @@ interface DocumentPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   pdfImageUrl: string;
+  pdfImageUrls?: string[]; // 여러 페이지 지원
   coordinateFields: CoordinateField[];
   signatureFields?: SignatureField[];
   documentTitle?: string;
@@ -26,26 +27,43 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   isOpen,
   onClose,
   pdfImageUrl,
+  pdfImageUrls = [],
   coordinateFields,
   signatureFields = [],
   documentTitle = "문서 미리보기"
 }) => {
   // Hook들을 항상 호출 (조건문 이전에)
   const [isPrinting, setIsPrinting] = React.useState(false);
-  
-  // PDF 문서 영역에 대한 ref
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  // PDF 문서 영역에 대한 ref (단일 페이지용 - 하위 호환성)
   const documentRef = React.useRef<HTMLDivElement>(null);
 
-  // ESC 키로 모달 닫기
+  // 모든 페이지에 대한 refs (멀티페이지 인쇄용)
+  const pageRefs = React.useRef<(HTMLDivElement | null)[]>([]);
+
+  // 페이지 URL 배열 (여러 페이지 또는 단일 페이지)
+  const pageUrls = pdfImageUrls.length > 0 ? pdfImageUrls : [pdfImageUrl];
+  const totalPages = pageUrls.length;
+
+  // ESC 키로 모달 닫기, 화살표 키로 페이지 이동
   React.useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
+      } else if (event.key === 'ArrowLeft' && currentPage > 1) {
+        setCurrentPage(prev => prev - 1);
+      } else if (event.key === 'ArrowRight' && currentPage < totalPages) {
+        setCurrentPage(prev => prev + 1);
+      } else if (event.key === 'Home') {
+        setCurrentPage(1);
+      } else if (event.key === 'End') {
+        setCurrentPage(totalPages);
       }
     };
-    document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
-  }, [onClose]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, currentPage, totalPages]);
 
   // 조건부 렌더링은 Hook 호출 이후에
   if (!isOpen) return null;
@@ -57,37 +75,220 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
     }
   };
 
-  // 새로운 DOM 캡처 기반 인쇄 기능
+  // 페이지 렌더링 함수 (재사용을 위해)
+  const renderPageFields = React.useCallback((pageNum: number) => {
+    const filteredFields = coordinateFields.filter(field => {
+      const fieldPage = field.page || 1;
+      return fieldPage === pageNum;
+    });
+
+    console.log(`🎯 DocumentPreviewModal - 페이지 ${pageNum} 필드 렌더링:`, {
+      totalFields: coordinateFields.length,
+      filteredCount: filteredFields.length,
+      allFieldPages: coordinateFields.map(f => ({ id: f.id, label: f.label, page: f.page })),
+      filteredFields: filteredFields.map(f => ({ id: f.id, label: f.label, page: f.page }))
+    });
+
+    return filteredFields
+      .map((field) => {
+        // 필드 타입 확인
+        let isTableField = false;
+        let isEditorSignature = false;
+        let tableInfo = null;
+        let tableData = null;
+
+        if (field.type === 'editor_signature') {
+          isEditorSignature = true;
+        }
+
+        if (field.value) {
+          try {
+            const parsedValue = JSON.parse(field.value);
+            if (parsedValue.rows && parsedValue.cols) {
+              isTableField = true;
+              tableInfo = {
+                rows: parsedValue.rows,
+                cols: parsedValue.cols,
+                columnWidths: parsedValue.columnWidths
+              };
+              tableData = parsedValue;
+            }
+          } catch (error) {
+            // JSON 파싱 실패 시 일반 필드로 처리
+          }
+        }
+
+        if (!isTableField && field.tableData) {
+          isTableField = true;
+          tableInfo = field.tableData;
+          tableData = {
+            rows: field.tableData.rows,
+            cols: field.tableData.cols,
+            cells: Array(field.tableData.rows).fill(null).map(() =>
+              Array(field.tableData!.cols).fill('')
+            ),
+            columnWidths: field.tableData.columnWidths
+          };
+        }
+
+        return (
+          <div
+            key={field.id}
+            className="absolute"
+            style={{
+              left: `${field.x}px`,
+              top: `${field.y}px`,
+              width: `${field.width}px`,
+              height: `${field.height}px`,
+              fontSize: `${field.fontSize || 14}px`,
+              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+              fontWeight: '500',
+              overflow: 'visible',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {isEditorSignature && field.value && field.value.startsWith('data:image') ? (
+              <img
+                src={field.value}
+                alt="편집자 서명"
+                className="w-full h-full object-contain"
+                style={{ background: 'transparent' }}
+              />
+            ) : isTableField && tableInfo && tableData ? (
+              <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
+                <tbody>
+                  {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                        const cellValue = tableData.cells?.[rowIndex]?.[colIndex] || '';
+                        const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                        return (
+                          <td
+                            key={colIndex}
+                            className="border border-black text-center"
+                            style={{
+                              width: cellWidth,
+                              fontSize: `${Math.max((field.fontSize || 14) * 0.9, 10)}px`,
+                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                              padding: '4px',
+                              fontWeight: '500',
+                              lineHeight: '1.2',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {cellValue}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : field.value ? (
+              <div
+                className="text-gray-900 flex items-center justify-center w-full h-full"
+                style={{
+                  fontSize: `${field.fontSize || 14}px`,
+                  fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                  fontWeight: '500',
+                  color: '#111827',
+                  lineHeight: '1.4',
+                  textAlign: 'center',
+                  wordBreak: 'keep-all',
+                  overflow: 'visible',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  whiteSpace: 'nowrap',
+                  padding: '2px 4px'
+                }}
+              >
+                {field.value}
+              </div>
+            ) : null}
+          </div>
+        );
+      });
+  }, [coordinateFields]);
+
+  // 서명 필드 렌더링 함수
+  const renderPageSignatures = React.useCallback((pageNum: number) => {
+    return signatureFields
+      .filter(signatureField => {
+        const fieldPage = (signatureField as any).page || 1; // 서명 필드는 타입에 page가 없을 수 있음
+        return fieldPage === pageNum && signatureField.signatureData;
+      })
+      .map((signatureField) => (
+        <div
+          key={signatureField.id}
+          className="absolute"
+          style={{
+            left: `${signatureField.x}px`,
+            top: `${signatureField.y}px`,
+            width: `${signatureField.width}px`,
+            height: `${signatureField.height}px`,
+            background: 'transparent',
+          }}
+        >
+          <img
+            src={signatureField.signatureData}
+            alt={`${signatureField.reviewerName}의 서명`}
+            className="w-full h-full object-contain"
+            style={{
+              maxWidth: '100%',
+              maxHeight: '100%',
+              background: 'transparent'
+            }}
+          />
+        </div>
+      ));
+  }, [signatureFields]);
+
+  // 멀티페이지 DOM 캡처 기반 인쇄 기능
   const handlePrint = React.useCallback(async () => {
     setIsPrinting(true);
 
     try {
-      console.log('🖨️ DocumentPreviewModal - 새로운 DOM 캡처 인쇄 시작:', {
-        documentRef: !!documentRef.current,
-        documentTitle
-      });
+      // 멀티페이지인 경우
+      if (totalPages > 1) {
+        // 모든 페이지 refs가 존재하는지 확인
+        const validPageElements = pageRefs.current.filter(ref => ref !== null) as HTMLElement[];
 
-      if (!documentRef.current) {
-        throw new Error('문서 영역을 찾을 수 없습니다.');
+        if (validPageElements.length !== totalPages) {
+          throw new Error(`일부 페이지를 찾을 수 없습니다. (찾은 페이지: ${validPageElements.length}/${totalPages})`);
+        }
+
+        // 모든 페이지를 하나의 PDF로 합침
+        await captureMultiplePagesToPDF(
+          validPageElements,
+          documentTitle || '문서',
+          210, // A4 세로
+          297
+        );
+      } else {
+        // 단일 페이지인 경우 (하위 호환성)
+        if (!documentRef.current) {
+          throw new Error('문서 영역을 찾을 수 없습니다.');
+        }
+
+        await captureAndSaveToPDF({
+          elementRef: documentRef,
+          documentTitle: documentTitle || '문서',
+          pdfPageWidth: 210,
+          pdfPageHeight: 297,
+          backgroundColor: '#ffffff'
+        });
       }
 
-      // DOM 캡처를 통한 PDF 저장
-      await captureAndSaveToPDF({
-        elementRef: documentRef,
-        documentTitle: documentTitle || '문서',
-        pdfPageWidth: 210, // A4 세로
-        pdfPageHeight: 297,
-        backgroundColor: '#ffffff'
-      });
-
-      console.log('✅ DocumentPreviewModal - 새로운 인쇄 완료');
       setIsPrinting(false);
     } catch (error) {
-      console.error('❌ DocumentPreviewModal - 새로운 인쇄 실패:', error);
+      console.error('❌ DocumentPreviewModal - 인쇄 실패:', error);
       alert(`인쇄 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
       setIsPrinting(false);
     }
-  }, [documentTitle]);
+  }, [documentTitle, totalPages]);
 
   return (
     <div 
@@ -99,9 +300,39 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         <div className="flex items-center justify-between p-4 border-b">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">{documentTitle}</h2>
-            <p className="text-sm text-gray-500 mt-1">미리보기</p>
+            <p className="text-sm text-gray-500 mt-1">
+              미리보기 {totalPages > 1 && `· 페이지 ${currentPage} / ${totalPages}`}
+            </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* 페이지 네비게이션 */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage <= 1}
+                  className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="이전 페이지 (←)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm font-medium text-gray-700 min-w-[60px] text-center">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="다음 페이지 (→)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
             <button
               onClick={handlePrint}
               disabled={isPrinting}
@@ -143,7 +374,8 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
 
         {/* 모달 본문 - 편집 페이지와 동일한 PDF 뷰어 */}
         <div className="flex-1 overflow-auto bg-gray-100 p-4 flex justify-center items-start">
-          <div 
+          {/* 보이는 영역 - 현재 페이지만 표시 */}
+          <div
             ref={documentRef}
             className="relative bg-white shadow-lg select-none"
             style={{
@@ -154,10 +386,10 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               flexShrink: 0
             }}
           >
-            {/* PDF 배경 이미지 */}
-            <img 
-              src={pdfImageUrl}
-              alt="Document Preview"
+            {/* PDF 배경 이미지 - 현재 페이지 */}
+            <img
+              src={pageUrls[currentPage - 1]}
+              alt={`Document Preview - Page ${currentPage}`}
               className="absolute inset-0 w-full h-full object-contain"
               style={{
                 width: '1240px',
@@ -165,20 +397,17 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 objectFit: 'fill'
               }}
               onError={() => {
-                console.error('PDF 이미지 로드 실패:', pdfImageUrl);
+                // 이미지 로드 실패
               }}
             />
-            
-            {/* 필드 오버레이 - 편집 페이지와 동일한 렌더링 */}
+
+            {/* 필드 오버레이 - 현재 페이지의 필드만 표시 */}
             <div className="absolute inset-0" style={{ width: '1240px', height: '1754px' }}>
               {coordinateFields
                 .filter(field => {
-                  // 편집자 서명 필드는 값이 있는 경우만 표시
-                  if (field.type === 'editor_signature') {
-                    return field.value && field.value.trim() !== '';
-                  }
-                  // 일반 필드와 테이블 필드는 값이 있는 경우만 표시
-                  return field.value && field.value.trim() !== '';
+                  // 현재 페이지의 필드만 필터링
+                  const fieldPage = field.page || 1;
+                  return fieldPage === currentPage;
                 })
                 .map((field) => {
                 // 필드 타입 확인 - 편집 페이지와 동일한 로직
@@ -407,9 +636,12 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 );
               })}
 
-              {/* 서명 필드 렌더링 - 서명이 있는 경우만 표시 */}
+              {/* 서명 필드 렌더링 - 현재 페이지의 서명만 표시 */}
               {signatureFields
-                .filter(signatureField => signatureField.signatureData)
+                .filter(signatureField => {
+                  const fieldPage = (signatureField as any).page || 1;
+                  return fieldPage === currentPage && signatureField.signatureData;
+                })
                 .map((signatureField) => (
                   <div
                     key={signatureField.id}
@@ -458,6 +690,43 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 숨겨진 컨테이너 - 모든 페이지 렌더링 (인쇄용) */}
+      {totalPages > 1 && (
+        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+          {pageUrls.map((pageUrl, index) => (
+            <div
+              key={`print-page-${index}`}
+              ref={el => { pageRefs.current[index] = el; }}
+              className="relative bg-white"
+              style={{
+                width: '1240px',
+                height: '1754px',
+                minWidth: '1240px',
+                minHeight: '1754px',
+              }}
+            >
+              {/* PDF 배경 이미지 */}
+              <img
+                src={pageUrl}
+                alt={`Print Page ${index + 1}`}
+                className="absolute inset-0 w-full h-full"
+                style={{
+                  width: '1240px',
+                  height: '1754px',
+                  objectFit: 'fill'
+                }}
+              />
+
+              {/* 필드 오버레이 */}
+              <div className="absolute inset-0" style={{ width: '1240px', height: '1754px' }}>
+                {renderPageFields(index + 1)}
+                {renderPageSignatures(index + 1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
