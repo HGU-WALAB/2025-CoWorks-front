@@ -20,7 +20,9 @@ export interface SignatureField {
   width: number;
   height: number;
   reviewerEmail: string;
+  reviewerName?: string;
   signatureData?: string;
+  page: number;
 }
 
 export interface DocumentStatusLog {
@@ -51,6 +53,10 @@ export interface TemplateInfo {
   isPublic?: boolean;
   pdfFilePath?: string;
   pdfImagePath?: string;
+  pdfImagePaths?: string | string[]; // 다중 페이지 PDF 이미지 경로 추가
+  isMultiPage?: boolean; // 다중 페이지 여부
+  totalPages?: number; // 총 페이지 수
+  pdfPagesData?: string; // PDF 페이지 메타데이터
   coordinateFields?: string;
   deadline?: string; // 만료일 추가
   createdAt: string;
