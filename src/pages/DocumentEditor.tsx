@@ -179,7 +179,7 @@ const DocumentEditor: React.FC = () => {
             type: field.type,
             value: field.value,
             required: field.required || false,
-            fontSize: field.fontSize || 12,
+            fontSize: field.fontSize || 16,
             fontFamily: field.fontFamily || 'Arial',
             page: field.page || 1, // 필드의 실제 page 정보 사용
             ...(field.tableData && { tableData: field.tableData })
@@ -296,7 +296,7 @@ const DocumentEditor: React.FC = () => {
                 }) 
               : '', // 테이블인 경우 기본 빈 셀 배열 생성, 아니면 빈 값
             required: field.required || false,
-            fontSize: field.fontSize || 14, // 기본 폰트 크기를 14px로 설정
+            fontSize: field.fontSize || 16, // 기본 폰트 크기를 14px로 설정
             fontFamily: field.fontFamily || 'Arial',
             page: 1, // page 속성 추가
             // 테이블 정보 추가
@@ -338,7 +338,7 @@ const DocumentEditor: React.FC = () => {
         ) as 'text' | 'date' | 'editor_signature',
         value: field.value || '', // 이 문서에 저장된 값 사용
         required: field.required || false,
-        fontSize: field.fontSize || 12, // 폰트 크기 추가
+        fontSize: field.fontSize || 16, // 폰트 크기 추가
         fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
         page: 1, // page 속성 추가
         // 테이블 정보도 보존
@@ -401,7 +401,7 @@ const DocumentEditor: React.FC = () => {
           type: field.type,
           value: field.value,
           required: field.required || false,
-          fontSize: field.fontSize || 12, // 폰트 크기 추가
+          fontSize: field.fontSize || 16, // 폰트 크기 추가
           fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
           page: field.page || 1, // 템플릿 필드의 실제 page 정보 사용
           // 테이블 정보도 보존
@@ -1374,7 +1374,7 @@ const DocumentEditor: React.FC = () => {
                                 className="bg-white bg-opacity-70 border border-purple-200 hover:bg-opacity-90 cursor-pointer flex items-center justify-center p-1 transition-colors"
                                 style={{
                                   minHeight: '20px',
-                                  fontSize: `${field.fontSize || 14}px !important`,
+                                  fontSize: `${field.fontSize || 16}px !important`,
                                   fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                   color: '#6b21a8', // text-purple-700 색상을 직접 적용
                                   fontWeight: '500'
@@ -1733,8 +1733,7 @@ const DocumentEditor: React.FC = () => {
                               }}
                             />
                           ) : (
-                            <div style={{ fontSize: '9px', textAlign: 'center' }}>
-                              서명됨<br/>
+                            <div style={{ fontSize: '9px', textAlign: 'center' }}><br/>
                               {new Date().toLocaleDateString()}
                             </div>
                           )
