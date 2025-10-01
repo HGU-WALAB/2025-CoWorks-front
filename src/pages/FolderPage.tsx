@@ -16,6 +16,7 @@ import { FolderPageProps, Folder } from '../types/folder';
 import { Document } from '../types/document';
 import { DOCUMENT_STATUS, StatusBadge, getStatusText } from '../utils/documentStatusUtils';
 import { useBulkDownload } from '../utils/bulkDownloadUtils';
+import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
 
 const FolderPage: React.FC<FolderPageProps> = () => {
   const { folderId } = useParams<{ folderId?: string }>();
@@ -302,34 +303,20 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       console.log('🔍 FolderPage - 미리보기 문서:', document);
       setPreviewDocument(document);
 
-      // 템플릿 필드와 저장된 필드를 합쳐서 설정
-      let allFields: any[] = [];
-
-      // 템플릿 필드 추가
-      if (document.template?.coordinateFields) {
-        try {
-          const templateFields = JSON.parse(document.template.coordinateFields);
-          allFields = [...templateFields];
-        } catch (error) {
-          console.error('템플릿 필드 파싱 오류:', error);
-        }
-      }
-
-      // 저장된 추가 필드 추가
+      // 미리보기는 저장된 문서 데이터만 사용 (템플릿 필드와 병합하지 않음)
       const savedFields = document.data?.coordinateFields || [];
-      savedFields.forEach((savedField: any) => {
-        const existingIndex = allFields.findIndex(field => field.id === savedField.id);
-        if (existingIndex >= 0) {
-          // 기존 필드 업데이트
-          allFields[existingIndex] = { ...allFields[existingIndex], ...savedField };
-        } else {
-          // 새 필드 추가
-          allFields.push(savedField);
-        }
+
+      console.log('💾 FolderPage - 저장된 필드 (미리보기용):', {
+        count: savedFields.length,
+        fields: savedFields.map((f: any) => ({
+          id: f.id,
+          label: f.label,
+          page: f.page,
+          hasValue: !!f.value
+        }))
       });
 
-      console.log('🔍 FolderPage - 설정된 필드들:', allFields);
-      setCoordinateFields(allFields);
+      setCoordinateFields(savedFields);
 
       // 서명 필드 처리
       const docSignatureFields = document.data?.signatureFields || [];
@@ -451,6 +438,12 @@ const FolderPage: React.FC<FolderPageProps> = () => {
     }
     const filename = document.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
     return `/uploads/pdf-templates/${filename}`;
+  };
+
+  // 여러 페이지 URL 배열 생성 - pdfPageLoader 유틸리티 사용
+  const getPdfImageUrls = (doc: Document): string[] => {
+    if (!doc.template) return [];
+    return loadPdfPagesFromTemplate(doc.template);
   };
 
   // 문서 상태 통계 계산 함수
@@ -1123,6 +1116,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                   isOpen={showPreview}
                   onClose={() => setShowPreview(false)}
                   pdfImageUrl={getPdfImageUrl(previewDocument)}
+                  pdfImageUrls={getPdfImageUrls(previewDocument)}
                   coordinateFields={coordinateFields}
                   signatureFields={signatureFields}
                   documentTitle={previewDocument.title || previewDocument.template?.name || '문서'}

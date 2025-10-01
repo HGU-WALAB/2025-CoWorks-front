@@ -6,178 +6,11 @@ import axios from 'axios';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import { SignatureModal } from '../components/SignatureModal';
 import TableBulkInput from '../components/TableBulkInput';
+import TableEditComponent from '../components/DocumentEditor/TableEditComponent';
+import { createDebounce } from '../utils/debounce';
+import { usePdfPages } from '../hooks/usePdfPages';
 import { usePrint, type PrintField, type PrintSignatureField } from '../utils/printUtils';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
-
-// 테이블 편집 컴포넌트
-interface TableEditComponentProps {
-  tableInfo: { rows: number; cols: number; columnWidths?: number[] };
-  tableData: any;
-  fieldId: string;
-  onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
-  onBulkInput?: () => void;
-  onCellKeyDown?: (fieldId: string, rowIndex: number, colIndex: number, event: React.KeyboardEvent<HTMLInputElement>) => void;
-}
-
-const TableEditComponent: React.FC<TableEditComponentProps> = ({
-  tableInfo,
-  tableData,
-  fieldId,
-  onCellChange,
-  onBulkInput,
-  onCellKeyDown
-}) => {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center mb-2">
-        <div className="text-xs text-gray-500">
-          {tableInfo.rows}행 × {tableInfo.cols}열 표
-        </div>
-        {onBulkInput && (
-          <button
-            onClick={onBulkInput}
-            className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            title="쉼표(,)로 열 구분, 줄바꿈으로 행 구분하여 한번에 입력"
-          >
-            한번에 적기
-          </button>
-        )}
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border border-gray-300">
-          <tbody>
-            {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
-              <tr key={rowIndex}>
-                {Array(tableInfo.cols).fill(null).map((_, colIndex) => {
-                  let cellValue = '';
-                  try {
-                    if (tableData && tableData.cells) {
-                      cellValue = tableData.cells[rowIndex]?.[colIndex] || '';
-                    }
-                  } catch (e) {
-                    console.error('테이블 셀 값 파싱 실패:', e);
-                  }
-
-                  return (
-                    <TableCell
-                      key={`${rowIndex}-${colIndex}`}
-                      initialValue={cellValue}
-                      rowIndex={rowIndex}
-                      colIndex={colIndex}
-                      tableRows={tableInfo.rows}
-                      tableCols={tableInfo.cols}
-                      fieldId={fieldId}
-                      onCellChange={onCellChange}
-                      onCellKeyDown={(row, col, event) => {
-                        onCellKeyDown?.(fieldId, row, col, event);
-                      }}
-                    />
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-// 개별 테이블 셀 컴포넌트 - 독립적인 상태 관리
-interface TableCellProps {
-  initialValue: string;
-  rowIndex: number;
-  colIndex: number;
-  tableRows: number;
-  tableCols: number;
-  fieldId: string;
-  onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
-  onCellKeyDown?: (rowIndex: number, colIndex: number, event: React.KeyboardEvent<HTMLInputElement>) => void;
-}
-
-const TableCell: React.FC<TableCellProps> = ({
-  initialValue,
-  rowIndex,
-  colIndex,
-  tableRows,
-  tableCols,
-  fieldId,
-  onCellChange,
-  onCellKeyDown
-}) => {
-  const [value, setValue] = useState(initialValue);
-
-  // initialValue가 변경될 때만 상태 업데이트
-  useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setValue(newValue); // 즉시 로컬 상태 업데이트
-    onCellChange(rowIndex, colIndex, newValue); // 부모로 변경사항 전달
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-
-      // 다음 셀 계산
-      let nextRow = rowIndex;
-      let nextCol = colIndex + 1;
-
-      // 다음 열이 테이블 범위를 벗어나면 다음 행의 첫 번째 열로
-      if (nextCol >= tableCols) {
-        nextCol = 0;
-        nextRow = rowIndex + 1;
-      }
-
-      // 다음 행이 테이블 범위를 벗어나면 다음 필드로 이동
-      if (nextRow >= tableRows) {
-        // 부모 컴포넌트에 다음 필드로 이동 요청
-        onCellKeyDown?.(rowIndex, colIndex, e);
-        return;
-      }
-
-      // 같은 테이블 내 다음 셀로 포커스 이동
-      setTimeout(() => {
-        const nextCellInput = document.querySelector(`input[data-cell-id="${fieldId}-${nextRow}-${nextCol}"]`) as HTMLInputElement;
-        if (nextCellInput) {
-          nextCellInput.focus();
-          nextCellInput.select();
-        }
-      }, 0);
-    }
-  };
-
-  return (
-    <td className="border border-gray-300 p-1" style={{ minWidth: '120px', minHeight: '36px' }}>
-      <input
-        type="text"
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        data-cell-id={`${fieldId}-${rowIndex}-${colIndex}`}
-        className="w-full h-full px-2 py-1 text-sm border-0 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none"
-        placeholder={`${rowIndex + 1}-${colIndex + 1}`}
-        style={{ minHeight: '28px' }}
-      />
-    </td>
-  );
-};
-
-
-// 간단한 debounce 유틸 함수
-const createDebounce = <T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): ((...args: Parameters<T>) => void) => {
-  let timeout: NodeJS.Timeout;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
-};
 
 // CoordinateField 타입 정의 (PdfViewer에서 가져오지 않고 직접 정의)
 interface CoordinateField {
@@ -213,6 +46,7 @@ interface TemplateField {
   required: boolean;
   x: number; // coordinateX -> x로 변경
   y: number; // coordinateY -> y로 변경
+  page: number; // 페이지 번호 추가
   type?: 'field' | 'table'; // 필드 타입 추가
   // 폰트 설정 추가
   fontSize?: number; // 폰트 크기 (px)
@@ -261,6 +95,18 @@ const DocumentEditor: React.FC = () => {
   const [rightPanelWidth, setRightPanelWidth] = useState(524);
   const [isResizing, setIsResizing] = useState(false);
 
+  // PDF 페이지 관리 훅 사용
+  const {
+    currentPage: currentPageNumber,
+    setCurrentPage: setCurrentPageNumber,
+    totalPages,
+    pdfPages,
+    nextPage,
+    previousPage,
+    hasNextPage,
+    hasPreviousPage
+  } = usePdfPages(currentDocument?.template, coordinateFields);
+
   // 마우스 이벤트 핸들러
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -288,9 +134,8 @@ const DocumentEditor: React.FC = () => {
       setAuthHeader();
     } catch {}
     if (user && (!user.email || user.email.trim() === '')) {
-      console.log('DocumentEditor: user.email empty, refreshing user info...');
-      refreshUser().catch((e) => {
-        console.warn('DocumentEditor: refreshUser failed', e);
+      refreshUser().catch(() => {
+        // 사용자 정보 갱신 실패
       });
     }
   }, [user?.id]);
@@ -334,9 +179,9 @@ const DocumentEditor: React.FC = () => {
             type: field.type,
             value: field.value,
             required: field.required || false,
-            fontSize: field.fontSize || 12,
+            fontSize: field.fontSize || 16,
             fontFamily: field.fontFamily || 'Arial',
-            page: 1,
+            page: field.page || 1, // 필드의 실제 page 정보 사용
             ...(field.tableData && { tableData: field.tableData })
           }))
         };
@@ -451,7 +296,7 @@ const DocumentEditor: React.FC = () => {
                 }) 
               : '', // 테이블인 경우 기본 빈 셀 배열 생성, 아니면 빈 값
             required: field.required || false,
-            fontSize: field.fontSize || 14, // 기본 폰트 크기를 14px로 설정
+            fontSize: field.fontSize || 16, // 기본 폰트 크기를 14px로 설정
             fontFamily: field.fontFamily || 'Arial',
             page: 1, // page 속성 추가
             // 테이블 정보 추가
@@ -493,7 +338,7 @@ const DocumentEditor: React.FC = () => {
         ) as 'text' | 'date' | 'editor_signature',
         value: field.value || '', // 이 문서에 저장된 값 사용
         required: field.required || false,
-        fontSize: field.fontSize || 12, // 폰트 크기 추가
+        fontSize: field.fontSize || 16, // 폰트 크기 추가
         fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
         page: 1, // page 속성 추가
         // 테이블 정보도 보존
@@ -556,9 +401,9 @@ const DocumentEditor: React.FC = () => {
           type: field.type,
           value: field.value,
           required: field.required || false,
-          fontSize: field.fontSize || 12, // 폰트 크기 추가
+          fontSize: field.fontSize || 16, // 폰트 크기 추가
           fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
-          page: 1, // page 속성 추가
+          page: field.page || 1, // 템플릿 필드의 실제 page 정보 사용
           // 테이블 정보도 보존
           ...(field.tableData && { tableData: field.tableData })
         }))
@@ -924,6 +769,7 @@ const DocumentEditor: React.FC = () => {
           width: field.width,
           height: field.height,
           required: field.required || false,
+          page: field.page || 1, // 페이지 정보 추가
           type: field.type || 'field',
           fontSize: field.fontSize || 14, // 기본 폰트 크기를 14px로 설정
           fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
@@ -1010,7 +856,7 @@ const DocumentEditor: React.FC = () => {
           required: templateField.required || false,
           fontSize: templateField.fontSize || 14, // 기본 폰트 크기를 14px로 설정
           fontFamily: templateField.fontFamily || 'Arial',
-          page: 1, // page 속성 추가
+          page: templateField.page || 1, // 템플릿 필드의 실제 page 정보 사용
           // 테이블 정보 보존
           ...(templateField.fieldType === 'table' && templateField.tableData && {
             tableData: templateField.tableData
@@ -1259,12 +1105,33 @@ const DocumentEditor: React.FC = () => {
     }
   }, [coordinateFields]);
 
-  // 키보드 단축키 (Ctrl+S / Cmd+S로 저장)
+  // 키보드 단축키 (Ctrl+S / Cmd+S로 저장, 좌우 화살표로 페이지 이동)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // 입력 필드에 포커스가 있으면 단축키 무시
+      const target = event.target as HTMLElement;
+      const isInputFocused = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true';
+
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         handleManualSave();
+      }
+
+      // 페이지 네비게이션 단축키 (입력 필드에 포커스가 없을 때만)
+      if (!isInputFocused && totalPages > 1) {
+        if (event.key === 'ArrowLeft' && currentPageNumber > 1) {
+          event.preventDefault();
+          setCurrentPageNumber(prev => Math.max(1, prev - 1));
+        } else if (event.key === 'ArrowRight' && currentPageNumber < totalPages) {
+          event.preventDefault();
+          setCurrentPageNumber(prev => Math.min(totalPages, prev + 1));
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          setCurrentPageNumber(1);
+        } else if (event.key === 'End') {
+          event.preventDefault();
+          setCurrentPageNumber(totalPages);
+        }
       }
     };
 
@@ -1272,7 +1139,7 @@ const DocumentEditor: React.FC = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [handleManualSave]);
+  }, [handleManualSave, totalPages, currentPageNumber]);
 
   // 컴포넌트 언마운트 시 상태 정리
   useEffect(() => {
@@ -1292,57 +1159,61 @@ const DocumentEditor: React.FC = () => {
 
   // PDF 뷰어 렌더링 (CSS Transform 스케일링 적용)
   const renderPdfViewer = useMemo(() => {
-    if (!currentDocument?.template?.pdfImagePath) return null;
-    
-    // PDF 이미지 파일 경로 (.png 파일 사용)
-    const imageFileName = currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
-    const pdfImageUrl = `/uploads/pdf-templates/${imageFileName}`;
-    
-    return (
-      <div className="relative bg-gray-100 h-full overflow-auto flex justify-center items-start p-4">
-        {/* PDF 컨테이너 - 고정 크기 */}
-        <div 
-          className="relative bg-white shadow-sm border"
-          style={{
-            width: '1240px',
-            height: '1754px',
-            minWidth: '1240px', // 최소 크기를 원본 크기로 고정
-            minHeight: '1754px', // 최소 높이도 원본 크기로 고정
-            flexShrink: 0 // 컨테이너가 줄어들지 않도록 설정
-          }}
-        >
-          {/* PDF 배경 이미지 */}
-          <img 
-            src={pdfImageUrl}
-            alt="PDF Preview"
-            className="absolute inset-0"
-            style={{
-              width: '1240px',
-              height: '1754px',
-              objectFit: 'fill'
-            }}
-            onError={() => {
-              console.error('PDF 이미지 로드 실패:', pdfImageUrl);
-            }}
-          />
-          
-          {/* 필드 컨테이너 - 퍼센트 기반 위치 */}
-          <div className="absolute inset-0"
-          >
-            {/* 필드 오버레이 - 퍼센트 기반 위치 */}
-            {coordinateFields.map((field) => {
-              
-              // 퍼센트 기반 위치 계산
-              // const leftPercent = (field.x / 1240) * 100;
-              // const topPercent = (field.y / 1754) * 100.5;
-              // const widthPercent = (field.width / 1240) * 100.5;
-              // const heightPercent = (field.height / 1754) * 100.5;
+    if (pdfPages.length === 0) return null;
 
-              // 픽셀값 직접 사용
-              const leftPercent = field.x;
-              const topPercent = field.y;
-              const widthPercent = field.width;
-              const heightPercent = field.height;
+    const currentPageUrl = pdfPages[currentPageNumber - 1];
+    if (!currentPageUrl) {
+      console.warn(`페이지 ${currentPageNumber}의 이미지 URL이 없습니다. 사용 가능한 페이지: ${pdfPages.length}`);
+      return (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-500">페이지 {currentPageNumber}의 이미지를 찾을 수 없습니다.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="relative bg-gray-100 h-full overflow-auto flex flex-col p-4">
+
+        {/* PDF 컨테이너 - 반응형 크기 */}
+        <div className="flex justify-center items-start">
+          <div
+            className="relative bg-white shadow-lg border rounded-lg overflow-hidden"
+            style={{
+              maxWidth: '100%',
+              width: 'auto',
+              height: 'auto'
+            }}
+          >
+            {/* PDF 배경 이미지 */}
+            <img
+              src={currentPageUrl}
+              alt={`PDF Document Page ${currentPageNumber}`}
+              style={{
+                width: '100%',
+                height: 'auto',
+                maxWidth: '800px',
+                display: 'block'
+              }}
+              onError={() => {
+                console.error('PDF 이미지 로드 실패:', currentPageUrl);
+              }}
+            />
+
+            {/* 필드 컨테이너 - 현재 페이지의 필드만 표시 */}
+            <div className="absolute inset-0" style={{
+              transform: 'scale(0.65)', // 800px / 1240px ≈ 0.65
+              transformOrigin: 'top left'
+            }}>
+              {/* 필드 오버레이 - 현재 페이지 필드만 필터링 */}
+              {coordinateFields
+                .filter(field => (field.page || 1) === currentPageNumber)
+                .map((field) => {
+
+                // 픽셀값 직접 사용 (스케일은 transform으로 적용)
+                const leftPercent = field.x;
+                const topPercent = field.y;
+                const widthPercent = field.width;
+                const heightPercent = field.height;
 
               // 필드 타입 확인
               let isTableField = false;
@@ -1394,7 +1265,7 @@ const DocumentEditor: React.FC = () => {
                   onClick={(e: React.MouseEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     // 테이블이 아닌 일반 필드인 경우
                     if (!isTableField) {
                       // 필드를 찾아서 편집 상태로 설정
@@ -1418,17 +1289,15 @@ const DocumentEditor: React.FC = () => {
                         {field.required && <span className="text-red-500">*</span>}
                       </div>
                       {field.value && (
-                        <div className="text-xs text-gray-600 mt-1 text-center">
+                        <div className="w-full h-full flex items-center justify-center">
                           {field.value.startsWith('data:image') ? (
-                            <div className="flex items-center justify-center">
-                              <img
-                                src={field.value}
-                                alt="편집자 서명"
-                                className="max-w-full h-8 border border-transparent rounded bg-transparent"
-                              />
-                            </div>
+                            <img
+                              src={field.value}
+                              alt="편집자 서명"
+                              className="w-full h-full object-contain"
+                            />
                           ) : (
-                            <div>서명됨: {new Date().toLocaleDateString()}</div>
+                            <div className="text-xs text-gray-600">서명됨: {new Date().toLocaleDateString()}</div>
                           )}
                         </div>
                       )}
@@ -1440,10 +1309,10 @@ const DocumentEditor: React.FC = () => {
                         {field.label} ({tableInfo.rows}×{tableInfo.cols})
                         {field.required && <span className="text-red-500">*</span>}
                       </div>
-                      <div 
-                        className="grid gap-px bg-purple-300" 
+                      <div
+                        className="grid gap-px bg-purple-300"
                         style={{
-                          gridTemplateColumns: tableInfo.columnWidths 
+                          gridTemplateColumns: tableInfo.columnWidths
                             ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
                             : `repeat(${tableInfo.cols}, 1fr)`,
                           height: 'calc(100% - 20px)'
@@ -1452,50 +1321,67 @@ const DocumentEditor: React.FC = () => {
                         {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>
                           Array(tableInfo.cols).fill(null).map((_, colIndex) => {
                             let cellText = '';
-                            
+
                             try {
-                              // 1. 서버에서 불러온 데이터 우선 확인 (field.value)
-                              if (field.value) {
+                              // 1. 먼저 coordinateFields에서 현재 편집 중인 데이터 확인
+                              const currentField = coordinateFields.find(f => f.id === field.id);
+                              if (currentField && currentField.value) {
+                                try {
+                                  const currentTableData = JSON.parse(currentField.value);
+                                  if (currentTableData.cells &&
+                                      Array.isArray(currentTableData.cells) &&
+                                      currentTableData.cells[rowIndex] &&
+                                      Array.isArray(currentTableData.cells[rowIndex])) {
+                                    cellText = currentTableData.cells[rowIndex][colIndex] || '';
+                                  }
+                                } catch (parseError) {
+                                  // JSON 파싱 실패
+                                }
+                              }
+
+                              // 2. coordinateFields에 없으면 field.value 확인
+                              if (!cellText && field.value) {
                                 let savedTableData: any = {};
-                                
+
                                 if (typeof field.value === 'string') {
                                   savedTableData = JSON.parse(field.value);
                                 } else {
                                   savedTableData = field.value;
                                 }
-                                
+
                                 // 저장된 셀 데이터가 있으면 사용
-                                if (savedTableData.cells && 
-                                    Array.isArray(savedTableData.cells) && 
-                                    savedTableData.cells[rowIndex] && 
+                                if (savedTableData.cells &&
+                                    Array.isArray(savedTableData.cells) &&
+                                    savedTableData.cells[rowIndex] &&
                                     Array.isArray(savedTableData.cells[rowIndex])) {
                                   cellText = savedTableData.cells[rowIndex][colIndex] || '';
                                 }
                               }
-                              
-                              // 2. 서버 데이터가 없으면 템플릿 기본값 확인
+
+                              // 3. 그래도 없으면 템플릿 기본값 확인
                               if (!cellText && field.tableData && field.tableData.cells) {
                                 cellText = field.tableData.cells[rowIndex]?.[colIndex] || '';
                               }
-                              
+
                             } catch (error) {
                               cellText = '';
+                              // 표 셀 데이터 로드 오류
                             }
 
                             return (
-                              <div 
+                              <div
                                 key={`${rowIndex}-${colIndex}`}
                                 className="bg-white bg-opacity-70 border border-purple-200 hover:bg-opacity-90 cursor-pointer flex items-center justify-center p-1 transition-colors"
-                                style={{ 
+                                style={{
                                   minHeight: '20px',
-                                  fontSize: `${field.fontSize || 14}px !important`,
+                                  fontSize: `${field.fontSize || 16}px !important`,
                                   fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                   color: '#6b21a8', // text-purple-700 색상을 직접 적용
                                   fontWeight: '500'
                                 }}
                                 title={cellText || '클릭하여 편집'}
                               >
-                                <span 
+                                <span
                                   className="text-center truncate leading-tight"
                                   style={{
                                     display: 'block',
@@ -1504,10 +1390,10 @@ const DocumentEditor: React.FC = () => {
                                     fontSize: `${field.fontSize || 14}px !important`,
                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                     fontWeight: '500 !important',
-                                    color: '#6b21a8 !important'
+                                    color: cellText ? '#6b21a8 !important' : '#9CA3AF !important'
                                   }}
                                 >
-                                  {cellText}
+                                  {cellText || `${rowIndex + 1}-${colIndex + 1}`}
                                 </span>
                               </div>
                             );
@@ -1535,12 +1421,13 @@ const DocumentEditor: React.FC = () => {
                   )}
                 </div>
               );
-            })}
+              })}
+            </div>
           </div>
         </div>
       </div>
     );
-  }, [currentDocument?.template?.pdfImagePath, coordinateFields, templateFields]);
+  }, [pdfPages, currentPageNumber, totalPages, coordinateFields, templateFields]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">문서를 불러오는 중...</div>;
@@ -1742,17 +1629,21 @@ const DocumentEditor: React.FC = () => {
       {/* 메인 컨텐츠 - 헤더 아래 고정 레이아웃 */}
       <div className="fixed top-24 left-0 right-0 bottom-0 flex w-full no-print">
         {/* 왼쪽 패널 - PDF 뷰어 */}
-        <div className="flex-1 bg-gray-100 overflow-auto flex justify-center items-start p-4">
-          {renderPdfViewer || (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500">PDF 파일이 없습니다.</p>
-            </div>
-          )}
+        <div className="flex-1 bg-gray-100 overflow-auto flex flex-col">
+
+          {/* PDF 뷰어 컨테이너 */}
+          <div className="flex-1 overflow-hidden">
+            {renderPdfViewer || (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-gray-500">PDF 파일이 없습니다.</p>
+              </div>
+            )}
+          </div>
         </div>
         
         {/* 인쇄 전용 컨테이너 (화면에서는 숨김) */}
         <div className="hidden print-only print-container">
-          {currentDocument?.template?.pdfImagePath && (
+          {(currentDocument?.template?.pdfImagePaths || currentDocument?.template?.pdfImagePath) && (
             <div className="print-pdf-container">
               {/* PDF 배경 이미지 */}
               <img 
@@ -1831,24 +1722,21 @@ const DocumentEditor: React.FC = () => {
                           {field.label}
                         </div>
                         {field.value ? (
-                          <div style={{ fontSize: '9px', textAlign: 'center' }}>
-                            {field.value.startsWith('data:image') ? (
-                              <img
-                                src={field.value}
-                                alt="편집자 서명"
-                                style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '20px',
-                                  objectFit: 'contain'
-                                }}
-                              />
-                            ) : (
-                              <>
-                                서명됨<br/>
-                                {new Date().toLocaleDateString()}
-                              </>
-                            )}
-                          </div>
+                          field.value.startsWith('data:image') ? (
+                            <img
+                              src={field.value}
+                              alt="편집자 서명"
+                              style={{
+                                width: '100%',
+                                height: 'calc(100% - 14px)',
+                                objectFit: 'contain'
+                              }}
+                            />
+                          ) : (
+                            <div style={{ fontSize: '9px', textAlign: 'center' }}><br/>
+                              {new Date().toLocaleDateString()}
+                            </div>
+                          )
                         ) : (
                           <div style={{ fontSize: '9px', color: '#666' }}>
                             미서명
@@ -1866,7 +1754,6 @@ const DocumentEditor: React.FC = () => {
                                 return (
                                   <td
                                     key={colIndex}
-                                    className="print-table-cell"
                                     style={{
                                       width: tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`,
                                       fontSize: `${field.fontSize || 14}px`,
@@ -1956,16 +1843,54 @@ const DocumentEditor: React.FC = () => {
 
           {/* 고정 헤더 */}
           <div className="p-4 border-b bg-gray-50 flex-shrink-0">
-            <h2 className="font-medium text-gray-900">문서 필드</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {coordinateFields.length}개 필드
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-medium text-gray-900">문서 필드</h2>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm">
+                  <button
+                    onClick={() => setCurrentPageNumber(prev => Math.max(1, prev - 1))}
+                    disabled={currentPageNumber <= 1}
+                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="이전 페이지 (←)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <span className="text-sm font-medium text-gray-700 min-w-[60px] text-center">
+                    {currentPageNumber} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPageNumber(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPageNumber >= totalPages}
+                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    title="다음 페이지 (→)"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                {coordinateFields.filter(field => ((field as any).page || 1) === currentPageNumber).length}개 필드
+              </p>
+              {totalPages > 1 && (
+                <p className="text-xs text-gray-400">
+                  키보드: ← → 로 페이지 이동
+                </p>
+              )}
+            </div>
           </div>
 
           {/* 스크롤 가능한 필드 목록 */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 space-y-4">
-            {coordinateFields.map((field) => {
+            {coordinateFields
+              .filter(field => (field.page || 1) === currentPageNumber)
+              .map((field) => {
               // 필드 타입 확인
               let isTableField = false;
               let isEditorSignature = false;

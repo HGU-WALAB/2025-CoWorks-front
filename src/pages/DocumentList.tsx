@@ -6,6 +6,7 @@ import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import WorkflowModal from '../components/WorkflowModal';
 // import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
 import { StatusBadge, getStatusText, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
+import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
@@ -83,24 +84,20 @@ const DocumentList: React.FC = () => {
         console.log('🔍 DocumentList - 미리보기 문서:', document);
         setPreviewDocument(document);
 
-        // 템플릿 필드와 저장된 필드를 합쳐서 설정
-        let allFields: any[] = [];
-
-        // 템플릿 필드 추가
-        if (document.template?.coordinateFields) {
-          try {
-            const templateFields = JSON.parse(document.template.coordinateFields);
-            allFields = [...templateFields];
-          } catch (error) {
-            console.error('템플릿 필드 파싱 오류:', error);
-          }
-        }
-
-        // 저장된 추가 필드 추가
+        // 미리보기는 저장된 문서 데이터만 사용 (템플릿 필드와 병합하지 않음)
         const savedFields = document.data?.coordinateFields || [];
-        allFields = [...allFields, ...savedFields];
 
-        setCoordinateFields(allFields);
+        console.log('💾 DocumentList - 저장된 필드 (미리보기용):', {
+          count: savedFields.length,
+          fields: savedFields.map((f: any) => ({
+            id: f.id,
+            label: f.label,
+            page: f.page,
+            hasValue: !!f.value
+          }))
+        });
+
+        setCoordinateFields(savedFields);
 
         // 서명 필드 처리
         const docSignatureFields = document.data?.signatureFields || [];
@@ -169,26 +166,20 @@ const DocumentList: React.FC = () => {
   // };
 
   const getPdfImageUrl = (doc: Document) => {
-    console.log('🔍 DocumentList - PDF 이미지 URL 생성:', {
-      template: doc.template,
-      pdfImagePath: doc.template?.pdfImagePath
-    });
-
     if (!doc.template?.pdfImagePath) {
-      console.warn('⚠️ DocumentList - PDF 이미지 경로가 없습니다');
       return '';
     }
 
     const filename = doc.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
     const url = `/uploads/pdf-templates/${filename}`;
 
-    console.log('📄 DocumentList - 생성된 PDF 이미지 URL:', {
-      originalPath: doc.template.pdfImagePath,
-      filename: filename,
-      url: url
-    });
-
     return url;
+  };
+
+  // 여러 페이지 URL 배열 생성 - pdfPageLoader 유틸리티 사용
+  const getPdfImageUrls = (doc: Document): string[] => {
+    if (!doc.template) return [];
+    return loadPdfPagesFromTemplate(doc.template);
   };
 
 
@@ -655,6 +646,7 @@ const DocumentList: React.FC = () => {
           isOpen={showPreview}
           onClose={() => setShowPreview(false)}
           pdfImageUrl={getPdfImageUrl(previewDocument)}
+          pdfImageUrls={getPdfImageUrls(previewDocument)}
           coordinateFields={coordinateFields}
           signatureFields={signatureFields}
           documentTitle={previewDocument.title || previewDocument.template?.name || '문서'}

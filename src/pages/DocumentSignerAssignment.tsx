@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDocumentStore, type Document } from '../stores/documentStore';
+import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import UserSearchInput from '../components/UserSearchInput';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
+import { API_BASE_URL } from '../config/api';
+import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
 
 const DocumentSignerAssignment: React.FC = () => {
@@ -24,6 +26,18 @@ const DocumentSignerAssignment: React.FC = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, fieldX: 0, fieldY: 0 });
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
+
+  // PDF 페이지 관리 훅 사용
+  const {
+    currentPage,
+    setCurrentPage,
+    totalPages: getTotalPages,
+    pdfPages,
+    nextPage,
+    previousPage,
+    hasNextPage,
+    hasPreviousPage
+  } = usePdfPages(currentDocument?.template, []);
 
   // 문서별 서명 필드를 로컬 스토리지에서 로드
   useEffect(() => {
@@ -102,7 +116,7 @@ const DocumentSignerAssignment: React.FC = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:8080/api/documents/${currentDocument.id}/assign-reviewer`,
+        `${API_BASE_URL}/documents/${currentDocument.id}/assign-reviewer`,
         { reviewerEmail: selectedReviewer },
         {
           headers: {
@@ -148,6 +162,7 @@ const DocumentSignerAssignment: React.FC = () => {
       height: 80,
       reviewerEmail,
       reviewerName,
+      page: currentPage, // 현재 선택된 페이지
     };
 
     setSignatureFields(prev => [...prev, newField]);
@@ -182,49 +197,60 @@ const DocumentSignerAssignment: React.FC = () => {
     }
   };
 
-  // 마우스 이동
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!activeFieldId) return;
+  // 마우스 이동 (전역 이벤트)
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!activeFieldId) return;
 
-    if (isDragging) {
-      const deltaX = e.clientX - dragStart.x;
-      const deltaY = e.clientY - dragStart.y;
+      if (isDragging) {
+        const deltaX = e.clientX - dragStart.x;
+        const deltaY = e.clientY - dragStart.y;
 
-      setSignatureFields(prev =>
-        prev.map(field =>
-          field.id === activeFieldId
-            ? {
-                ...field,
-                x: Math.max(0, dragStart.fieldX + deltaX),
-                y: Math.max(0, dragStart.fieldY + deltaY)
-              }
-            : field
-        )
-      );
-    } else if (isResizing) {
-      const deltaX = e.clientX - resizeStart.x;
-      const deltaY = e.clientY - resizeStart.y;
+        setSignatureFields(prev =>
+          prev.map(field =>
+            field.id === activeFieldId
+              ? {
+                  ...field,
+                  x: Math.max(0, dragStart.fieldX + deltaX),
+                  y: Math.max(0, dragStart.fieldY + deltaY)
+                }
+              : field
+          )
+        );
+      } else if (isResizing) {
+        const deltaX = e.clientX - resizeStart.x;
+        const deltaY = e.clientY - resizeStart.y;
 
-      setSignatureFields(prev =>
-        prev.map(field =>
-          field.id === activeFieldId
-            ? {
-                ...field,
-                width: Math.max(50, resizeStart.width + deltaX),
-                height: Math.max(30, resizeStart.height + deltaY)
-              }
-            : field
-        )
-      );
+        setSignatureFields(prev =>
+          prev.map(field =>
+            field.id === activeFieldId
+              ? {
+                  ...field,
+                  width: Math.max(50, resizeStart.width + deltaX),
+                  height: Math.max(30, resizeStart.height + deltaY)
+                }
+              : field
+          )
+        );
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setIsResizing(false);
+      setActiveFieldId(null);
+    };
+
+    if (isDragging || isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
     }
-  };
-
-  // 마우스 업
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-    setActiveFieldId(null);
-  };
+  }, [isDragging, isResizing, activeFieldId, dragStart, resizeStart]);
 
   // 서명 필드 삭제
   const removeSignatureField = (fieldId: string) => {
@@ -272,7 +298,8 @@ const DocumentSignerAssignment: React.FC = () => {
           width: field.width,
           height: field.height,
           reviewerEmail: field.reviewerEmail,
-          reviewerName: field.reviewerName
+          reviewerName: field.reviewerName,
+          page: field.page || 1
         }))
       ];
 
@@ -282,7 +309,7 @@ const DocumentSignerAssignment: React.FC = () => {
         signatureFields: updatedSignatureFields
       };
 
-      await axios.put(`http://localhost:8080/api/documents/${id}`, {
+      await axios.put(`${API_BASE_URL}/documents/${id}`, {
         data: updatedDocumentData
       }, {
         headers: {
@@ -292,7 +319,7 @@ const DocumentSignerAssignment: React.FC = () => {
       });
 
       // 서명자 지정 완료 API 호출
-      await axios.post(`http://localhost:8080/api/documents/${id}/complete-signer-assignment`, {}, {
+      await axios.post(`${API_BASE_URL}/documents/${id}/complete-signer-assignment`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -305,9 +332,11 @@ const DocumentSignerAssignment: React.FC = () => {
       }
 
       alert('서명자 지정이 완료되었습니다. 이제 검토 단계로 이동합니다.');
-      
-      // 문서 리스트 페이지로 이동
-      navigate('/documents');
+
+      // 문서 목록으로 이동
+      setTimeout(() => {
+        navigate('/documents');
+      });
 
     } catch (error) {
       console.error('서명자 지정 완료 실패:', error);
@@ -321,14 +350,14 @@ const DocumentSignerAssignment: React.FC = () => {
     }
   };
 
-  // PDF 이미지 URL 생성
-  const getPdfImageUrl = (document: Document) => {
-    if (!document.template?.pdfImagePath) {
-      return '';
+  // PDF 이미지 URL 생성 (현재 페이지에 맞게)
+  const getPdfImageUrl = () => {
+    if (pdfPages.length === 0) return '';
+    const pageIndex = currentPage - 1;
+    if (pageIndex >= 0 && pageIndex < pdfPages.length) {
+      return `${API_BASE_URL.replace('/api', '')}${pdfPages[pageIndex]}`;
     }
-
-    const filename = document.template.pdfImagePath.split('/').pop();
-    return `http://localhost:8080/api/files/pdf-template-images/${filename}`;
+    return '';
   };
 
   if (loading) {
@@ -450,9 +479,32 @@ const DocumentSignerAssignment: React.FC = () => {
       {/* 메인 콘텐츠 */}
       <div className="fixed top-24 left-0 right-0 bottom-0 flex w-full">
         {/* 문서 미리보기 영역 */}
-        <div className="flex-1 bg-gray-100 overflow-auto flex justify-center items-start p-4">
+        <div className="flex-1 bg-gray-100 overflow-auto flex flex-col items-center p-4">
+          {/* 페이지 네비게이션 (다중 페이지인 경우에만 표시) */}
+          {getTotalPages > 1 && (
+            <div className="mb-4 flex items-center gap-4 bg-white px-6 py-3 rounded-lg shadow">
+              <button
+                onClick={previousPage}
+                disabled={!hasPreviousPage}
+                className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+              >
+                ← 이전
+              </button>
+              <span className="text-sm font-medium">
+                페이지 {currentPage} / {getTotalPages}
+              </span>
+              <button
+                onClick={nextPage}
+                disabled={!hasNextPage}
+                className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+              >
+                다음 →
+              </button>
+            </div>
+          )}
+
           {/* PDF 컨테이너 - 고정 크기 */}
-          <div 
+          <div
             className="relative bg-white shadow-sm border"
             style={{
               width: '1240px',
@@ -463,30 +515,26 @@ const DocumentSignerAssignment: React.FC = () => {
             }}
           >
             {/* PDF 배경 이미지 */}
-            {currentDocument.template?.pdfImagePath && (
-              <img
-                src={getPdfImageUrl(currentDocument)}
-                alt="Document Preview"
-                className="absolute inset-0"
-                style={{
-                  width: '1240px',
-                  height: '1754px',
-                  objectFit: 'fill'
-                }}
-                onError={() => {
-                  console.error('PDF 이미지 로드 실패:', getPdfImageUrl(currentDocument));
-                }}
-              />
-            )}
+            <img
+              src={getPdfImageUrl()}
+              alt="Document Preview"
+              className="absolute inset-0"
+              style={{
+                width: '1240px',
+                height: '1754px',
+                objectFit: 'fill'
+              }}
+              onError={() => {
+                console.error('PDF 이미지 로드 실패:', getPdfImageUrl());
+              }}
+            />
 
             {/* 필드 컨테이너 */}
-            <div 
-              className="absolute inset-0"
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-            >
-              {/* 기존 문서 필드들 (coordinateFields) */}
-              {(currentDocument.data?.coordinateFields || []).map((field: any) => {
+            <div className="absolute inset-0">
+              {/* 기존 문서 필드들 (coordinateFields) - 현재 페이지만 표시 */}
+              {(currentDocument.data?.coordinateFields || [])
+                .filter((field: any) => !field.page || field.page === currentPage)
+                .map((field: any) => {
                 const fieldValue = field.value || field.defaultValue || '';
                 
                 // 테이블 필드인지 확인
@@ -679,8 +727,10 @@ const DocumentSignerAssignment: React.FC = () => {
                 );
               })}
 
-              {/* 서명 필드 */}
-              {signatureFields.map(field => (
+              {/* 서명 필드 - 현재 페이지만 표시 */}
+              {signatureFields
+                .filter(field => field.page === currentPage)
+                .map(field => (
                 <div
                   key={field.id}
                   className="absolute border-2 border-blue-500 bg-blue-100 bg-opacity-50 cursor-move select-none"
@@ -779,7 +829,7 @@ const DocumentSignerAssignment: React.FC = () => {
                             {field.reviewerEmail}
                           </div>
                           <div className="text-xs text-blue-600">
-                            위치: ({field.x}, {field.y}) 크기: {field.width}x{field.height}
+                            페이지: {field.page} | 위치: ({field.x}, {field.y}) | 크기: {field.width}x{field.height}
                           </div>
                         </div>
                         <button

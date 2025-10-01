@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 export interface NotificationData {
   id: number;
@@ -34,8 +35,6 @@ interface NotificationStore {
   disconnectSSE: () => void;
   clearError: () => void;
 }
-
-const API_BASE_URL = 'http://localhost:8080/api';
 
 export const useNotificationStore = create<NotificationStore>()(
   devtools(

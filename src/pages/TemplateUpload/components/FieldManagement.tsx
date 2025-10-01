@@ -70,66 +70,98 @@ const FieldManagement: React.FC<FieldManagementProps> = ({
             총 {fields.length}개 필드
           </p>
         </div>
-        
+
         <div className="max-h-96 overflow-y-auto">
           {fields.length === 0 ? (
             <div className="p-6 text-center text-gray-500">
               <p>아직 필드가 없습니다.</p>
               <p className="text-sm mt-1">PDF 위에서 클릭하여 필드를 추가하세요.</p>
             </div>
-          ) : (
-            <div className="divide-y">
-              {fields.map((field) => (
-                <div
-                  key={field.id}
-                  className={`p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedFieldId === field.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                  }`}
-                  onClick={() => onFieldSelect(field.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-3 h-3 rounded-full flex-shrink-0 ${
-                          field.type === 'table' ? 'bg-purple-500' : 'bg-blue-500'
-                        }`}></span>
-                        <p className="font-medium text-gray-800 truncate">
-                          {field.label}
-                        </p>
-                        {field.required && (
-                          <span className="text-red-500 text-xs">*</span>
-                        )}
-                      </div>
+          ) : (() => {
+            // 페이지별로 필드 그룹화
+            const fieldsByPage: Record<number, TemplateField[]> = {};
+            fields.forEach(field => {
+              const page = field.page || 1;
+              if (!fieldsByPage[page]) {
+                fieldsByPage[page] = [];
+              }
+              fieldsByPage[page].push(field);
+            });
+
+            // 페이지 번호 순서대로 정렬
+            const sortedPages = Object.keys(fieldsByPage)
+              .map(Number)
+              .sort((a, b) => a - b);
+
+            return (
+              <div>
+                {sortedPages.map((pageNum) => (
+                  <div key={pageNum} className="border-b last:border-b-0">
+                    {/* 페이지 헤더 */}
+                    <div className="bg-gray-50 px-3 py-2 sticky top-0 z-10">
+                      <h4 className="text-sm font-semibold text-gray-700">
+                        페이지 {pageNum} ({fieldsByPage[pageNum].length}개 필드)
+                      </h4>
                     </div>
-                    <div className="flex space-x-1 ml-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onFieldEdit(field);
-                        }}
-                        className="p-1 text-gray-400 hover:text-blue-600 text-sm"
-                        title="편집"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm('이 필드를 삭제하시겠습니까?')) {
-                            onFieldDelete(field.id);
-                          }
-                        }}
-                        className="p-1 text-gray-400 hover:text-red-600 text-sm"
-                        title="삭제"
-                      >
-                        🗑️
-                      </button>
+
+                    {/* 해당 페이지의 필드들 */}
+                    <div className="divide-y">
+                      {fieldsByPage[pageNum].map((field) => (
+                        <div
+                          key={field.id}
+                          className={`p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+                            selectedFieldId === field.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                          }`}
+                          onClick={() => onFieldSelect(field.id)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <span className={`w-3 h-3 rounded-full flex-shrink-0 ${
+                                  field.type === 'table' ? 'bg-purple-500' :
+                                  field.type === 'editor_signature' ? 'bg-green-500' : 'bg-blue-500'
+                                }`}></span>
+                                <p className="font-medium text-gray-800 truncate">
+                                  {field.label}
+                                </p>
+                                {field.required && (
+                                  <span className="text-red-500 text-xs">*</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex space-x-1 ml-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onFieldEdit(field);
+                                }}
+                                className="p-1 text-gray-400 hover:text-blue-600 text-sm"
+                                title="편집"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (confirm('이 필드를 삭제하시겠습니까?')) {
+                                    onFieldDelete(field.id);
+                                  }
+                                }}
+                                className="p-1 text-gray-400 hover:text-red-600 text-sm"
+                                title="삭제"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
