@@ -14,10 +14,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const navigation = [
-    { name: '작업 현황', href: '/tasks' },
-    { name: '템플릿 관리', href: '/templates' },
-    { name: '문서 관리', href: '/documents' },
-    { name: '폴더 관리', href: '/folders' },
+    { name: '대시보드', href: '/tasks' },
+    { name: '템플릿', href: '/templates' },
+    { name: '문서', href: '/documents' },
+    { name: '폴더', href: '/folders' },
   ];
 
   const handleLogout = () => {
@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link to="/tasks" className="text-xl font-bold text-primary-600">
-                HisWork
+                CoWorks
               </Link>
             </div>
             

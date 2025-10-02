@@ -341,7 +341,7 @@ const TaskDashboard: React.FC = () => {
       <div className="space-y-8">
         {/* 페이지 헤더 */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">문서 현황</h1>
+          <h1 className="text-3xl font-bold text-gray-900">대시보드</h1>
           <p className="mt-2 text-gray-500">내가 관련된 모든 문서들을 확인하고 관리하세요</p>
         </div>
 
