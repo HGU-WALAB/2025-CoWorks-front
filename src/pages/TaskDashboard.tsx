@@ -217,7 +217,6 @@ const TaskDashboard: React.FC = () => {
             // 상태에 따른 색상과 아이콘 설정
             const getStatusInfo = (status: string) => {
               switch (status) {
-                case 'DRAFT':
                 case 'EDITING':
                   return {
                     color: 'blue',
@@ -225,7 +224,7 @@ const TaskDashboard: React.FC = () => {
                     textColor: 'text-blue-700',
                     borderColor: 'border-blue-200',
                     icon: '✏️',
-                    label: '문서 편집 필요'
+                    label: '편집중'
                   };
                 case 'REVIEWING':
                   return {
@@ -234,7 +233,7 @@ const TaskDashboard: React.FC = () => {
                     textColor: 'text-yellow-700',
                     borderColor: 'border-yellow-200',
                     icon: '👀',
-                    label: '문서 검토 필요'
+                    label: '검토중'
                   };
                 case 'REJECTED':
                   return {
@@ -243,7 +242,7 @@ const TaskDashboard: React.FC = () => {
                     textColor: 'text-red-700',
                     borderColor: 'border-red-200',
                     icon: '❌',
-                    label: '문서 수정 필요'
+                    label: '반려됨'
                   };
                 default:
                   return {
@@ -286,7 +285,8 @@ const TaskDashboard: React.FC = () => {
                       <span>템플릿: {doc.templateName}</span>
                       {taskRole && (
                         <span className="px-2 py-1 bg-gray-100 rounded-md text-xs">
-                          {taskRole}
+                          {taskRole === 'CREATOR' ? '생성자' : taskRole === 'EDITOR' ? '편집자' :
+                              taskRole === 'REVIEWER' ? '검토자' : '기타 역할'}
                         </span>
                       )}
                       {deadlineDate && (
@@ -301,19 +301,20 @@ const TaskDashboard: React.FC = () => {
                       )}
                       {/* 액션 버튼을 taskRole 오른쪽으로 이동 */}
                       <span className="ml-auto flex items-center space-x-2">
-                        <Link
-                          to={`/documents/${doc.id}`}
-                          className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                        >
-                          {doc.status === 'REVIEWING' ? '검토하기' : 
-                           doc.status === 'REJECTED' ? '수정하기' : '편집하기'}
-                        </Link>
-                        {doc.status === 'REVIEWING' && (
+                        {doc.status === 'REVIEWING' ? (
                           <Link
                             to={`/documents/${doc.id}/review`}
-                            className="inline-flex items-center px-4 py-2.5 border border-gray-300 text-base leading-5 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                            className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                           >
-                            상세 검토
+                            서명하기
+                          </Link>
+                        ) : (
+                          <Link
+                            to={`/documents/${doc.id}`}
+                            className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                          >
+                            {doc.status === 'EDITING' ? '편집하기' : 
+                             doc.status === 'REJECTED' ? '수정하기' : '이 버튼 뜨면 안됨 - 문서 완료상태가 TodoList에 뜬다는 것'}
                           </Link>
                         )}
                       </span>
@@ -357,7 +358,7 @@ const TaskDashboard: React.FC = () => {
                    </div>
                  </div>
                  <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">편집 중</h3>
+                   <h3 className="text-lg font-medium text-gray-900">편집중</h3>
                    <p className="text-3xl font-bold text-blue-600">{tasks.editingTasks.length}</p>
                  </div>
                  <div className="ml-auto">
@@ -379,7 +380,7 @@ const TaskDashboard: React.FC = () => {
                    </div>
                  </div>
                  <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">검토 중</h3>
+                   <h3 className="text-lg font-medium text-gray-900">검토중</h3>
                    <p className="text-3xl font-bold text-yellow-600">{tasks.reviewingTasks.length}</p>
                  </div>
                  <div className="ml-auto">
