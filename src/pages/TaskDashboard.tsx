@@ -203,7 +203,7 @@ const TaskDashboard: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center">
             <h2 className="text-2xl font-semibold text-gray-900">To Do List</h2>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 ml-2">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-red-100 text-red-800 ml-2">
               {todoDocuments.length}개
             </span>
           </div>
@@ -338,11 +338,11 @@ const TaskDashboard: React.FC = () => {
 
   // 문서 현황 카드 UI
   return (
+    <div className="container mx-auto px-4 py-8">
       <div className="space-y-8">
         {/* 페이지 헤더 */}
         <div>
           <h1 className="text-3xl font-bold text-gray-900">대시보드</h1>
-          <p className="mt-2 text-gray-500">내가 관련된 모든 문서들을 확인하고 관리하세요</p>
         </div>
 
          {/* 통계 카드 */}
@@ -357,9 +357,8 @@ const TaskDashboard: React.FC = () => {
                    </div>
                  </div>
                  <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">편집 중인 문서</h3>
+                   <h3 className="text-lg font-medium text-gray-900">편집 중</h3>
                    <p className="text-3xl font-bold text-blue-600">{tasks.editingTasks.length}</p>
-                   <p className="text-sm text-gray-500">편집 작업 진행중</p>
                  </div>
                  <div className="ml-auto">
                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -380,9 +379,8 @@ const TaskDashboard: React.FC = () => {
                    </div>
                  </div>
                  <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">검토 중인 문서</h3>
+                   <h3 className="text-lg font-medium text-gray-900">검토 중</h3>
                    <p className="text-3xl font-bold text-yellow-600">{tasks.reviewingTasks.length}</p>
-                   <p className="text-sm text-gray-500">검토 작업 진행중</p>
                  </div>
                  <div className="ml-auto">
                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -403,9 +401,8 @@ const TaskDashboard: React.FC = () => {
                    </div>
                  </div>
                  <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">반려된 문서</h3>
+                   <h3 className="text-lg font-medium text-gray-900">반려됨</h3>
                    <p className="text-3xl font-bold text-red-600">{tasks.rejectedTasks.length}</p>
-                   <p className="text-sm text-gray-500">수정이 필요한 문서</p>
                  </div>
                  <div className="ml-auto">
                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -426,9 +423,8 @@ const TaskDashboard: React.FC = () => {
                    </div>
                  </div>
                  <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">완료된 문서</h3>
+                   <h3 className="text-lg font-medium text-gray-900">완료</h3>
                    <p className="text-3xl font-bold text-gray-600">{tasks.completedTasks.length}</p>
-                   <p className="text-sm text-gray-500">작업 완료된 문서</p>
                  </div>
                  <div className="ml-auto">
                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -497,6 +493,7 @@ const TaskDashboard: React.FC = () => {
         </div>
 
       </div>
+    </div>
   );
 };
 
