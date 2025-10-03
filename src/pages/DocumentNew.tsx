@@ -11,6 +11,7 @@ const DocumentNew: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedTemplateId = searchParams.get('templateId');
+  const urlMode = searchParams.get('mode') as 'single' | 'bulk' | null;
 
   const { templates, getTemplates } = useTemplateStore();
   const { createDocument, loading } = useDocumentStore();
@@ -24,7 +25,7 @@ const DocumentNew: React.FC = () => {
   const [documentTitle, setDocumentTitle] = useState<string>('');
   const [stagingId, setStagingId] = useState<string | null>(null);
   const [uploadSummary, setUploadSummary] = useState<{ total: number; valid: number; invalid: number } | null>(null);
-  const [creationMode, setCreationMode] = useState<'single' | 'bulk'>('single');
+  const [creationMode, setCreationMode] = useState<'single' | 'bulk'>(urlMode || 'single');
   type UploadedUser = { name: string; email: string; userStatus: 'REGISTERED' | 'UNREGISTERED' | 'UNKNOWN' };
   const [uploadedUsers, setUploadedUsers] = useState<UploadedUser[]>([]);
 
@@ -284,37 +285,43 @@ const DocumentNew: React.FC = () => {
                   <label className="text-sm font-medium text-gray-700">
                     편집자
                   </label>
-                  <div className="flex items-center space-x-2">
-                    <button
-                        type="button"
-                        onClick={() => {
-                          setCreationMode('single');
-                          setStagingId(null);
-                          setUploadSummary(null);
-                          setUploadedUsers([]);
-                        }}
-                        className={`px-3 py-1 rounded border text-sm ${
-                            creationMode === 'single'
-                                ? 'bg-blue-600 text-white border-blue-600'
-                                : 'bg-white text-gray-700 border-gray-300'
-                        }`}
-                    >
-                      개인 문서 생성
-                    </button>
-                    {hasFolderAccess && (
-                        <button
-                            type="button"
-                            onClick={() => setCreationMode('bulk')}
-                            className={`px-3 py-1 rounded border text-sm ${
-                                creationMode === 'bulk'
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'bg-white text-gray-700 border-gray-300'
-                            }`}
-                        >
-                          일괄 문서 생성
-                        </button>
-                    )}
-                  </div>
+                  {/* URL 파라미터로 mode가 지정되지 않았거나, 권한이 있는 경우에만 모드 전환 버튼 표시 */}
+                  {!urlMode && hasFolderAccess && (
+                    <div className="flex items-center space-x-2">
+                      <button
+                          type="button"
+                          onClick={() => {
+                            setCreationMode('single');
+                            setStagingId(null);
+                            setUploadSummary(null);
+                            setUploadedUsers([]);
+                          }}
+                          className={`px-3 py-1 rounded border text-sm ${
+                              creationMode === 'single'
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-white text-gray-700 border-gray-300'
+                          }`}
+                      >
+                        개인 문서 생성
+                      </button>
+                      <button
+                          type="button"
+                          onClick={() => setCreationMode('bulk')}
+                          className={`px-3 py-1 rounded border text-sm ${
+                              creationMode === 'bulk'
+                                  ? 'bg-blue-600 text-white border-blue-600'
+                                  : 'bg-white text-gray-700 border-gray-300'
+                          }`}
+                      >
+                        일괄 문서 생성
+                      </button>
+                    </div>
+                  )}
+                  {urlMode && (
+                    <div className="text-sm text-gray-500">
+                      {urlMode === 'single' ? '개인 문서 생성 모드' : '일괄 문서 생성 모드'}
+                    </div>
+                  )}
                 </div>
                 {hasFolderAccess && creationMode === 'bulk' && (
                     <div className="flex justify-end">

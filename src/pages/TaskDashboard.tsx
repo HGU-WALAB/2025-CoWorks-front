@@ -235,6 +235,15 @@ const TaskDashboard: React.FC = () => {
                     icon: '👀',
                     label: '검토중'
                   };
+                case 'READY_FOR_REVIEW':
+                  return {
+                      color: 'orange',
+                      bgColor: 'bg-orange-50',
+                      textColor: 'text-orange-700',
+                      borderColor: 'border-orange-200',
+                      icon: '📝',
+                      label: '서명자 지정 필요'
+                      };
                 case 'REJECTED':
                   return {
                     color: 'red',
@@ -301,7 +310,14 @@ const TaskDashboard: React.FC = () => {
                       )}
                       {/* 액션 버튼을 taskRole 오른쪽으로 이동 */}
                       <span className="ml-auto flex items-center space-x-2">
-                        {doc.status === 'REVIEWING' ? (
+                        {doc.status === 'READY_FOR_REVIEW' ? (
+                          <Link
+                            to={`/documents/${doc.id}/signer-assignment`}
+                            className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-orange-500 bg-orange-100 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-200 transition-colors"
+                          >
+                            서명자 지정하기
+                          </Link>
+                        ) : doc.status === 'REVIEWING' ? (
                           <Link
                             to={`/documents/${doc.id}/review`}
                             className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
@@ -313,8 +329,8 @@ const TaskDashboard: React.FC = () => {
                             to={`/documents/${doc.id}`}
                             className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                           >
-                            {doc.status === 'EDITING' ? '편집하기' : 
-                             doc.status === 'REJECTED' ? '수정하기' : '이 버튼 뜨면 안됨 - 문서 완료상태가 TodoList에 뜬다는 것'}
+                            {doc.status === 'EDITING' ? '편집하기' :
+                              doc.status === 'REJECTED' ? '수정하기' : '이 버튼 뜨면 안됨 - 문서 완료상태가 TodoList에 뜬다는 것'}
                           </Link>
                         )}
                       </span>
