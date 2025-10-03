@@ -18,6 +18,9 @@ import { DOCUMENT_STATUS, StatusBadge, getStatusText } from '../utils/documentSt
 import { useBulkDownload } from '../utils/bulkDownloadUtils';
 import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
 
+// 필터링 및 정렬 타입 정의
+type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
+
 const FolderPage: React.FC<FolderPageProps> = () => {
   const { folderId } = useParams<{ folderId?: string }>();
   const navigate = useNavigate();
@@ -53,6 +56,9 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
   // 문서 필터링 상태
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // 문서 정렬 상태
+  const [sortOption, setSortOption] = useState<SortOption>('updatedAt-desc');
 
   // 문서 선택 상태
   const [selectedDocuments, setSelectedDocuments] = useState<Set<number>>(new Set());
@@ -493,12 +499,23 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       filtered = documents.filter(doc => doc.status === statusFilter);
     }
     
-    // 마지막 수정일 기준으로 최신순 정렬 (updatedAt이 없으면 createdAt 사용)
-    return [...filtered].sort((a, b) => {
-      const aDate = new Date(a.updatedAt || a.createdAt).getTime();
-      const bDate = new Date(b.updatedAt || b.createdAt).getTime();
-      return bDate - aDate; // 내림차순 (최신이 먼저)
+    // 정렬 옵션에 따라 정렬
+    const sorted = [...filtered].sort((a, b) => {
+      switch (sortOption) {
+        case 'createdAt-desc':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'createdAt-asc':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'updatedAt-desc':
+          return new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime();
+        case 'updatedAt-asc':
+          return new Date(a.updatedAt || a.createdAt).getTime() - new Date(b.updatedAt || b.createdAt).getTime();
+        default:
+          return 0;
+      }
     });
+
+    return sorted;
   };
 
   // 필터 버튼 클릭 핸들러
@@ -854,6 +871,21 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                               </>
                           );
                         })()}
+                      </div>
+
+                      {/* 정렬 기준 드롭다운 */}
+                      <div className="flex items-center space-x-2 ml-4">
+                        <span className="font-medium text-gray-700 text-sm">정렬:</span>
+                        <select
+                          value={sortOption}
+                          onChange={(e) => setSortOption(e.target.value as SortOption)}
+                          className="text-xs border border-gray-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="updatedAt-desc">수정일 (최신순)</option>
+                          <option value="updatedAt-asc">수정일 (오래된순)</option>
+                          <option value="createdAt-desc">생성일 (최신순)</option>
+                          <option value="createdAt-asc">생성일 (오래된순)</option>
+                        </select>
                       </div>
                     </div>
                 )}
