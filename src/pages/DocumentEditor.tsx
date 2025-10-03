@@ -516,7 +516,7 @@ const DocumentEditor: React.FC = () => {
         // 현재 사용자가 검토자 지정 권한이 있는지 확인
         const hasAssignReviewerPermission = currentDocument?.tasks?.some(task => 
           task.assignedUserEmail === user?.email && 
-          (task.role === 'CREATOR' || (task.role === 'EDITOR' && task.canAssignReviewer))
+          (task.role === 'CREATOR' || (task.role === 'EDITOR'))
         );
 
         if (hasAssignReviewerPermission) {
