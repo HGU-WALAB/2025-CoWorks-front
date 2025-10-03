@@ -9,6 +9,7 @@ const TemplateList: React.FC = () => {
   const navigate = useNavigate();
   const { templates, loading, error, getTemplates, deleteTemplate, duplicateTemplate } = useTemplateStore();
   const { user } = useAuthStore();
+  const hasFolderAccess: boolean = (user as unknown as { hasFolderAccess?: boolean })?.hasFolderAccess === true;
   
   // 복제 모달 상태
   const [duplicateModal, setDuplicateModal] = useState<{
@@ -24,8 +25,8 @@ const TemplateList: React.FC = () => {
     getTemplates();
   }, [getTemplates]);
 
-  const handleCreateDocument = (templateId: number) => {
-    navigate(`/documents/new?templateId=${templateId}`);
+  const handleCreateDocument = (templateId: number, mode: 'single' | 'bulk' = 'single') => {
+    navigate(`/documents/new?templateId=${templateId}&mode=${mode}`);
   };
   
   const isTemplateOwner = (template: Template) => {
@@ -145,15 +146,38 @@ const TemplateList: React.FC = () => {
 
                     {/* 액션 버튼들 */}
                     <div className="space-y-2">
-                      <button
-                        onClick={() => handleCreateDocument(template.id)}
-                        className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center justify-center"
-                      >
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        문서 생성
-                      </button>
+                      {hasFolderAccess ? (
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleCreateDocument(template.id, 'single')}
+                            className="flex-1 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center justify-center"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            개인문서 생성
+                          </button>
+                          <button
+                            onClick={() => handleCreateDocument(template.id, 'bulk')}
+                            className="flex-1 px-3 py-1.5 text-sm bg-white border border-blue-300 text-blue-600 rounded-md hover:bg-blue-50 transition-colors flex items-center justify-center"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                            문서 할당
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleCreateDocument(template.id, 'single')}
+                          className="w-full px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center justify-center"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                          </svg>
+                          문서 생성
+                        </button>
+                      )}
                       
                       <div className="flex space-x-2">
                         {isTemplateOwner(template) && (
