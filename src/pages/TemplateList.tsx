@@ -124,13 +124,15 @@ const TemplateList: React.FC = () => {
               <Link to="/templates/pdf/upload" className="btn btn-primary">
                 📄 PDF 템플릿 업로드
               </Link>
-              <button
-                onClick={handleDownloadExcelTemplate}
-                className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 rounded-md hover:from-green-100 hover:to-emerald-100 transition-colors flex items-center font-medium"
-                title="사용자 할당을 위한 엑셀 템플릿 다운로드"
-              >
-                📊 엑셀 템플릿 다운로드
-              </button>
+              {hasFolderAccess && (
+                <button
+                  onClick={handleDownloadExcelTemplate}
+                  className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 rounded-md hover:from-green-100 hover:to-emerald-100 transition-colors flex items-center font-medium"
+                  title="사용자 할당을 위한 엑셀 템플릿 다운로드"
+                >
+                  📊 엑셀 템플릿 다운로드
+                </button>
+              )}
             </div>
           </div>
         </div>
