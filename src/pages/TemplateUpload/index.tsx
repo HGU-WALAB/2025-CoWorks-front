@@ -7,6 +7,9 @@ import NewFieldModal from '../../components/modals/NewFieldModal';
 import FieldEditModal from '../../components/modals/FieldEditModal';
 import TableCellEditModal from '../../components/modals/TableCellEditModal';
 import FolderSelector from '../../components/FolderSelector';
+import FolderCreateModal from '../../components/FolderCreateModal';
+import FolderLocationSelector from '../../components/FolderLocationSelector';
+import { folderService } from '../../services/folderService';
 import FieldManagement from './components/FieldManagement';
 import TemplatePreview from './components/TemplatePreview';
 import MultiPageTemplatePreview from './components/MultiPageTemplatePreview';
@@ -38,9 +41,13 @@ const TemplateUpload: React.FC = () => {
   const [templateName, setTemplateName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedParentFolderId, setSelectedParentFolderId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [, setError] = useState<string | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [folderRefreshTrigger, setFolderRefreshTrigger] = useState(0); // FolderSelector 새로고침용
   
   // PDF preview states
   const [pdfImageDataUrl, setPdfImageDataUrl] = useState<string | null>(null);
@@ -423,6 +430,37 @@ const TemplateUpload: React.FC = () => {
     setEditingCell(null);
   };
 
+  // 폴더 생성 관련 함수들
+  const handleCreateFolder = async (folderName: string) => {
+    try {
+      const newFolder = await folderService.createFolder({
+        name: folderName,
+        parentId: selectedParentFolderId
+      });
+      
+      // 새로 생성된 폴더를 자동으로 선택
+      setSelectedFolderId(newFolder.id);
+      
+      // FolderSelector 새로고침 트리거
+      setFolderRefreshTrigger(prev => prev + 1);
+      
+      // 모달 닫기
+      setShowCreateModal(false);
+      setSelectedParentFolderId(null);
+      setShowLocationModal(false);
+      
+      // 성공 메시지 표시 (선택사항)
+      console.log('폴더가 성공적으로 생성되었습니다.');
+    } catch (error: any) {
+      console.error('Error creating folder:', error);
+      throw error; // 모달에서 에러 처리
+    }
+  };
+
+  const openCreateFolderModal = () => {
+    setShowLocationModal(true);
+  };
+
   // 편집 모드일 때 기존 템플릿 데이터 로드
   useEffect(() => {
     const loadTemplateForEdit = async () => {
@@ -717,14 +755,33 @@ const TemplateUpload: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  폴더
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    폴더
+                  </label>
+                  <button
+                    type="button"
+                    onClick={openCreateFolderModal}
+                    className="px-2 py-1 text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 rounded transition-colors flex items-center"
+                    title="새 폴더 만들기"
+                  >
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    새 폴더
+                  </button>
+                </div>
                 <FolderSelector
                   selectedFolderId={selectedFolderId}
                   onFolderSelect={setSelectedFolderId}
                   placeholder="이 템플릿으로 생성한 문서가 담길 폴더를 선택해주세요"
                   allowRoot={true}
+                  hideCreateButton={true}
+                  refreshTrigger={folderRefreshTrigger}
+                  onFolderCreated={(folderId) => {
+                    // FolderSelector 내부에서 폴더 생성 시 자동 선택되도록 처리
+                    setSelectedFolderId(folderId);
+                  }}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   이 템플릿으로 문서를 생성할 때 선택한 폴더에 자동으로 저장됩니다.
@@ -849,6 +906,83 @@ const TemplateUpload: React.FC = () => {
           tableName={fields.find(f => f.id === editingCell.fieldId)?.label || ''}
         />
       )}
+
+      {/* 위치 선택 모달 */}
+      {showLocationModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* 배경 오버레이 */}
+            <div 
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+              onClick={() => setShowLocationModal(false)}
+            />
+
+            {/* 모달 컨테이너 */}
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                      새 폴더 만들기
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          폴더를 생성할 위치 선택
+                        </label>
+                        <FolderLocationSelector
+                          selectedFolderId={selectedParentFolderId}
+                          onFolderSelect={setSelectedParentFolderId}
+                          allowRoot={true}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLocationModal(false);
+                    setShowCreateModal(true);
+                  }}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  계속
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLocationModal(false);
+                    setSelectedParentFolderId(null);
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 폴더 생성 모달 */}
+      <FolderCreateModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setSelectedParentFolderId(null);
+        }}
+        onSubmit={handleCreateFolder}
+        parentFolderName={selectedParentFolderId ? 'Selected Folder' : null}
+      />
     </div>
   );
 };
