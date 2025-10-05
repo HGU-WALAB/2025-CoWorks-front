@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNotificationStore, type NotificationData } from '../stores/notificationStore';
 import { useAuthStore } from '../stores/authStore';
 
 const NotificationDropdown: React.FC = () => {
+  const navigate = useNavigate();
   const {
     notifications,
     unreadCount,
@@ -11,12 +13,10 @@ const NotificationDropdown: React.FC = () => {
     fetchNotifications,
     fetchUnreadCount,
     markAsRead,
-    markAllAsRead,
     deleteNotification,
     deleteAllNotifications,
     connectSSE,
     disconnectSSE,
-    isConnected,
   } = useNotificationStore();
 
   const { setAuthHeader } = useAuthStore();
@@ -66,14 +66,38 @@ const NotificationDropdown: React.FC = () => {
       await markAsRead(notification.id);
     }
 
-    // 액션 URL이 있으면 해당 페이지로 이동
+    // actionUrl이 있으면 해당 URL을 파싱해서 적절한 페이지로 라우팅
     if (notification.actionUrl) {
-      window.location.href = notification.actionUrl;
+      try {
+        const url = new URL(notification.actionUrl, window.location.origin);
+        const pathname = url.pathname;
+        
+        // actionUrl에서 documentId 추출
+        const documentId = pathname.split('/').pop();
+        
+        // 검토 관련 알림인지 확인 (메시지 내용 또는 URL 경로로 판단)
+        const isReviewNotification = 
+          notification.message.includes('검토') || 
+          notification.message.includes('review') ||
+          notification.title.includes('검토') ||
+          notification.title.includes('review') ||
+          pathname.includes('/review');
+        
+        if (isReviewNotification && documentId && !isNaN(Number(documentId))) {
+          // 검토 페이지로 라우팅
+          navigate(`/documents/${documentId}/review`);
+        } else {
+          // 일반 편집 페이지나 기타 페이지로 라우팅
+          navigate(pathname);
+        }
+        
+        setIsOpen(false);
+      } catch (error) {
+        console.error('URL 파싱 오류:', error);
+        // URL 파싱 실패 시 기존 방식 사용
+        window.location.href = notification.actionUrl;
+      }
     }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    await markAllAsRead();
   };
 
   const handleDeleteNotification = async (notificationId: number, event: React.MouseEvent) => {
