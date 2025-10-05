@@ -85,6 +85,7 @@ export interface DocumentCreateRequest {
   templateId: number;
   editorEmail?: string;
   title?: string;
+  deadline?: string;
 }
 
 export interface DocumentUpdateRequest {

@@ -211,10 +211,7 @@ const DocumentReview: React.FC = () => {
 
       alert('✅ 문서가 승인되었습니다! 서명이 문서에 추가되었습니다.');
 
-      // 작업 대시보드로 이동
-      setTimeout(() => {
-        navigate(-1);
-      }, 400);
+      // 자동으로 페이지를 나가지 않고 사용자가 직접 선택할 수 있도록 함
 
     } catch (error: any) {
       console.error('❌ 승인 실패:', error);
@@ -256,7 +253,7 @@ const DocumentReview: React.FC = () => {
 
       alert('❌ 문서가 반려되었습니다.');
       setShowRejectModal(false);
-      navigate('/documents');
+      // 자동으로 페이지를 나가지 않고 사용자가 직접 선택할 수 있도록 함
     } catch (error) {
       console.error('반려 실패:', error);
       alert('반려 처리에 실패했습니다.');
@@ -671,32 +668,24 @@ const DocumentReview: React.FC = () => {
           </div>
 
           <div className="p-4 space-y-4">
-            {/* 리뷰어 목록 */}
+            {/* 검토자 목록 */}
             <div className="border rounded-lg p-3">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">👥 리뷰어 목록</h3>
-              <div className="space-y-3">
+              <h3 className="text-sm font-medium text-gray-900 mb-3">검토자</h3>
+              <div className="space-y-2">
                 {currentDocument.tasks && currentDocument.tasks.length > 0 ? (
                   currentDocument.tasks
                     .filter(task => task.role === 'REVIEWER')
                     .map((reviewer, index) => (
-                      <div key={index} className="flex items-start space-x-3 p-3 rounded-lg bg-green-50 border border-green-200">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                      <div key={index} className="flex items-center space-x-3 p-2 rounded-lg bg-green-50 border border-green-200">
+                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
                           {reviewer.assignedUserName ? reviewer.assignedUserName.charAt(0).toUpperCase() : 'R'}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
-                              검토자
-                            </span>
-                          </div>
-                          <div className="text-sm font-medium text-gray-900 mt-1">
+                          <div className="text-sm font-medium text-gray-900">
                             {reviewer.assignedUserName || '이름 없음'}
                           </div>
                           <div className="text-xs text-gray-500 truncate">
                             {reviewer.assignedUserEmail}
-                          </div>
-                          <div className="text-xs text-gray-400 mt-1">
-                            지정일: {new Date(reviewer.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
@@ -717,12 +706,12 @@ const DocumentReview: React.FC = () => {
             {/* 편집자 정보 (참고용) */}
             {currentDocument.tasks && currentDocument.tasks.some(task => task.role === 'EDITOR') && (
               <div className="border rounded-lg p-3">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">✏️ 편집자</h3>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">편집자</h3>
                 <div className="space-y-2">
                   {currentDocument.tasks
                     .filter(task => task.role === 'EDITOR')
                     .map((editor, index) => (
-                      <div key={index} className="flex items-center space-x-3 p-2 rounded-lg bg-blue-50">
+                      <div key={index} className="flex items-center space-x-3 p-2 rounded-lg bg-blue-50 border border-blue-200">
                         <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
                           {editor.assignedUserName ? editor.assignedUserName.charAt(0).toUpperCase() : 'E'}
                         </div>
@@ -734,11 +723,6 @@ const DocumentReview: React.FC = () => {
                             {editor.assignedUserEmail}
                           </div>
                         </div>
-                        {(
-                          <div className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                            리뷰어 지정 권한
-                          </div>
-                        )}
                       </div>
                     ))
                   }

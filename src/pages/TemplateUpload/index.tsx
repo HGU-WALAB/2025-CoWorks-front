@@ -7,6 +7,9 @@ import NewFieldModal from '../../components/modals/NewFieldModal';
 import FieldEditModal from '../../components/modals/FieldEditModal';
 import TableCellEditModal from '../../components/modals/TableCellEditModal';
 import FolderSelector from '../../components/FolderSelector';
+import FolderCreateModal from '../../components/FolderCreateModal';
+import FolderLocationSelector from '../../components/FolderLocationSelector';
+import { folderService } from '../../services/folderService';
 import FieldManagement from './components/FieldManagement';
 import TemplatePreview from './components/TemplatePreview';
 import MultiPageTemplatePreview from './components/MultiPageTemplatePreview';
@@ -37,12 +40,14 @@ const TemplateUpload: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [templateName, setTemplateName] = useState('');
   const [description, setDescription] = useState('');
-  const [deadline, setDeadline] = useState(''); // 만료일 상태 추가
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedParentFolderId, setSelectedParentFolderId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [jsonData, setJsonData] = useState('');
+  const [, setError] = useState<string | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [folderRefreshTrigger, setFolderRefreshTrigger] = useState(0); // FolderSelector 새로고침용
   
   // PDF preview states
   const [pdfImageDataUrl, setPdfImageDataUrl] = useState<string | null>(null);
@@ -322,7 +327,6 @@ const TemplateUpload: React.FC = () => {
         name: templateName,
         description,
         coordinateFields: JSON.stringify(fields),
-        deadline: deadline || null,
         defaultFolderId: selectedFolderId,
         // PDF 다중 페이지 정보 추가
         isMultiPage: isMultiPage,
@@ -426,6 +430,37 @@ const TemplateUpload: React.FC = () => {
     setEditingCell(null);
   };
 
+  // 폴더 생성 관련 함수들
+  const handleCreateFolder = async (folderName: string) => {
+    try {
+      const newFolder = await folderService.createFolder({
+        name: folderName,
+        parentId: selectedParentFolderId
+      });
+      
+      // 새로 생성된 폴더를 자동으로 선택
+      setSelectedFolderId(newFolder.id);
+      
+      // FolderSelector 새로고침 트리거
+      setFolderRefreshTrigger(prev => prev + 1);
+      
+      // 모달 닫기
+      setShowCreateModal(false);
+      setSelectedParentFolderId(null);
+      setShowLocationModal(false);
+      
+      // 성공 메시지 표시 (선택사항)
+      console.log('폴더가 성공적으로 생성되었습니다.');
+    } catch (error: any) {
+      console.error('Error creating folder:', error);
+      throw error; // 모달에서 에러 처리
+    }
+  };
+
+  const openCreateFolderModal = () => {
+    setShowLocationModal(true);
+  };
+
   // 편집 모드일 때 기존 템플릿 데이터 로드
   useEffect(() => {
     const loadTemplateForEdit = async () => {
@@ -441,7 +476,6 @@ const TemplateUpload: React.FC = () => {
           // 기본 정보 설정
           setTemplateName(template.name || '');
           setDescription(template.description || '');
-          setDeadline(template.deadline || ''); // 만료일 설정
           setSelectedFolderId(template.defaultFolderId || null);
           
           console.log('📁 기본 폴더 설정:', template.defaultFolderId, template.defaultFolderName);
@@ -462,7 +496,7 @@ const TemplateUpload: React.FC = () => {
                 console.log('🔍 TemplateUpload - 원본 문자열:', template.pdfImagePaths);
                 // 대괄호로 감싸진 문자열을 수동으로 파싱
                 const cleanStr = template.pdfImagePaths.replace(/^\[|\]$/g, '');
-                pdfImagePaths = cleanStr.split(',').map(path => path.trim());
+                pdfImagePaths = cleanStr.split(',').map((path: string) => path.trim());
                 console.log('🔍 TemplateUpload - 수동 파싱 결과:', pdfImagePaths);
               }
             }
@@ -573,8 +607,6 @@ const TemplateUpload: React.FC = () => {
               
               if (Array.isArray(parsedFields)) {
                 setFields(parsedFields);
-                // JSON 데이터도 자동으로 표시
-                setJsonData(JSON.stringify(parsedFields, null, 2));
               }
             } catch (fieldParseError) {
               console.error('❌ 필드 데이터 파싱 실패:', fieldParseError);
@@ -608,51 +640,9 @@ const TemplateUpload: React.FC = () => {
     };
   }, [pdfImageDataUrl, pdfPages]);
 
-  // JSON 데이터 가져오기 함수
-  const handleJsonImport = () => {
-    if (!jsonData.trim()) {
-      setError('JSON 데이터를 입력해주세요.');
-      return;
-    }
 
-    try {
-      const parsedData = JSON.parse(jsonData);
-      if (Array.isArray(parsedData)) {
-        // JSON 데이터를 TemplateField 형태로 변환
-        const convertedFields = parsedData.map((item, index) => ({
-          id: item.id || `field_${Date.now()}_${index}`,
-          label: item.label || item.name || `필드 ${index + 1}`,
-          type: item.type || 'text',
-          x: item.x || 0,
-          y: item.y || 0,
-          width: item.width || 100,
-          height: item.height || 30,
-          required: item.required || false,
-          fontSize: item.fontSize || 12,
-          fontFamily: item.fontFamily || 'Arial',
-          // 테이블 데이터가 있으면 포함
-          ...(item.tableData && { tableData: item.tableData })
-        }));
-        
-        // 기존 필드를 모두 제거하고 새로운 필드들로 대체
-        setFields(convertedFields);
-        setJsonData(''); // 성공 후 입력 창 클리어
-        setError(null);
-        console.log('JSON 데이터 가져오기 성공:', convertedFields);
-      } else {
-        setError('JSON 데이터는 배열 형태여야 합니다.');
-      }
-    } catch (error) {
-      console.error('JSON 파싱 오류:', error);
-      setError('올바른 JSON 형식이 아닙니다.');
-    }
-  };
 
-  // 현재 필드를 JSON으로 내보내기
-  const handleJsonExport = () => {
-    const fieldsJson = JSON.stringify(fields, null, 2);
-    setJsonData(fieldsJson);
-  };
+
 
   // 로딩 상태 표시
   if (loadingTemplate) {
@@ -765,14 +755,33 @@ const TemplateUpload: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  폴더
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    폴더
+                  </label>
+                  <button
+                    type="button"
+                    onClick={openCreateFolderModal}
+                    className="px-2 py-1 text-xs text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-300 rounded transition-colors flex items-center"
+                    title="새 폴더 만들기"
+                  >
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    새 폴더
+                  </button>
+                </div>
                 <FolderSelector
                   selectedFolderId={selectedFolderId}
                   onFolderSelect={setSelectedFolderId}
                   placeholder="이 템플릿으로 생성한 문서가 담길 폴더를 선택해주세요"
                   allowRoot={true}
+                  hideCreateButton={true}
+                  refreshTrigger={folderRefreshTrigger}
+                  onFolderCreated={(folderId) => {
+                    // FolderSelector 내부에서 폴더 생성 시 자동 선택되도록 처리
+                    setSelectedFolderId(folderId);
+                  }}
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   이 템플릿으로 문서를 생성할 때 선택한 폴더에 자동으로 저장됩니다.
@@ -789,77 +798,6 @@ const TemplateUpload: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   placeholder="이 템플릿의 용도나 특징을 간단히 설명해주세요"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  만료일
-                  {/* {deadline && (
-                    <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
-                      {new Date(deadline).toLocaleString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  )} */}
-                </label>
-                
-                {/* 빠른 선택 버튼들 */}
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {[
-                    { label: '1일 후', days: 1 },
-                    { label: '3일 후', days: 3 },
-                    { label: '7일 후', days: 7 },
-                  ].map((option) => {
-                    // 한국 시간 기준으로 현재 시간 계산
-                    const now = new Date();
-                    const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
-                    const targetDate = new Date(koreaTime.getTime() + (option.days * 24 * 60 * 60 * 1000));
-                    const targetValue = targetDate.toISOString().slice(0, 16);
-                    const isSelected = deadline === targetValue;
-                    
-                    return (
-                      <button
-                        key={option.days}
-                        type="button"
-                        onClick={() => setDeadline(targetValue)}
-                        className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
-                          isSelected
-                            ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500 shadow-sm'
-                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-sm'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
-                  {deadline && (
-                    <button
-                      type="button"
-                      onClick={() => setDeadline('')}
-                      className="px-4 py-2 text-sm font-medium bg-red-50 hover:bg-red-100 text-red-600 rounded-full transition-all duration-200 hover:shadow-sm"
-                    >
-                      초기화
-                    </button>
-                  )}
-                </div>
-                
-                <input
-                  type="datetime-local"
-                  value={deadline}
-                  min={(() => {
-                    const now = new Date();
-                    const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
-                    return koreaTime.toISOString().slice(0, 16);
-                  })()}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="직접 날짜와 시간을 선택하세요"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  편집자가 문서 편집을 완료해야 하는 마감일을 지정할 수 있습니다. 현재 시간 이후로만 선택 가능합니다.
-                </p>
               </div>
             </div>
           </div>
@@ -968,6 +906,83 @@ const TemplateUpload: React.FC = () => {
           tableName={fields.find(f => f.id === editingCell.fieldId)?.label || ''}
         />
       )}
+
+      {/* 위치 선택 모달 */}
+      {showLocationModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* 배경 오버레이 */}
+            <div 
+              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+              onClick={() => setShowLocationModal(false)}
+            />
+
+            {/* 모달 컨테이너 */}
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+                      새 폴더 만들기
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          폴더를 생성할 위치 선택
+                        </label>
+                        <FolderLocationSelector
+                          selectedFolderId={selectedParentFolderId}
+                          onFolderSelect={setSelectedParentFolderId}
+                          allowRoot={true}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLocationModal(false);
+                    setShowCreateModal(true);
+                  }}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  계속
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLocationModal(false);
+                    setSelectedParentFolderId(null);
+                  }}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 폴더 생성 모달 */}
+      <FolderCreateModal
+        isOpen={showCreateModal}
+        onClose={() => {
+          setShowCreateModal(false);
+          setSelectedParentFolderId(null);
+        }}
+        onSubmit={handleCreateFolder}
+        parentFolderName={selectedParentFolderId ? 'Selected Folder' : null}
+      />
     </div>
   );
 };

@@ -23,6 +23,7 @@ const DocumentNew: React.FC = () => {
   );
 
   const [documentTitle, setDocumentTitle] = useState<string>('');
+  const [deadline, setDeadline] = useState<string>('');
   const [stagingId, setStagingId] = useState<string | null>(null);
   const [uploadSummary, setUploadSummary] = useState<{ total: number; valid: number; invalid: number } | null>(null);
   const [creationMode, setCreationMode] = useState<'single' | 'bulk'>(urlMode || 'single');
@@ -104,6 +105,7 @@ const DocumentNew: React.FC = () => {
           templateId: parseInt(selectedTemplateId),
           editorEmail: user?.email,
           title: documentTitle.trim() || undefined,
+          deadline: deadline || undefined,
           stagingId: stagingId
         };
         
@@ -224,6 +226,71 @@ const DocumentNew: React.FC = () => {
               />
             </div>
 
+            {/* 만료일 선택 - bulk 모드일 때만 표시 */}
+            {creationMode === 'bulk' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  만료일
+                </label>
+                
+                {/* 빠른 선택 버튼들 */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {[
+                    { label: '1일 후', days: 1 },
+                    { label: '3일 후', days: 3 },
+                    { label: '7일 후', days: 7 },
+                  ].map((option) => {
+                    // 한국 시간 기준으로 현재 시간 계산
+                    const now = new Date();
+                    const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+                    const targetDate = new Date(koreaTime.getTime() + (option.days * 24 * 60 * 60 * 1000));
+                    const targetValue = targetDate.toISOString().slice(0, 16);
+                    const isSelected = deadline === targetValue;
+                    
+                    return (
+                      <button
+                        key={option.days}
+                        type="button"
+                        onClick={() => setDeadline(targetValue)}
+                        className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
+                          isSelected
+                            ? 'bg-blue-100 text-blue-700 ring-2 ring-blue-500 shadow-sm'
+                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-sm'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                  {deadline && (
+                    <button
+                      type="button"
+                      onClick={() => setDeadline('')}
+                      className="px-4 py-2 text-sm font-medium bg-red-50 hover:bg-red-100 text-red-600 rounded-full transition-all duration-200 hover:shadow-sm"
+                    >
+                      초기화
+                    </button>
+                  )}
+                </div>
+                
+                <input
+                  type="datetime-local"
+                  value={deadline}
+                  min={(() => {
+                    const now = new Date();
+                    const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+                    return koreaTime.toISOString().slice(0, 16);
+                  })()}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  placeholder="직접 날짜와 시간을 선택하세요"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  편집자가 문서 편집을 완료해야 하는 마감일을 지정할 수 있습니다. 현재 시간 이후로만 선택 가능합니다.
+                </p>
+              </div>
+            )}
+
             {/* 선택된 템플릿 설명 (읽기 전용) */}
             {selectedTemplate && (
               <div>
@@ -237,44 +304,6 @@ const DocumentNew: React.FC = () => {
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   이 설명은 선택된 템플릿의 정보입니다. (수정 불가)
-                </p>
-              </div>
-            )}
-
-            {/* 선택된 템플릿 만료일 (읽기 전용) */}
-            {selectedTemplate && selectedTemplate.deadline && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  만료일
-                </label>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2">
-                    <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className={`text-sm font-medium ${
-                      new Date(selectedTemplate.deadline) < new Date() 
-                        ? 'text-red-600' 
-                        : 'text-orange-700'
-                    }`}>
-                      {new Date(selectedTemplate.deadline).toLocaleString('ko-KR', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                      })}
-                      {new Date(selectedTemplate.deadline) < new Date() && (
-                        <span className="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">
-                          만료됨
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  이 문서는 위 날짜까지 편집을 완료해야 합니다. (수정 불가)
                 </p>
               </div>
             )}
