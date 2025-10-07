@@ -29,7 +29,9 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await axios.get(`${API_BASE_URL}/templates`);
-      set({ templates: response.data, loading: false });
+      // 최신 템플릿이 맨 앞에 오도록 역순으로 정렬
+      const templates = [...response.data].reverse();
+      set({ templates, loading: false });
     } catch (error) {
       set({ error: '템플릿 목록을 불러오는데 실패했습니다.', loading: false });
     }
@@ -53,10 +55,11 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
       // 현재 템플릿 업데이트
       set({ currentTemplate: response.data });
       
-      // 템플릿 목록에서도 업데이트
-      const templates = get().templates.map(template => 
-        template.id === id ? response.data : template
-      );
+      // 수정된 템플릿을 맨 앞으로 이동
+      const templates = [
+        response.data,
+        ...get().templates.filter(template => template.id !== id)
+      ];
       set({ templates, loading: false });
     } catch (error) {
       set({ error: '템플릿 업데이트에 실패했습니다.', loading: false });
