@@ -254,9 +254,9 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
       return (
         <div
           key={field.id}
-          className={`absolute border bg-white bg-opacity-90 group cursor-move ${
-            isSelected ? 'border-blue-500 shadow-lg' : 'border-purple-400'
-          } ${isDragging ? 'opacity-75' : ''}`}
+          className={`absolute border-2 bg-purple-100 bg-opacity-30 hover:bg-opacity-50 border-purple-500 group cursor-move transition-colors ${
+            isDragging ? 'opacity-75' : ''
+          }`}
           style={{
             left: scaledPos.x,
             top: scaledPos.y,
@@ -350,7 +350,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           />
           
           {isSelected && (
-            <div className="absolute -top-6 left-0 bg-blue-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">
+            <div className="absolute -top-6 left-0 bg-purple-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">
               📊 {field.label}
             </div>
           )}
@@ -358,15 +358,14 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
       );
     }
 
+    // 편집자 서명 필드인지 확인
+    const isEditorSignature = field.type === 'editor_signature';
+
     return (
       <div
         key={field.id}
-        className={`absolute border-2 border-dashed bg-white bg-opacity-75 flex items-center justify-center cursor-move group ${
-          isSelected
-            ? 'border-blue-500 bg-blue-50'
-            : field.required
-            ? 'border-red-400 hover:border-red-500'
-            : 'border-gray-400 hover:border-gray-500'
+        className={`absolute border-2 bg-opacity-30 hover:bg-opacity-50 transition-colors flex items-center justify-center cursor-move group ${
+          isEditorSignature ? 'bg-green-100 border-green-500' : 'bg-blue-100 border-blue-500'
         } ${isDragging ? 'opacity-75' : ''}`}
         style={{
           left: scaledPos.x,
@@ -384,18 +383,24 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
         <div className="text-center p-1">
           <div className="flex items-center justify-center gap-1 text-sm font-medium text-gray-700 truncate">
             <span>{field.label}</span>
+            {field.required && <span className="text-red-500 text-xs">*</span>}
           </div>
         </div>
-        
+
         {/* 리사이즈 핸들 */}
         <div
-          className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
+          className={`absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity ${
+            isEditorSignature ? 'bg-green-500' : 'bg-blue-500'
+          }`}
           onMouseDown={(e) => handleFieldMouseDown(field, e, 'resize')}
         />
-        
+
         {isSelected && (
-          <div className="absolute -top-6 left-0 bg-blue-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">
-            📝 {field.label}
+          <div className={`absolute -top-6 left-0 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none flex items-center ${
+            isEditorSignature ? 'bg-green-600' : 'bg-blue-600'
+          }`}>
+            {field.label}
+            {field.required && <span className="text-red-500 font-bold ml-1">*</span>}
           </div>
         )}
       </div>

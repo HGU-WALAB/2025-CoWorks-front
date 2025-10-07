@@ -1307,7 +1307,6 @@ const DocumentEditor: React.FC = () => {
                     <div className="w-full h-full p-1">
                       <div className="text-xs font-medium mb-1 text-purple-700 truncate">
                         {field.label} ({tableInfo.rows}×{tableInfo.cols})
-                        {field.required && <span className="text-red-500">*</span>}
                       </div>
                       <div
                         className="grid gap-px bg-purple-300"
