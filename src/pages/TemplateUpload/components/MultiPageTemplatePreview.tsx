@@ -443,9 +443,6 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
       >
         <div className="text-center p-1">
           <div className="flex items-center justify-center gap-1 text-sm font-medium text-gray-700 truncate">
-            {field.required && (
-                <span className="text-xs text-red-500">필수</span>
-            )}
             <span>{field.label}</span>
           </div>
         </div>
