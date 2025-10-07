@@ -2176,6 +2176,7 @@ const DocumentEditor: React.FC = () => {
             const filename = currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
             return `/uploads/pdf-templates/${filename}`;
           })()}
+          pdfImageUrls={pdfPages}
           coordinateFields={previewCoordinateFields}
           signatureFields={previewSignatureFields}
           documentTitle={currentDocument.title || currentDocument.template?.name || '문서'}
