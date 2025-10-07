@@ -65,6 +65,14 @@ const DocumentEditor: React.FC = () => {
   const { currentDocument, loading, getDocument, updateDocumentSilently, clearCurrentDocument } = useDocumentStore();
   const { user } = useAuthStore();
 
+  // PDF 원본 크기 (A4 기준)
+  const PDF_WIDTH = 1240;
+  const PDF_HEIGHT = 1754;
+
+  // 스케일 및 컨테이너 ref
+  const [scale, setScale] = useState(1);
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
+
   // 템플릿 필드 기반 입력 시스템 상태
   const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
   
@@ -106,6 +114,28 @@ const DocumentEditor: React.FC = () => {
     hasNextPage,
     hasPreviousPage
   } = usePdfPages(currentDocument?.template, coordinateFields);
+
+  // 컨테이너 너비에 맞춰 스케일링
+  useEffect(() => {
+    const updateScale = () => {
+      if (!pdfContainerRef.current) return;
+
+      const containerRect = pdfContainerRef.current.getBoundingClientRect();
+      const containerWidth = containerRect.width - 32; // 패딩 제외 (p-4 = 16px * 2)
+
+      // 템플릿 너비를 컨테이너 너비에 맞춤
+      const scaleX = containerWidth / PDF_WIDTH;
+
+      // 최소 0.3배, 최대 2배로 제한
+      const newScale = Math.max(0.3, Math.min(scaleX, 2.0));
+
+      setScale(newScale);
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [PDF_WIDTH, rightPanelWidth]); // rightPanelWidth 변경 시에도 스케일 재계산
 
   // 마우스 이벤트 핸들러
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1172,48 +1202,54 @@ const DocumentEditor: React.FC = () => {
     }
 
     return (
-      <div className="relative bg-gray-100 h-full overflow-auto flex flex-col p-4">
+      <div
+        ref={pdfContainerRef}
+        className="relative bg-gray-100 h-full overflow-auto flex flex-col p-4"
+      >
+        {/* 스케일 정보 표시 */}
+        {scale !== 1 && (
+          <div className="text-center mb-2">
+            <p className="text-xs text-blue-600">
+              화면에 맞춰 {Math.round(scale * 100)}%로 {scale < 1 ? '축소' : '확대'}됨
+            </p>
+          </div>
+        )}
 
         {/* PDF 컨테이너 - 반응형 크기 */}
         <div className="flex justify-center items-start">
           <div
             className="relative bg-white shadow-lg border rounded-lg overflow-hidden"
             style={{
-              maxWidth: '100%',
-              width: 'auto',
-              height: 'auto'
+              width: PDF_WIDTH * scale,
+              height: PDF_HEIGHT * scale,
+              minWidth: PDF_WIDTH * scale,
+              minHeight: PDF_HEIGHT * scale,
+              flexShrink: 0
             }}
           >
             {/* PDF 배경 이미지 */}
             <img
               src={currentPageUrl}
               alt={`PDF Document Page ${currentPageNumber}`}
-              style={{
-                width: '100%',
-                height: 'auto',
-                maxWidth: '800px',
-                display: 'block'
-              }}
+              className="absolute inset-0 w-full h-full object-fill pointer-events-none"
+              draggable={false}
               onError={() => {
                 console.error('PDF 이미지 로드 실패:', currentPageUrl);
               }}
             />
 
             {/* 필드 컨테이너 - 현재 페이지의 필드만 표시 */}
-            <div className="absolute inset-0" style={{
-              transform: 'scale(0.65)', // 800px / 1240px ≈ 0.65
-              transformOrigin: 'top left'
-            }}>
+            <div className="absolute inset-0">
               {/* 필드 오버레이 - 현재 페이지 필드만 필터링 */}
               {coordinateFields
                 .filter(field => (field.page || 1) === currentPageNumber)
                 .map((field) => {
 
-                // 픽셀값 직접 사용 (스케일은 transform으로 적용)
-                const leftPercent = field.x;
-                const topPercent = field.y;
-                const widthPercent = field.width;
-                const heightPercent = field.height;
+                // 스케일링된 위치와 크기 계산
+                const leftPercent = field.x * scale;
+                const topPercent = field.y * scale;
+                const widthPercent = field.width * scale;
+                const heightPercent = field.height * scale;
 
               // 필드 타입 확인
               let isTableField = false;
@@ -1284,7 +1320,12 @@ const DocumentEditor: React.FC = () => {
                   {isEditorSignature ? (
                     // 편집자 서명 필드 렌더링
                     <div className="w-full h-full p-2 flex flex-col items-center justify-center">
-                      <div className="text-xs font-medium mb-1 text-green-700 truncate">
+                      <div
+                        className="font-medium mb-1 text-green-700 truncate"
+                        style={{
+                          fontSize: `${12 * scale}px`
+                        }}
+                      >
                         {field.label}
                         {field.required && <span className="text-red-500">*</span>}
                       </div>
@@ -1297,7 +1338,14 @@ const DocumentEditor: React.FC = () => {
                               className="w-full h-full object-contain"
                             />
                           ) : (
-                            <div className="text-xs text-gray-600">서명됨: {new Date().toLocaleDateString()}</div>
+                            <div
+                              className="text-gray-600"
+                              style={{
+                                fontSize: `${12 * scale}px`
+                              }}
+                            >
+                              서명됨: {new Date().toLocaleDateString()}
+                            </div>
                           )}
                         </div>
                       )}
@@ -1305,9 +1353,13 @@ const DocumentEditor: React.FC = () => {
                   ) : isTableField && tableInfo ? (
                     // 테이블 렌더링
                     <div className="w-full h-full p-1">
-                      <div className="text-xs font-medium mb-1 text-purple-700 truncate">
+                      <div
+                        className="font-medium mb-1 text-purple-700 truncate"
+                        style={{
+                          fontSize: `${12 * scale}px`
+                        }}
+                      >
                         {field.label} ({tableInfo.rows}×{tableInfo.cols})
-                        {field.required && <span className="text-red-500">*</span>}
                       </div>
                       <div
                         className="grid gap-px bg-purple-300"
@@ -1373,8 +1425,8 @@ const DocumentEditor: React.FC = () => {
                                 key={`${rowIndex}-${colIndex}`}
                                 className="bg-white bg-opacity-70 border border-purple-200 hover:bg-opacity-90 cursor-pointer flex items-center justify-center p-1 transition-colors"
                                 style={{
-                                  minHeight: '20px',
-                                  fontSize: `${field.fontSize || 16}px !important`,
+                                  minHeight: `${20 * scale}px`,
+                                  fontSize: `${(field.fontSize || 16) * scale}px !important`,
                                   fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                   color: '#6b21a8', // text-purple-700 색상을 직접 적용
                                   fontWeight: '500'
@@ -1387,13 +1439,13 @@ const DocumentEditor: React.FC = () => {
                                     display: 'block',
                                     width: '100%',
                                     // 명시적으로 폰트 스타일 적용
-                                    fontSize: `${field.fontSize || 14}px !important`,
+                                    fontSize: `${(field.fontSize || 14) * scale}px !important`,
                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                     fontWeight: '500 !important',
                                     color: cellText ? '#6b21a8 !important' : '#9CA3AF !important'
                                   }}
                                 >
-                                  {cellText || `${rowIndex + 1}-${colIndex + 1}`}
+                                  {cellText || ''}
                                 </span>
                               </div>
                             );
@@ -1405,7 +1457,7 @@ const DocumentEditor: React.FC = () => {
                     // 일반 필드 - 값이 있는 경우
                     <div className="text-gray-900 p-1 truncate text-center"
                       style={{
-                        fontSize: `${field.fontSize || 14}px !important`,
+                        fontSize: `${(field.fontSize || 14) * scale}px !important`,
                         fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                         fontWeight: '500 !important'
                       }}
@@ -1414,7 +1466,12 @@ const DocumentEditor: React.FC = () => {
                     </div>
                   ) : (
                     // 일반 필드 - 값이 없는 경우 (제목만 표시, 고정 스타일)
-                    <div className="text-xs text-blue-700 font-medium p-1 truncate text-center">
+                    <div
+                      className="text-blue-700 font-medium p-1 truncate text-center"
+                      style={{
+                        fontSize: `${12 * scale}px`
+                      }}
+                    >
                       {field.label}
                       {field.required && <span className="text-red-500">*</span>}
                     </div>
@@ -1427,7 +1484,7 @@ const DocumentEditor: React.FC = () => {
         </div>
       </div>
     );
-  }, [pdfPages, currentPageNumber, totalPages, coordinateFields, templateFields]);
+  }, [pdfPages, currentPageNumber, totalPages, coordinateFields, templateFields, scale, PDF_WIDTH, PDF_HEIGHT]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">문서를 불러오는 중...</div>;
@@ -2119,6 +2176,7 @@ const DocumentEditor: React.FC = () => {
             const filename = currentDocument.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
             return `/uploads/pdf-templates/${filename}`;
           })()}
+          pdfImageUrls={pdfPages}
           coordinateFields={previewCoordinateFields}
           signatureFields={previewSignatureFields}
           documentTitle={currentDocument.title || currentDocument.template?.name || '문서'}

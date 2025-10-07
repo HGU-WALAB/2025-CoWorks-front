@@ -59,9 +59,10 @@ const FieldEditModal: React.FC<FieldEditModalProps> = ({
               id="editRequired"
               checked={editField.required}
               onChange={(e) => setEditField({ ...editField, required: e.target.checked })}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              disabled={editField.type === 'table'}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <label htmlFor="editRequired" className="ml-2 text-sm text-gray-700">
+            <label htmlFor="editRequired" className={`ml-2 text-sm ${editField.type === 'table' ? 'text-gray-400' : 'text-gray-700'}`}>
               필수 필드
             </label>
           </div>

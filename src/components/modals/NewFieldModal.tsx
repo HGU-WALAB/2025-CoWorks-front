@@ -104,9 +104,10 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
               id="newRequired"
               checked={required}
               onChange={(e) => setRequired(e.target.checked)}
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              disabled={isTable}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <label htmlFor="newRequired" className="ml-2 text-sm text-gray-700">
+            <label htmlFor="newRequired" className={`ml-2 text-sm ${isTable ? 'text-gray-400' : 'text-gray-700'}`}>
               필수 필드
             </label>
           </div>
