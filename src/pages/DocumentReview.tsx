@@ -211,7 +211,8 @@ const DocumentReview: React.FC = () => {
 
       alert('✅ 문서가 승인되었습니다! 서명이 문서에 추가되었습니다.');
 
-      // 자동으로 페이지를 나가지 않고 사용자가 직접 선택할 수 있도록 함
+      // 승인 후 문서 목록 페이지로 이동
+      navigate('/documents');
 
     } catch (error: any) {
       console.error('❌ 승인 실패:', error);
@@ -253,7 +254,9 @@ const DocumentReview: React.FC = () => {
 
       alert('❌ 문서가 반려되었습니다.');
       setShowRejectModal(false);
-      // 자동으로 페이지를 나가지 않고 사용자가 직접 선택할 수 있도록 함
+      
+      // 반려 후 문서 목록 페이지로 이동
+      navigate('/documents');
     } catch (error) {
       console.error('반려 실패:', error);
       alert('반려 처리에 실패했습니다.');

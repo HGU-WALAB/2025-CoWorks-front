@@ -68,6 +68,13 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     );
   };
 
+  // 현재 사용자가 검토자인지 확인하는 함수
+  const isCurrentUserReviewer = () => {
+    return document.tasks?.some(task => 
+      task.role === 'REVIEWER' && task.assignedUserEmail === currentUser?.email
+    );
+  };
+
   // 상태별 액션 버튼 렌더링
   const renderActionButton = () => {
     if (document.status === 'COMPLETED') {
@@ -109,7 +116,33 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
       );
     }
 
-    // 편집 가능한 상태
+    if (document.status === 'REJECTED') {
+      // 현재 사용자가 검토자인 경우 편집 버튼 비활성화
+      if (isCurrentUserReviewer()) {
+        return (
+          <span className="px-3 py-1.5 text-sm text-gray-400 bg-gray-50 border border-gray-200 rounded-md flex items-center cursor-not-allowed">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            편집 불가
+          </span>
+        );
+      }
+      // 검토자가 아닌 경우 편집 가능
+      return (
+        <Link
+          to={`/documents/${document.id}/edit`}
+          className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center"
+        >
+          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          편집
+        </Link>
+      );
+    }
+
+    // 편집 가능한 상태 (DRAFT, EDITING)
     return (
       <Link
         to={`/documents/${document.id}/edit`}
@@ -187,11 +220,6 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                       minute: '2-digit',
                       hour12: false
                     })}
-                    {new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED && (
-                      <span className={`ml-1 text-xs bg-red-100 text-red-700 rounded ${showCheckbox ? 'px-1.5 py-0.5' : 'px-2 py-0.5'} font-medium ${showCheckbox ? 'rounded' : 'rounded-full'}`}>
-                        만료됨
-                      </span>
-                    )}
                   </span>
                 </span>
               )}
