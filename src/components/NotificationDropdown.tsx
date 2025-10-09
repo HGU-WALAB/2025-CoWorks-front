@@ -117,6 +117,8 @@ const NotificationDropdown: React.FC = () => {
         return '📋';
       case 'DOCUMENT_COMPLETED':
         return '✅';
+      case 'DOCUMENT_REJECTED':
+        return '❌';
       case 'DOCUMENT_DEADLINE':
         return '⏰';
       case 'DOCUMENT_UPDATED':

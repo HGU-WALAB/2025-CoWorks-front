@@ -7,7 +7,7 @@ export interface NotificationData {
   id: number;
   title: string;
   message: string;
-  type: 'DOCUMENT_ASSIGNED' | 'DOCUMENT_COMPLETED' | 'DOCUMENT_COMMENT' | 'DOCUMENT_DEADLINE' | 'DOCUMENT_UPDATED' | 'SYSTEM_NOTICE';
+  type: 'DOCUMENT_ASSIGNED' | 'DOCUMENT_COMPLETED' | 'DOCUMENT_REJECTED' | 'DOCUMENT_COMMENT' | 'DOCUMENT_DEADLINE' | 'DOCUMENT_UPDATED' | 'SYSTEM_NOTICE';
   isRead: boolean;
   actionUrl?: string;
   createdAt: string;
