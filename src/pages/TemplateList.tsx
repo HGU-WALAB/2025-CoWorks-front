@@ -10,8 +10,8 @@ import { downloadExcelTemplate } from '../utils/excelDownloadUtils';
 const TemplateList: React.FC = () => {
   const navigate = useNavigate();
   const { templates, loading, error, getTemplates, deleteTemplate, duplicateTemplate } = useTemplateStore();
-  const { user } = useAuthStore();
-  const hasFolderAccess: boolean = (user as unknown as { hasFolderAccess?: boolean })?.hasFolderAccess === true;
+  const { user, refreshUser } = useAuthStore();
+  const [hasFolderAccess, setHasFolderAccess] = useState<boolean>(false);
   
   // 복제 모달 상태
   const [duplicateModal, setDuplicateModal] = useState<{
@@ -33,8 +33,12 @@ const TemplateList: React.FC = () => {
   });
 
   useEffect(() => {
+    refreshUser().then(() => {
+      const updatedUser = useAuthStore.getState().user;
+      setHasFolderAccess((updatedUser as unknown as { hasFolderAccess?: boolean })?.hasFolderAccess === true);
+    });
     getTemplates();
-  }, [getTemplates]);
+  }, [getTemplates, refreshUser]);
 
   const handleCreateDocument = (templateId: number, mode: 'single' | 'bulk' = 'single') => {
     navigate(`/documents/new?templateId=${templateId}&mode=${mode}`);
@@ -121,17 +125,19 @@ const TemplateList: React.FC = () => {
           <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-gray-800">템플릿 관리</h1>
             <div className="flex space-x-3">
-              <Link to="/templates/pdf/upload" className="btn btn-primary">
-                📄 PDF 템플릿 업로드
-              </Link>
               {hasFolderAccess && (
-                <button
-                  onClick={handleDownloadExcelTemplate}
-                  className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 rounded-md hover:from-green-100 hover:to-emerald-100 transition-colors flex items-center font-medium"
-                  title="사용자 할당을 위한 엑셀 템플릿 다운로드"
-                >
-                  📊 엑셀 템플릿 다운로드
-                </button>
+                <>
+                  <Link to="/templates/pdf/upload" className="btn btn-primary">
+                    📄 PDF 템플릿 업로드
+                  </Link>
+                  <button
+                    onClick={handleDownloadExcelTemplate}
+                    className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 text-green-700 rounded-md hover:from-green-100 hover:to-emerald-100 transition-colors flex items-center font-medium"
+                    title="사용자 할당을 위한 엑셀 템플릿 다운로드"
+                  >
+                    📊 엑셀 템플릿 다운로드
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -155,9 +161,23 @@ const TemplateList: React.FC = () => {
               {templates.map((template) => (
                 <div key={template.id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow border">
                   <div className="p-4">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                      {template.name}
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {template.name}
+                      </h3>
+                      {/* 할당된 사용자 보기 버튼 (권한 있는 사용자만) */}
+                      {hasFolderAccess && (
+                        <button
+                          onClick={() => handleShowAssignedUsers(template)}
+                          className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                          title="할당된 사용자 보기"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                     
                     <div className="h-8 mb-3">
                       <p 
@@ -181,19 +201,6 @@ const TemplateList: React.FC = () => {
 
                     {/* 액션 버튼들 */}
                     <div className="space-y-2">
-                      {/* 할당된 사용자 보기 버튼 (권한 있는 사용자만) */}
-                      {hasFolderAccess && (
-                        <button
-                          onClick={() => handleShowAssignedUsers(template)}
-                          className="w-full px-3 py-1.5 text-sm bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 text-purple-700 rounded-md hover:from-purple-100 hover:to-blue-100 transition-colors flex items-center justify-center font-medium"
-                        >
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                          할당된 사용자 보기
-                        </button>
-                      )}
-
                       {hasFolderAccess ? (
                         <div className="flex space-x-2">
                           <button
