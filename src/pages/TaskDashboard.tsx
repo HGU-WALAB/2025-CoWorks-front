@@ -305,7 +305,7 @@ const TaskDashboard: React.FC = () => {
                             : 'bg-gray-100 text-gray-700'
                         }`}>
                           마감일: {deadlineDate.toLocaleDateString()}
-                          {isOverdue && ' (지연)'}
+                          {isOverdue}
                         </span>
                       )}
                       {/* 액션 버튼을 taskRole 오른쪽으로 이동 */}
