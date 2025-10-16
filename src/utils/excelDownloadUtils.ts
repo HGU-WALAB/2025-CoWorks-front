@@ -12,7 +12,7 @@ export const downloadExcelTemplate = () => {
 
   // 샘플 데이터 (사용자가 참고할 수 있도록)
   const sampleData = [
-    ['학번(22100XXX)', '이름', '이메일', '교과목 이름']
+    ['22100XXX', '홍길동', 'handong@handong.ac.kr', '웹서비스개발']
   ];
 
   // 워크시트 데이터 생성
@@ -32,12 +32,10 @@ export const downloadExcelTemplate = () => {
   worksheet['!cols'] = columnWidths;
 
   // 워크시트를 워크북에 추가
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'TA_리스트');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'TA_예시_리스트');
 
-  // 파일명 생성 (현재 날짜 포함)
-  const now = new Date();
-  const dateString = now.toISOString().split('T')[0];
-  const fileName = `TA_리스트_${dateString}.xlsx`;
+  // 파일명 생성
+  const fileName = `TA_예시_리스트.xlsx`;
 
   // 엑셀 파일 다운로드
   XLSX.writeFile(workbook, fileName);

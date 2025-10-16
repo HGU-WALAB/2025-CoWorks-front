@@ -104,10 +104,10 @@ const DocumentNew: React.FC = () => {
         const requestData = {
           templateId: parseInt(selectedTemplateId),
           editorEmail: user?.email,
-          title: documentTitle.trim() || undefined,
+          title: undefined,
           deadline: deadline || undefined,
           stagingId: stagingId
-        };
+        } as const;
         
         console.log('Request data:', requestData);
         console.log('Request URL:', `${API_BASE_URL}${API_ENDPOINTS.DOCUMENTS.BASE}`);
@@ -211,20 +211,31 @@ const DocumentNew: React.FC = () => {
               </select>
             </div>
 
-            {/* 문서 제목 입력 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                제목 *
-              </label>
-              <input
-                type="text"
-                value={documentTitle}
-                onChange={(e) => setDocumentTitle(e.target.value)}
-                className="input"
-                placeholder="문서 제목을 입력하세요"
-                required
-              />
-            </div>
+            {/* 문서 제목 입력 - bulk 모드에서는 제목 입력칸 숨기고 안내 문구 표시 */}
+            {creationMode === 'bulk' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  제목
+                </label>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">
+                  문서 제목은 "이름_교과목_근무일지" 형식으로 자동 설정됩니다.
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  제목 *
+                </label>
+                <input
+                  type="text"
+                  value={documentTitle}
+                  onChange={(e) => setDocumentTitle(e.target.value)}
+                  className="input"
+                  placeholder="문서 제목을 입력하세요"
+                  required
+                />
+              </div>
+            )}
 
             {/* 만료일 선택 - bulk 모드일 때만 표시 */}
             {creationMode === 'bulk' && (
@@ -476,7 +487,12 @@ const DocumentNew: React.FC = () => {
               </button>
               <button
                 type="submit"
-                disabled={loading || !selectedTemplateId || !documentTitle.trim()}
+                disabled={
+                  loading ||
+                  !selectedTemplateId ||
+                  (creationMode !== 'bulk' && !documentTitle.trim()) ||
+                  (creationMode === 'bulk' && !stagingId)
+                }
                 className="btn btn-primary flex-1"
               >
                 {loading ? '생성 중...' : 
