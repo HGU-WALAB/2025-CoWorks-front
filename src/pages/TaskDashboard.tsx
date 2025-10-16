@@ -365,89 +365,103 @@ const TaskDashboard: React.FC = () => {
          {/* 통계 카드 */}
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
            {/* 1. 편집 중인 문서 - 파란색 */}
-           <Link to="/documents?status=EDITING" className="block">
-             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500 hover:bg-gray-50 transition-colors cursor-pointer">
-               <div className="flex items-center">
-                 <div className="flex-shrink-0">
-                   <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                     <span className="text-white text-lg">✏️</span>
+           <Link to="/documents?status=EDITING" className="block group">
+             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-200 cursor-pointer relative overflow-hidden">
+               {/* 배경 패턴 */}
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
+               
+               <div className="relative">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                     <span className="text-white text-2xl">✏️</span>
                    </div>
-                 </div>
-                 <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">편집중</h3>
-                   <p className="text-3xl font-bold text-blue-600">{tasks.editingTasks.length}</p>
-                 </div>
-                 <div className="ml-auto">
-                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                    </svg>
                  </div>
+                 <div className="flex items-baseline space-x-2">
+                   <h3 className="text-lg font-bold text-white">편집중</h3>
+                   <p className="text-4xl font-bold text-white">{tasks.editingTasks.length}</p>
+                 </div>
+                 <p className="text-blue-100 text-sm mt-2">작업이 필요한 문서</p>
                </div>
              </div>
            </Link>
 
            {/* 2. 검토 중인 문서 - 노란색 */}
-           <Link to="/documents?status=REVIEWING" className="block">
-             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-yellow-500 hover:bg-gray-50 transition-colors cursor-pointer">
-               <div className="flex items-center">
-                 <div className="flex-shrink-0">
-                   <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
-                     <span className="text-white text-lg">👀</span>
+           <Link to="/documents?status=REVIEWING" className="block group">
+             <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl shadow-lg p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-200 cursor-pointer relative overflow-hidden">
+               {/* 배경 패턴 */}
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
+               
+               <div className="relative">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                     <span className="text-white text-2xl">👀</span>
                    </div>
-                 </div>
-                 <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">검토중</h3>
-                   <p className="text-3xl font-bold text-yellow-600">{tasks.reviewingTasks.length}</p>
-                 </div>
-                 <div className="ml-auto">
-                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                    </svg>
                  </div>
+                 <div className="flex items-baseline space-x-2">
+                   <h3 className="text-lg font-bold text-white">검토중</h3>
+                   <p className="text-4xl font-bold text-white">{tasks.reviewingTasks.length}</p>
+                 </div>
+                 <p className="text-yellow-100 text-sm mt-2">검토가 필요한 문서</p>
                </div>
              </div>
            </Link>
 
            {/* 3. 반려된 문서 - 빨간색 */}
-           <Link to="/documents?status=REJECTED" className="block">
-             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500 hover:bg-gray-50 transition-colors cursor-pointer">
-               <div className="flex items-center">
-                 <div className="flex-shrink-0">
-                   <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
-                     <span className="text-white text-lg">❌</span>
+           <Link to="/documents?status=REJECTED" className="block group">
+             <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-200 cursor-pointer relative overflow-hidden">
+               {/* 배경 패턴 */}
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
+               
+               <div className="relative">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                     <span className="text-white text-2xl">❌</span>
                    </div>
-                 </div>
-                 <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">반려됨</h3>
-                   <p className="text-3xl font-bold text-red-600">{tasks.rejectedTasks.length}</p>
-                 </div>
-                 <div className="ml-auto">
-                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                    </svg>
                  </div>
+                 <div className="flex items-baseline space-x-2">
+                   <h3 className="text-lg font-bold text-white">반려됨</h3>
+                   <p className="text-4xl font-bold text-white">{tasks.rejectedTasks.length}</p>
+                 </div>
+                 <p className="text-red-100 text-sm mt-2">수정이 필요한 문서</p>
                </div>
              </div>
            </Link>
 
-           {/* 4. 완료된 문서 - 회색 */}
-           <Link to="/documents?status=COMPLETED" className="block">
-             <div className="bg-white rounded-lg shadow p-6 border-l-4 border-gray-400 hover:bg-gray-50 transition-colors cursor-pointer">
-               <div className="flex items-center">
-                 <div className="flex-shrink-0">
-                   <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center">
-
+           {/* 4. 완료된 문서 - 초록색 */}
+           <Link to="/documents?status=COMPLETED" className="block group">
+             <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-200 cursor-pointer relative overflow-hidden">
+               {/* 배경 패턴 */}
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
+               
+               <div className="relative">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                     </svg>
                    </div>
-                 </div>
-                 <div className="ml-4">
-                   <h3 className="text-lg font-medium text-gray-900">완료</h3>
-                   <p className="text-3xl font-bold text-gray-600">{tasks.completedTasks.length}</p>
-                 </div>
-                 <div className="ml-auto">
-                   <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                    </svg>
                  </div>
+                 <div className="flex items-baseline space-x-2">
+                   <h3 className="text-lg font-bold text-white">완료</h3>
+                   <p className="text-4xl font-bold text-white">{tasks.completedTasks.length}</p>
+                 </div>
+                 <p className="text-green-100 text-sm mt-2">완료된 문서</p>
                </div>
              </div>
            </Link>
