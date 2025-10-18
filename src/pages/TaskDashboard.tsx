@@ -208,7 +208,9 @@ const TaskDashboard: React.FC = () => {
             </span>
           </div>
         </div>
-        <div className="divide-y divide-gray-200">
+        
+        {/* 카드 그리드 레이아웃 */}
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {todoDocuments.map((doc) => {
             const myTask = doc.tasks?.find(task => task.assignedUserEmail === currentUserEmail);
             const isNewTask = myTask?.isNew;
@@ -228,17 +230,17 @@ const TaskDashboard: React.FC = () => {
                   };
                 case 'REVIEWING':
                   return {
-                    color: 'yellow',
-                    bgColor: 'bg-yellow-50',
-                    textColor: 'text-yellow-700',
-                    borderColor: 'border-yellow-200',
+                    color: 'orange',
+                    bgColor: 'bg-orange-50',
+                    textColor: 'text-orange-700',
+                    borderColor: 'border-orange-200',
                     icon: '👀',
                     label: '검토중'
                   };
                 case 'READY_FOR_REVIEW':
                   return {
                       color: 'orange',
-                      bgColor: 'bg-orange-50',
+                      bgColor: 'bg-yellow-50',
                       textColor: 'text-orange-700',
                       borderColor: 'border-orange-200',
                       icon: '📝',
@@ -268,82 +270,117 @@ const TaskDashboard: React.FC = () => {
             const statusInfo = getStatusInfo(doc.status);
             const deadlineDate = doc.deadline ? new Date(doc.deadline) : null;
             const isOverdue = deadlineDate && deadlineDate < new Date();
-
+            
+            // To Do List 카드
             return (
-              <div key={doc.id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <Link 
-                        to={`/documents/${doc.id}`}
-                        className="text-2xl font-semibold text-gray-900 hover:text-blue-600 transition-colors"
-                      >
-                        {doc.title || doc.templateName}
-                      </Link>
-                      {isNewTask && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 animate-pulse">
-                          NEW
-                        </span>
-                      )}
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor}`}>
-                        {statusInfo.icon} {statusInfo.label}
+              <div 
+                key={doc.id} 
+                className={`bg-white rounded-lg border-2 ${statusInfo.borderColor} shadow-md hover:shadow-xl transition-all duration-200 overflow-hidden`}
+              >
+                {/* 카드 헤더 */}
+                <div className={`${statusInfo.bgColor} px-4 py-3 border-b ${statusInfo.borderColor}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor} border ${statusInfo.borderColor}`}>
+                      {statusInfo.icon} {statusInfo.label}
+                    </span>
+                    {isNewTask && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white animate-pulse">
+                        NEW
                       </span>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 mb-2">
-                      <span>템플릿: {doc.templateName}</span>
-                      {taskRole && (
-                        <span className="px-2 py-1 bg-gray-100 rounded-md text-xs">
-                          {taskRole === 'CREATOR' ? '생성자' : taskRole === 'EDITOR' ? '편집자' :
-                              taskRole === 'REVIEWER' ? '검토자' : '기타 역할'}
-                        </span>
-                      )}
-                      {deadlineDate && (
-                        <span className={`px-2 py-1 rounded-md text-xs ${
-                          isOverdue 
-                            ? 'bg-red-100 text-red-700' 
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          마감일: {deadlineDate.toLocaleDateString()}
-                          {isOverdue}
-                        </span>
-                      )}
-                      {/* 액션 버튼을 taskRole 오른쪽으로 이동 */}
-                      <span className="ml-auto flex items-center space-x-2">
-                        {doc.status === 'READY_FOR_REVIEW' ? (
-                          <Link
-                            to={`/documents/${doc.id}/signer-assignment`}
-                            className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-orange-500 bg-orange-100 hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-200 transition-colors"
-                          >
-                            서명자 지정하기
-                          </Link>
-                        ) : doc.status === 'REVIEWING' ? (
-                          <Link
-                            to={`/documents/${doc.id}/review`}
-                            className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                          >
-                            서명하기
-                          </Link>
-                        ) : (
-                          <Link
-                            to={`/documents/${doc.id}`}
-                            className="inline-flex items-center px-4 py-2.5 border border-transparent text-base leading-5 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                          >
-                            {doc.status === 'EDITING' ? '편집하기' :
-                              doc.status === 'REJECTED' ? '수정하기' : '이 버튼 뜨면 안됨 - 문서 완료상태가 TodoList에 뜬다는 것'}
-                          </Link>
-                        )}
-                      </span>
-                    </div>
-                    {/* 생성일/수정일을 템플릿 라인 아래로 이동 */}
-                    <div className="text-xs text-gray-500 space-x-4 mt-2">
-                      <span>생성일: {new Date(doc.createdAt).toLocaleDateString()}</span>
-                      {doc.updatedAt && (
-                        <span>수정일: {new Date(doc.updatedAt).toLocaleDateString()}</span>
-                      )}
-                    </div>
+                    )}
+                  </div>
+                  <Link 
+                    to={`/documents/${doc.id}`}
+                    className={`text-lg font-bold ${statusInfo.textColor} hover:opacity-80 transition-opacity line-clamp-2`}
+                  >
+                    {doc.title || doc.templateName}
+                  </Link>
+                </div>
+
+                {/* 카드 본문 */}
+                <div className="p-4 space-y-3">
+                  {/* 템플릿 정보 */}
+                  <div className="flex items-center text-sm text-gray-600">
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="truncate">{doc.templateName}</span>
                   </div>
 
+                  {/* 마감일 */}
+                  {deadlineDate && (
+                    <div className={`flex items-center text-sm font-medium ${
+                      isOverdue 
+                        ? 'text-red-700 bg-red-50' 
+                        : 'text-orange-700 bg-orange-50'
+                    } px-3 py-2 rounded-md`}>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>
+                        마감일: {deadlineDate.toLocaleDateString('ko-KR', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                      {isOverdue && <span className="ml-1">(지연)</span>}
+                    </div>
+                  )}
+
+                  {/* 날짜 정보 */}
+                  <div className="text-xs text-gray-500 space-y-1 pt-2 border-t border-gray-100">
+                    <div>생성: {new Date(doc.createdAt).toLocaleDateString('ko-KR')}</div>
+                    {doc.updatedAt && (
+                      <div>수정: {new Date(doc.updatedAt).toLocaleDateString('ko-KR')}</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 카드 푸터 - 액션 버튼 */}
+                <div className="px-4 pb-4">
+                  {doc.status === 'READY_FOR_REVIEW' ? (
+                    <Link
+                      to={`/documents/${doc.id}/signer-assignment`}
+                      className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      서명자 지정하기
+                    </Link>
+                  ) : doc.status === 'REVIEWING' ? (
+                    <Link
+                      to={`/documents/${doc.id}/review`}
+                      className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                      서명하기
+                    </Link>
+                  ) : doc.status === 'REJECTED' ? (
+                    <Link
+                      to={`/documents/${doc.id}`}
+                      className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      수정하기
+                    </Link>
+                  ) : (
+                    <Link
+                      to={`/documents/${doc.id}`}
+                      className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      편집하기
+                    </Link>
+                  )}
                 </div>
               </div>
             );
