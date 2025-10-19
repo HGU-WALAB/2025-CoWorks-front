@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Document } from '../types/document';
 import { useAuthStore } from '../stores/authStore';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
+import { getRoleAssignmentMessage } from '../utils/roleAssignmentUtils';
 
 interface DocumentListItemProps {
   document: Document;
@@ -189,22 +190,24 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
             </div>
 
             <div className="flex flex-col space-y-1 text-sm text-gray-600">
-              <span>생성일: {new Date(document.createdAt).toLocaleString('ko-KR', { 
-                year: 'numeric', 
-                month: showCheckbox ? 'numeric' : '2-digit', 
-                day: showCheckbox ? 'numeric' : '2-digit', 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false
-              })}</span>
-              <span>수정일: {new Date(document.updatedAt || document.createdAt).toLocaleString('ko-KR', { 
-                year: 'numeric', 
-                month: showCheckbox ? 'numeric' : '2-digit', 
-                day: showCheckbox ? 'numeric' : '2-digit', 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false
-              })}</span>
+              <span className="text-gray-900 font-medium">
+                생성일: {new Date(document.createdAt).toLocaleString('ko-KR', { 
+                  month: 'long', 
+                  day: 'numeric', 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: false
+                })}
+              </span>
+              <span className="text-gray-900 font-medium">
+                수정일: {new Date(document.updatedAt || document.createdAt).toLocaleString('ko-KR', { 
+                  month: 'long', 
+                  day: 'numeric', 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: false
+                })}
+              </span>
               {document.deadline && (
                 <span className={`flex items-center space-x-1 ${
                   new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED
@@ -223,6 +226,21 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                   </span>
                 </span>
               )}
+              {(() => {
+                const roleInfo = getRoleAssignmentMessage(document, currentUser?.email || '');
+                return roleInfo ? (
+                  <span className={`flex items-center space-x-1 font-medium ${
+                    document.status === 'REVIEWING' 
+                      ? 'text-orange-600' 
+                      : 'text-blue-600'
+                  }`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span>{roleInfo.label}: {roleInfo.time}</span>
+                  </span>
+                ) : null;
+              })()}
             </div>
 
             {/* 담당자 정보 표시 */}

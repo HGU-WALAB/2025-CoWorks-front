@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
+import { getRoleAssignmentMessageShort } from '../utils/roleAssignmentUtils';
 
 const TaskDashboard: React.FC = () => {
   const { documents, todoDocuments, fetchDocuments, fetchTodoDocuments, loading } = useDocumentStore();
@@ -214,7 +215,6 @@ const TaskDashboard: React.FC = () => {
           {todoDocuments.map((doc) => {
             const myTask = doc.tasks?.find(task => task.assignedUserEmail === currentUserEmail);
             const isNewTask = myTask?.isNew;
-            const taskRole = myTask?.role;
             
             // 상태에 따른 색상과 아이콘 설정
             const getStatusInfo = (status: string) => {
@@ -270,6 +270,9 @@ const TaskDashboard: React.FC = () => {
             const statusInfo = getStatusInfo(doc.status);
             const deadlineDate = doc.deadline ? new Date(doc.deadline) : null;
             const isOverdue = deadlineDate && deadlineDate < new Date();
+            
+            // 역할 지정 시간 정보 가져오기
+            const roleAssignmentInfo = getRoleAssignmentMessageShort(doc, currentUserEmail);
             
             // To Do List 카드
             return (
@@ -329,11 +332,43 @@ const TaskDashboard: React.FC = () => {
                     </div>
                   )}
 
+                  {/* 역할 지정 시간 */}
+                  {roleAssignmentInfo && (
+                    <div className={`flex items-center text-sm px-3 py-2 rounded-md ${
+                      doc.status === 'REVIEWING' 
+                        ? 'text-orange-700 bg-orange-50' 
+                        : 'text-blue-700 bg-blue-50'
+                    }`}>
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-medium">
+                        {roleAssignmentInfo.label}: {roleAssignmentInfo.time}
+                      </span>
+                    </div>
+                  )}
+
                   {/* 날짜 정보 */}
                   <div className="text-xs text-gray-500 space-y-1 pt-2 border-t border-gray-100">
-                    <div>생성: {new Date(doc.createdAt).toLocaleDateString('ko-KR')}</div>
+                    <div className="text-gray-900 font-medium">
+                      생성일: {new Date(doc.createdAt).toLocaleString('ko-KR', {
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                      })}
+                    </div>
                     {doc.updatedAt && (
-                      <div>수정: {new Date(doc.updatedAt).toLocaleDateString('ko-KR')}</div>
+                      <div className="text-gray-900 font-medium">
+                        수정일: {new Date(doc.updatedAt).toLocaleString('ko-KR', {
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: false
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>
