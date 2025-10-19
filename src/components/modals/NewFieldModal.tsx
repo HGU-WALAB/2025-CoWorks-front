@@ -21,7 +21,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
 }) => {
   const [label, setLabel] = useState('');
   const [required, setRequired] = useState(false);
-  const [fieldTypeOption, setFieldTypeOption] = useState<'normal' | 'table' | 'editor_signature' | 'signer_signature'>('normal');
+  const [fieldTypeOption, setFieldTypeOption] = useState<'normal' | 'table' | 'editor_signature'>('normal');
   const [tableRows, setTableRows] = useState(2);
   const [tableCols, setTableCols] = useState(2);
 
@@ -42,7 +42,6 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 8);
       const fieldType = fieldTypeOption === 'editor_signature' ? 'editor_signature' : 
-                        fieldTypeOption === 'signer_signature' ? 'signer_signature' :
                         fieldTypeOption === 'table' ? 'table' : 'field';
       const autoId = `${fieldType}_${timestamp}_${randomStr}`;
 
@@ -156,20 +155,6 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
               />
               <label htmlFor="signatureField" className="ml-2 text-sm text-gray-700">
                 편집자 서명
-              </label>
-            </div>
-
-            <div className="flex items-center">
-              <input
-                type="radio"
-                id="signerSignatureField"
-                name="fieldType"
-                checked={fieldTypeOption === 'signer_signature'}
-                onChange={() => setFieldTypeOption('signer_signature')}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-              />
-              <label htmlFor="signerSignatureField" className="ml-2 text-sm text-gray-700">
-                서명자 서명
               </label>
             </div>
           </div>
