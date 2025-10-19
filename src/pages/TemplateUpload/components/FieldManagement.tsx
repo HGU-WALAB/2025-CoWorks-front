@@ -106,7 +106,14 @@ const FieldManagement: React.FC<FieldManagementProps> = ({
 
                     {/* 해당 페이지의 필드들 */}
                     <div className="divide-y">
-                      {fieldsByPage[pageNum].map((field) => (
+                      {fieldsByPage[pageNum]
+                        .sort((a, b) => {
+                          // 필수값을 상단으로 정렬
+                          if (a.required && !b.required) return -1;
+                          if (!a.required && b.required) return 1;
+                          return 0;
+                        })
+                        .map((field) => (
                         <div
                           key={field.id}
                           className={`p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
@@ -125,7 +132,7 @@ const FieldManagement: React.FC<FieldManagementProps> = ({
                                   {field.label}
                                 </p>
                                 {field.required && (
-                                  <span className="text-red-500 text-xs">*</span>
+                                  <span className="text-red-500 text-xs font-semibold px-1.5 py-0.5 bg-red-50 rounded">필수</span>
                                 )}
                               </div>
                             </div>
