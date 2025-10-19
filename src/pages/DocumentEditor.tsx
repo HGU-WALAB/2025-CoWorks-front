@@ -1947,6 +1947,12 @@ const DocumentEditor: React.FC = () => {
             <div className="p-4 space-y-4">
             {coordinateFields
               .filter(field => (field.page || 1) === currentPageNumber)
+              .sort((a, b) => {
+                // 필수 필드를 상단으로 정렬
+                if (a.required && !b.required) return -1;
+                if (!a.required && b.required) return 1;
+                return 0;
+              })
               .map((field) => {
               // 필드 타입 확인
               let isTableField = false;

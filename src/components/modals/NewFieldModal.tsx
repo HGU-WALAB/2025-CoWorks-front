@@ -21,8 +21,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
 }) => {
   const [label, setLabel] = useState('');
   const [required, setRequired] = useState(false);
-  const [isTable, setIsTable] = useState(false);
-  const [isEditorSignature, setIsEditorSignature] = useState(false);
+  const [fieldTypeOption, setFieldTypeOption] = useState<'normal' | 'table' | 'editor_signature'>('normal');
   const [tableRows, setTableRows] = useState(2);
   const [tableCols, setTableCols] = useState(2);
 
@@ -30,8 +29,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
     if (isOpen) {
       setLabel('');
       setRequired(false);
-      setIsTable(false);
-      setIsEditorSignature(false);
+      setFieldTypeOption('normal');
       setTableRows(2);
       setTableCols(2);
     }
@@ -43,7 +41,8 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
     if (label.trim()) {
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 8);
-      const fieldType = isEditorSignature ? 'editor_signature' : isTable ? 'table' : 'field';
+      const fieldType = fieldTypeOption === 'editor_signature' ? 'editor_signature' : 
+                        fieldTypeOption === 'table' ? 'table' : 'field';
       const autoId = `${fieldType}_${timestamp}_${randomStr}`;
 
       const fieldWidth = selectionBox?.width || 150;
@@ -63,7 +62,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
         type: fieldType,
         fontSize: defaultFontSize,
         fontFamily: defaultFontFamily,
-        ...(isTable && {
+        ...(fieldTypeOption === 'table' && {
           tableData: {
             rows: tableRows,
             cols: tableCols,
@@ -104,53 +103,63 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
               id="newRequired"
               checked={required}
               onChange={(e) => setRequired(e.target.checked)}
-              disabled={isTable}
+              disabled={fieldTypeOption === 'table'}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <label htmlFor="newRequired" className={`ml-2 text-sm ${isTable ? 'text-gray-400' : 'text-gray-700'}`}>
+            <label htmlFor="newRequired" className={`ml-2 text-sm ${fieldTypeOption === 'table' ? 'text-gray-400' : 'text-gray-700'}`}>
               필수 필드
             </label>
           </div>
 
           <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              필드 유형 선택
+            </label>
+            
             <div className="flex items-center">
               <input
-                type="checkbox"
-                id="isTable"
-                checked={isTable}
-                onChange={(e) => {
-                  setIsTable(e.target.checked);
-                  if (e.target.checked) {
-                    setIsEditorSignature(false);
-                  }
-                }}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                type="radio"
+                id="normalField"
+                name="fieldType"
+                checked={fieldTypeOption === 'normal'}
+                onChange={() => setFieldTypeOption('normal')}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
-              <label htmlFor="isTable" className="ml-2 text-sm text-gray-700">
-                테이블 생성
+              <label htmlFor="normalField" className="ml-2 text-sm text-gray-700">
+                텍스트
               </label>
             </div>
 
             <div className="flex items-center">
               <input
-                type="checkbox"
-                id="isEditorSignature"
-                checked={isEditorSignature}
-                onChange={(e) => {
-                  setIsEditorSignature(e.target.checked);
-                  if (e.target.checked) {
-                    setIsTable(false);
-                  }
-                }}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                type="radio"
+                id="tableField"
+                name="fieldType"
+                checked={fieldTypeOption === 'table'}
+                onChange={() => setFieldTypeOption('table')}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
-              <label htmlFor="isEditorSignature" className="ml-2 text-sm text-gray-700">
-                편집자 서명 필드
+              <label htmlFor="tableField" className="ml-2 text-sm text-gray-700">
+                테이블
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="signatureField"
+                name="fieldType"
+                checked={fieldTypeOption === 'editor_signature'}
+                onChange={() => setFieldTypeOption('editor_signature')}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <label htmlFor="signatureField" className="ml-2 text-sm text-gray-700">
+                편집자 서명
               </label>
             </div>
           </div>
 
-          {isTable && (
+          {fieldTypeOption === 'table' && (
             <div className="space-y-3 p-3 bg-blue-50 rounded-md">
               <div className="grid grid-cols-2 gap-3">
                 <div>
