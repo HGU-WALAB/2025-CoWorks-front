@@ -126,7 +126,8 @@ const FieldManagement: React.FC<FieldManagementProps> = ({
                               <div className="flex items-center space-x-2">
                                 <span className={`w-3 h-3 rounded-full flex-shrink-0 ${
                                   field.type === 'table' ? 'bg-purple-500' :
-                                  field.type === 'editor_signature' ? 'bg-green-500' : 'bg-blue-500'
+                                  field.type === 'editor_signature' ? 'bg-green-500' :
+                                  field.type === 'signer_signature' ? 'bg-orange-500' : 'bg-blue-500'
                                 }`}></span>
                                 <p className="font-medium text-gray-800 truncate">
                                   {field.label}
