@@ -1,5 +1,24 @@
 import { Document } from '../types/document';
 
+export const formatKoreanFullDateTime = (dateInput: string | number | Date): string => {
+  const date = new Date(dateInput);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const HH = String(date.getHours()).padStart(2, '0');
+  const MM = String(date.getMinutes()).padStart(2, '0');
+  return `${yyyy}년 ${mm}월 ${dd}일 ${HH} : ${MM}`;
+};
+
+export const formatKoreanShortDateTime = (dateInput: string | number | Date): string => {
+  const date = new Date(dateInput);
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const HH = String(date.getHours()).padStart(2, '0');
+  const MM = String(date.getMinutes()).padStart(2, '0');
+  return `${mm}월 ${dd}일 ${HH} : ${MM}`;
+};
+
 /**
  * 문서 상태에 따라 적절한 역할 지정 시간 메시지를 반환합니다.
  * EDITING 상태면 편집자 할당 시간, REVIEWING 상태면 서명자 할당 시간을 표시합니다.
@@ -35,17 +54,7 @@ export const getRoleAssignmentMessage = (
   
   if (!userTask || !userTask.createdAt) return null;
 
-  // 한국어 형식으로 날짜 포매팅
-  const date = new Date(userTask.createdAt);
-  const formattedTime = date.toLocaleString('ko-KR', {
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-
-  return { label, time: formattedTime };
+  return { label, time: formatKoreanShortDateTime(userTask.createdAt) };
 };
 
 /**
@@ -83,15 +92,6 @@ export const getRoleAssignmentMessageShort = (
   
   if (!userTask || !userTask.createdAt) return null;
 
-  const date = new Date(userTask.createdAt);
-  const formattedTime = date.toLocaleString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-
-  return { label, time: formattedTime };
+  return { label, time: formatKoreanShortDateTime(userTask.createdAt) };
 };
 
