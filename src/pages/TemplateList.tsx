@@ -6,6 +6,7 @@ import { Template } from '../types/template';
 import TemplateDuplicateModal from '../components/TemplateDuplicateModal';
 import AssignedUsersModal from '../components/AssignedUsersModal';
 import { downloadExcelTemplate } from '../utils/excelDownloadUtils';
+import { formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
 
 const TemplateList: React.FC = () => {
   const navigate = useNavigate();
@@ -196,7 +197,7 @@ const TemplateList: React.FC = () => {
                     {/* 메타 정보 */}
                     <div className="mb-3 text-xs text-gray-400">
                       <div>생성자: {template.createdByName}</div>
-                      <div>생성일: {new Date(template.createdAt).toLocaleDateString()}</div>
+                      <div>생성일: {formatKoreanFullDateTime(template.createdAt)}</div>
                     </div>
 
                     {/* 액션 버튼들 */}

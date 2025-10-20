@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Document } from '../types/document';
 import { useAuthStore } from '../stores/authStore';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
-import { getRoleAssignmentMessage } from '../utils/roleAssignmentUtils';
+import { getRoleAssignmentMessage, formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
 
 interface DocumentListItemProps {
   document: Document;
@@ -183,7 +183,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
               {document.tasks?.some(task => 
                 task.assignedUserEmail === currentUser?.email && task.isNew
               ) && (
-                <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">
+                <span className="px-2 py-1 text-xs font-medium bg-green-500 text-white rounded">
                   NEW
                 </span>
               )}
@@ -191,22 +191,10 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
 
             <div className="flex flex-col space-y-1 text-sm text-gray-600">
               <span className="text-gray-900 font-medium">
-                생성일: {new Date(document.createdAt).toLocaleString('ko-KR', { 
-                  month: 'long', 
-                  day: 'numeric', 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  hour12: false
-                })}
+                생성일: {formatKoreanFullDateTime(document.createdAt)}
               </span>
               <span className="text-gray-900 font-medium">
-                수정일: {new Date(document.updatedAt || document.createdAt).toLocaleString('ko-KR', { 
-                  month: 'long', 
-                  day: 'numeric', 
-                  hour: '2-digit', 
-                  minute: '2-digit',
-                  hour12: false
-                })}
+                수정일: {formatKoreanFullDateTime(document.updatedAt || document.createdAt)}
               </span>
               {document.deadline && (
                 <span className={`flex items-center space-x-1 ${
@@ -215,14 +203,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                     : 'text-orange-600'
                 }`}>
                   <span>
-                    만료일: {new Date(document.deadline).toLocaleString('ko-KR', { 
-                      year: 'numeric', 
-                      month: showCheckbox ? 'numeric' : '2-digit', 
-                      day: showCheckbox ? 'numeric' : '2-digit', 
-                      hour: '2-digit', 
-                      minute: '2-digit',
-                      hour12: false
-                    })}
+                    마감일: {formatKoreanFullDateTime(document.deadline as string)}
                   </span>
                 </span>
               )}
