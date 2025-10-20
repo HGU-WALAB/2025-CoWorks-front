@@ -183,7 +183,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
               {document.tasks?.some(task => 
                 task.assignedUserEmail === currentUser?.email && task.isNew
               ) && (
-                <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">
+                <span className="px-2 py-1 text-xs font-medium bg-green-500 text-white rounded">
                   NEW
                 </span>
               )}
