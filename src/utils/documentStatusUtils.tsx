@@ -91,7 +91,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   return (
     <div className="flex items-center gap-2">
       <span className={`rounded-full font-medium ${config.color} ${sizeClass} ${className}`}>
-        {showRejectPrefix && <span className="text-red-400 font-bold">&lt;반려&gt; </span>}
+        {showRejectPrefix && <span>&lt;반려&gt; </span>}
         {config.text}
       </span>
       {showRejectPrefix && rejectComment && (
