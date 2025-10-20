@@ -217,10 +217,11 @@ const TaskDashboard: React.FC = () => {
             const isNewTask = myTask?.isNew;
             
             // 상태에 따른 색상과 아이콘 설정
-            const getStatusInfo = (status: string) => {
+            const getStatusInfo = (status: string, isRejected?: boolean) => {
+              let baseInfo;
               switch (status) {
                 case 'EDITING':
-                  return {
+                  baseInfo = {
                     color: 'blue',
                     bgColor: 'bg-blue-50',
                     textColor: 'text-blue-700',
@@ -228,8 +229,9 @@ const TaskDashboard: React.FC = () => {
                     icon: '✏️',
                     label: '편집중'
                   };
+                  break;
                 case 'REVIEWING':
-                  return {
+                  baseInfo = {
                     color: 'orange',
                     bgColor: 'bg-orange-50',
                     textColor: 'text-orange-700',
@@ -237,8 +239,9 @@ const TaskDashboard: React.FC = () => {
                     icon: '👀',
                     label: '검토중'
                   };
+                  break;
                 case 'READY_FOR_REVIEW':
-                  return {
+                  baseInfo = {
                       color: 'orange',
                       bgColor: 'bg-yellow-50',
                       textColor: 'text-orange-700',
@@ -246,8 +249,9 @@ const TaskDashboard: React.FC = () => {
                       icon: '📝',
                       label: '서명자 지정 필요'
                       };
+                  break;
                 case 'REJECTED':
-                  return {
+                  baseInfo = {
                     color: 'red',
                     bgColor: 'bg-red-50',
                     textColor: 'text-red-700',
@@ -255,8 +259,9 @@ const TaskDashboard: React.FC = () => {
                     icon: '❌',
                     label: '반려됨'
                   };
+                  break;
                 default:
-                  return {
+                  baseInfo = {
                     color: 'gray',
                     bgColor: 'bg-gray-50',
                     textColor: 'text-gray-700',
@@ -265,9 +270,19 @@ const TaskDashboard: React.FC = () => {
                     label: '처리 필요'
                   };
               }
+
+              // isRejected가 true이고 현재 상태가 REJECTED가 아닌 경우 "<반려>" 접두사 추가
+              if (isRejected && status !== 'REJECTED') {
+                return {
+                  ...baseInfo,
+                  label: `<반려> ${baseInfo.label}`
+                };
+              }
+
+              return baseInfo;
             };
 
-            const statusInfo = getStatusInfo(doc.status);
+            const statusInfo = getStatusInfo(doc.status, doc.isRejected);
             const deadlineDate = doc.deadline ? new Date(doc.deadline) : null;
             const isOverdue = deadlineDate && deadlineDate < new Date();
             

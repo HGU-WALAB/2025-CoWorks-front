@@ -1586,7 +1586,20 @@ const DocumentEditor: React.FC = () => {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold text-gray-900">{currentDocument.title || '문서 편집'}</h1>
-            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.EDITING} size="md" />
+            <StatusBadge
+              status={currentDocument.status || DOCUMENT_STATUS.EDITING}
+              size="md"
+              isRejected={currentDocument.isRejected}
+              rejectComment={
+                currentDocument.isRejected &&
+                currentDocument.status === 'EDITING' &&
+                currentDocument.statusLogs
+                  ? currentDocument.statusLogs
+                      .filter(log => log.status === 'EDITING')
+                      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]?.comment
+                  : undefined
+              }
+            />
           </div>
           <div className="flex items-center gap-2 mt-1">
             {lastSaved && (
