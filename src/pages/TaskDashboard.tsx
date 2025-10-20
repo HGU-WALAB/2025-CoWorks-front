@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
-import { getRoleAssignmentMessageShort } from '../utils/roleAssignmentUtils';
+import { getRoleAssignmentMessageShort, formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
 
 const TaskDashboard: React.FC = () => {
   const { documents, todoDocuments, fetchDocuments, fetchTodoDocuments, loading } = useDocumentStore();
@@ -225,7 +225,6 @@ const TaskDashboard: React.FC = () => {
                     bgColor: 'bg-blue-50',
                     textColor: 'text-blue-700',
                     borderColor: 'border-blue-200',
-                    icon: '✏️',
                     label: '편집중'
                   };
                 case 'REVIEWING':
@@ -234,7 +233,6 @@ const TaskDashboard: React.FC = () => {
                     bgColor: 'bg-orange-50',
                     textColor: 'text-orange-700',
                     borderColor: 'border-orange-200',
-                    icon: '👀',
                     label: '검토중'
                   };
                 case 'READY_FOR_REVIEW':
@@ -243,7 +241,6 @@ const TaskDashboard: React.FC = () => {
                       bgColor: 'bg-yellow-50',
                       textColor: 'text-orange-700',
                       borderColor: 'border-orange-200',
-                      icon: '📝',
                       label: '서명자 지정 필요'
                       };
                 case 'REJECTED':
@@ -252,7 +249,6 @@ const TaskDashboard: React.FC = () => {
                     bgColor: 'bg-red-50',
                     textColor: 'text-red-700',
                     borderColor: 'border-red-200',
-                    icon: '❌',
                     label: '반려됨'
                   };
                 default:
@@ -261,7 +257,6 @@ const TaskDashboard: React.FC = () => {
                     bgColor: 'bg-gray-50',
                     textColor: 'text-gray-700',
                     borderColor: 'border-gray-200',
-                    icon: '📄',
                     label: '처리 필요'
                   };
               }
@@ -284,7 +279,7 @@ const TaskDashboard: React.FC = () => {
                 <div className={`${statusInfo.bgColor} px-4 py-3 border-b ${statusInfo.borderColor}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusInfo.bgColor} ${statusInfo.textColor} border ${statusInfo.borderColor}`}>
-                      {statusInfo.icon} {statusInfo.label}
+                      {statusInfo.label}
                     </span>
                     {isNewTask && (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500 text-white animate-pulse">
@@ -301,7 +296,7 @@ const TaskDashboard: React.FC = () => {
                 </div>
 
                 {/* 카드 본문 */}
-                <div className="p-4 space-y-3">
+                <div className="p-4 space-y-3 flex flex-col min-h-[200px]">
                   {/* 템플릿 정보 */}
                   <div className="flex items-center text-sm text-gray-600">
                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,12 +316,7 @@ const TaskDashboard: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span>
-                        마감일: {deadlineDate.toLocaleDateString('ko-KR', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        마감일: {formatKoreanFullDateTime(deadlineDate)}
                       </span>
                       {isOverdue && <span className="ml-1">(지연)</span>}
                     </div>
@@ -351,30 +341,18 @@ const TaskDashboard: React.FC = () => {
                   {/* 날짜 정보 */}
                   <div className="text-xs text-gray-500 space-y-1 pt-2 border-t border-gray-100">
                     <div className="text-gray-900 font-medium">
-                      생성일: {new Date(doc.createdAt).toLocaleString('ko-KR', {
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                      })}
+                      생성일: {formatKoreanFullDateTime(doc.createdAt)}
                     </div>
                     {doc.updatedAt && (
                       <div className="text-gray-900 font-medium">
-                        수정일: {new Date(doc.updatedAt).toLocaleString('ko-KR', {
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          hour12: false
-                        })}
+                        수정일: {formatKoreanFullDateTime(doc.updatedAt)}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* 카드 푸터 - 액션 버튼 */}
-                <div className="px-4 pb-4">
+                {/* 카드 푸터 - 액션 버튼 (하단 고정) */}
+                <div className="px-4 pb-4 mt-auto">
                   {doc.status === 'READY_FOR_REVIEW' ? (
                     <Link
                       to={`/documents/${doc.id}/signer-assignment`}
@@ -443,21 +421,16 @@ const TaskDashboard: React.FC = () => {
                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
                
-               <div className="relative">
-                 <div className="flex items-center justify-between mb-4">
-                   <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                     <span className="text-white text-2xl">✏️</span>
-                   </div>
-                   <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                   </svg>
-                 </div>
-                 <div className="flex items-baseline space-x-2">
-                   <h3 className="text-lg font-bold text-white">편집중</h3>
-                   <p className="text-4xl font-bold text-white">{tasks.editingTasks.length}</p>
-                 </div>
-                 <p className="text-blue-100 text-sm mt-2">작업이 필요한 문서</p>
-               </div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-baseline space-x-2">
+                    <h3 className="text-2xl font-bold text-white">편집중 : </h3>
+                    <p className="text-2xl font-bold text-white">{tasks.editingTasks.length}</p>
+                  </div>
+                  <span className="text-white text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
+                </div>
+                <p className="text-blue-100 text-sm mt-2">작업이 필요한 문서</p>
+              </div>
              </div>
            </Link>
 
@@ -468,21 +441,16 @@ const TaskDashboard: React.FC = () => {
                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
                
-               <div className="relative">
-                 <div className="flex items-center justify-between mb-4">
-                   <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                     <span className="text-white text-2xl">👀</span>
-                   </div>
-                   <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                   </svg>
-                 </div>
-                 <div className="flex items-baseline space-x-2">
-                   <h3 className="text-lg font-bold text-white">검토중</h3>
-                   <p className="text-4xl font-bold text-white">{tasks.reviewingTasks.length}</p>
-                 </div>
-                 <p className="text-yellow-100 text-sm mt-2">검토가 필요한 문서</p>
-               </div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-baseline space-x-2">
+                    <h3 className="text-2xl font-bold text-white">검토중: </h3>
+                    <p className="text-2xl font-bold text-white">{tasks.reviewingTasks.length}</p>
+                  </div>
+                  <span className="text-white text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
+                </div>
+                <p className="text-yellow-100 text-sm mt-2">검토가 필요한 문서</p>
+              </div>
              </div>
            </Link>
 
@@ -493,21 +461,16 @@ const TaskDashboard: React.FC = () => {
                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
                
-               <div className="relative">
-                 <div className="flex items-center justify-between mb-4">
-                   <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                     <span className="text-white text-2xl">❌</span>
-                   </div>
-                   <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                   </svg>
-                 </div>
-                 <div className="flex items-baseline space-x-2">
-                   <h3 className="text-lg font-bold text-white">반려됨</h3>
-                   <p className="text-4xl font-bold text-white">{tasks.rejectedTasks.length}</p>
-                 </div>
-                 <p className="text-red-100 text-sm mt-2">수정이 필요한 문서</p>
-               </div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-baseline space-x-2">
+                    <h3 className="text-2xl font-bold text-white">반려됨 : </h3>
+                    <p className="text-2xl font-bold text-white">{tasks.rejectedTasks.length}</p>
+                  </div>
+                  <span className="text-white text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
+                </div>
+                <p className="text-red-100 text-sm mt-2">수정이 필요한 문서</p>
+              </div>
              </div>
            </Link>
 
@@ -518,27 +481,19 @@ const TaskDashboard: React.FC = () => {
                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-16 -mt-16"></div>
                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-5 rounded-full -ml-12 -mb-12"></div>
                
-               <div className="relative">
-                 <div className="flex items-center justify-between mb-4">
-                   <div className="w-12 h-12 bg-white bg-opacity-20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                     </svg>
-                   </div>
-                   <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                   </svg>
-                 </div>
-                 <div className="flex items-baseline space-x-2">
-                   <h3 className="text-lg font-bold text-white">완료</h3>
-                   <p className="text-4xl font-bold text-white">{tasks.completedTasks.length}</p>
-                 </div>
-                 <p className="text-green-100 text-sm mt-2">완료된 문서</p>
-               </div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-baseline space-x-2">
+                    <h3 className="text-2xl font-bold text-white">완료 : </h3>
+                    <p className="text-2xl font-bold text-white">{tasks.completedTasks.length}</p>
+                  </div>
+                  <span className="text-white text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
+                </div>
+                <p className="text-green-100 text-sm mt-2">완료된 문서</p>
+              </div>
              </div>
            </Link>
          </div>
-
 
         {/* TodoList 섹션 */}
         <TodoList />
