@@ -63,13 +63,17 @@ export interface StatusBadgeProps {
   size?: 'sm' | 'md' | 'lg';
   showDescription?: boolean;
   className?: string;
+  isRejected?: boolean;
+  rejectComment?: string;
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({
   status,
   size = 'md',
   showDescription = false,
-  className = ''
+  className = '',
+  isRejected = false,
+  rejectComment
 }) => {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG[DOCUMENT_STATUS.DRAFT];
 
@@ -81,11 +85,20 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   const sizeClass = sizeClasses[size];
 
+  // isRejected가 true이고 현재 상태가 REJECTED가 아닌 경우 "<반려>" 접두사 추가
+  const showRejectPrefix = isRejected && status !== DOCUMENT_STATUS.REJECTED;
+
   return (
     <div className="flex items-center gap-2">
       <span className={`rounded-full font-medium ${config.color} ${sizeClass} ${className}`}>
+        {showRejectPrefix && <span>&lt;반려&gt; </span>}
         {config.text}
       </span>
+      {showRejectPrefix && rejectComment && (
+        <span className="text-sm text-red-400 font-bold">
+          반려 사유: {rejectComment}
+        </span>
+      )}
       {showDescription && (
         <span className="text-sm text-gray-500">
           {config.description}
@@ -99,8 +112,12 @@ export const getStatusConfig = (status: string): StatusConfig => {
   return STATUS_CONFIG[status] || STATUS_CONFIG[DOCUMENT_STATUS.DRAFT];
 };
 
-export const getStatusText = (status: string): string => {
-  return getStatusConfig(status).text;
+export const getStatusText = (status: string, isRejected?: boolean): string => {
+  const text = getStatusConfig(status).text;
+  // isRejected가 true이고 현재 상태가 REJECTED가 아닌 경우 "<반려>" 접두사 추가
+  return (isRejected && status !== DOCUMENT_STATUS.REJECTED)
+    ? `<반려> ${text}`
+    : text;
 };
 
 export const getStatusColor = (status: string): string => {

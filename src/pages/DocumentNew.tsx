@@ -6,6 +6,15 @@ import { useAuthStore } from '../stores/authStore';
 import UploadExcelButton from '../components/UploadExcelButton';
 import axios from 'axios';
 import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
+import MultiPageTemplatePreview from './TemplateUpload/components/MultiPageTemplatePreview';
+import { TemplateField } from '../types/field';
+
+interface PdfPage {
+  pageNumber: number;
+  imageUrl: string;
+  width: number;
+  height: number;
+}
 
 const DocumentNew: React.FC = () => {
   const navigate = useNavigate();
@@ -29,6 +38,8 @@ const DocumentNew: React.FC = () => {
   const [creationMode, setCreationMode] = useState<'single' | 'bulk'>(urlMode || 'single');
   type UploadedUser = { name: string; email: string; userStatus: 'REGISTERED' | 'UNREGISTERED' | 'UNKNOWN' };
   const [uploadedUsers, setUploadedUsers] = useState<UploadedUser[]>([]);
+  const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
+  const [pdfPages, setPdfPages] = useState<PdfPage[]>([]);
 
   type StagingItem = {
     name?: string;
@@ -58,6 +69,138 @@ const DocumentNew: React.FC = () => {
       if (template && !documentTitle) {
         setDocumentTitle(template.name);
       }
+
+      // 템플릿 필드 정보 및 PDF 페이지 가져오기
+      const fetchTemplateFields = async () => {
+        try {
+          const response = await axios.get(`${API_BASE_URL}/templates/${selectedTemplateId}`);
+          const template = response.data;
+
+          let parsedFields: any[] = [];
+          if (template.coordinateFields) {
+            try {
+              parsedFields = typeof template.coordinateFields === 'string'
+                ? JSON.parse(template.coordinateFields)
+                : template.coordinateFields;
+            } catch (error) {
+              console.error('coordinateFields 파싱 실패:', error);
+            }
+          }
+
+          // coordinateFields를 TemplateField 형태로 변환
+          const convertedFields: TemplateField[] = parsedFields.map((field, index) => ({
+            id: field.id || `field-${index}`,
+            label: field.label || `필드 ${index + 1}`,
+            type: field.type || 'text',
+            x: field.x || 0,
+            y: field.y || 0,
+            width: field.width || 100,
+            height: field.height || 30,
+            required: field.required || false,
+            page: field.page || 1,
+            fontSize: field.fontSize || 14,
+            fontFamily: field.fontFamily || 'Arial',
+            ...(field.tableData && { tableData: field.tableData })
+          }));
+
+          setTemplateFields(convertedFields);
+
+          // PDF 페이지 정보 파싱
+          console.log('🔍 템플릿 데이터:', {
+            pdfImagePath: template.pdfImagePath,
+            pdfImagePaths: template.pdfImagePaths,
+            pdfImagePathsType: typeof template.pdfImagePaths
+          });
+
+          let parsedPages: PdfPage[] = [];
+          if (template.pdfImagePaths) {
+            try {
+              let paths: string[] = [];
+
+              // 1. 이미 배열인 경우
+              if (Array.isArray(template.pdfImagePaths)) {
+                paths = template.pdfImagePaths;
+              }
+              // 2. 문자열인 경우
+              else if (typeof template.pdfImagePaths === 'string') {
+                const trimmed = template.pdfImagePaths.trim();
+
+                // 2-1. JSON 배열 형식 시도 (예: ["path1", "path2"])
+                if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                  try {
+                    paths = JSON.parse(trimmed);
+                    console.log('✅ JSON 파싱 성공:', paths);
+                  } catch (jsonError) {
+                    // JSON 파싱 실패 시 수동 파싱
+                    // "[path1, path2, path3]" -> "path1, path2, path3" -> ["path1", "path2", "path3"]
+                    const content = trimmed.slice(1, -1); // 대괄호 제거
+                    paths = content
+                      .split(',')
+                      .map(p => p.trim())
+                      .filter(p => p.length > 0);
+                    console.log('✅ 수동 파싱 성공:', paths);
+                  }
+                }
+                // 2-2. 쉼표로 구분된 문자열 (예: "path1, path2, path3")
+                else if (trimmed.includes(',')) {
+                  paths = trimmed
+                    .split(',')
+                    .map(p => p.trim())
+                    .filter(p => p.length > 0);
+                  console.log('✅ 쉼표 구분 파싱 성공:', paths);
+                }
+                // 2-3. 단일 경로 문자열
+                else {
+                  paths = [trimmed];
+                  console.log('✅ 단일 경로:', paths);
+                }
+              }
+
+              // 파싱된 경로들로 PdfPage 배열 생성
+              if (paths.length > 0) {
+                parsedPages = paths.map((path: string, index: number) => ({
+                  pageNumber: index + 1,
+                  imageUrl: path.startsWith('/') ? path : `/${path}`,
+                  width: 1240,  // A4 기준
+                  height: 1754
+                }));
+              } else {
+                throw new Error('파싱된 경로가 없습니다');
+              }
+            } catch (error) {
+              // 실패 시 단일 이미지로 폴백
+              if (template.pdfImagePath) {
+                parsedPages = [{
+                  pageNumber: 1,
+                  imageUrl: `/${template.pdfImagePath}`,
+                  width: 1240,
+                  height: 1754
+                }];
+              }
+            }
+          } else if (template.pdfImagePath) {
+            // pdfImagePaths가 없으면 단일 pdfImagePath 사용
+            console.log('⚠️ pdfImagePaths 없음, pdfImagePath 사용:', template.pdfImagePath);
+            parsedPages = [{
+              pageNumber: 1,
+              imageUrl: `/${template.pdfImagePath}`,
+              width: 1240,
+              height: 1754
+            }];
+          }
+
+          setPdfPages(parsedPages);
+        } catch (error) {
+          console.error('템플릿 필드 로드 실패:', error);
+          setTemplateFields([]);
+          setPdfPages([]);
+        }
+      };
+
+      fetchTemplateFields();
+    } else {
+      setTemplateFields([]);
+      setPdfPages([]);
     }
   }, [selectedTemplateId, templates, documentTitle]);
 
@@ -527,31 +670,19 @@ const DocumentNew: React.FC = () => {
                 </div>
               </div>
 
-              {/* PDF 기반 템플릿 미리보기 */}
-              {selectedTemplate.pdfFilePath ? (
-                <div>
-                  <div className="mb-6">
-                    {selectedTemplate.pdfImagePath && (
-                      <div className="mt-4">
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">📸 PDF 미리보기</h5>
-                        <div className="border rounded-lg overflow-hidden">
-                          <img
-                            src={`/${selectedTemplate.pdfImagePath}`}
-                            alt="PDF 템플릿 미리보기"
-                            className="w-full max-w-md mx-auto"
-                            style={{ maxHeight: '400px', objectFit: 'contain' }}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              const parent = (e.target as HTMLImageElement).parentElement;
-                              if (parent) {
-                                parent.innerHTML = '<div class="p-8 text-center text-gray-500"><div class="text-4xl mb-2">📄</div><p>PDF 이미지를 불러올 수 없습니다</p></div>';
-                              }
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+              {/* PDF 기반 템플릿 미리보기 - MultiPageTemplatePreview 컴포넌트 사용 */}
+              {selectedTemplate.pdfFilePath && pdfPages.length > 0 ? (
+                <div className="h-[600px]">
+                  <MultiPageTemplatePreview
+                    pages={pdfPages}
+                    fields={templateFields}
+                    selectedFieldId={null}
+                    onFieldClick={() => {}}
+                    onFieldMove={() => {}}
+                    onFieldResize={() => {}}
+                    onTableCellClick={() => {}}
+                    onCanvasClick={() => {}}
+                  />
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">

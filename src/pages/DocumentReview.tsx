@@ -336,7 +336,7 @@ const DocumentReview: React.FC = () => {
             <h1 className="text-xl font-semibold text-gray-900">
               {currentDocument.title || currentDocument.templateName} - 검토
             </h1>
-            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.REVIEWING} size="md" />
+            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.REVIEWING} size="md" isRejected={currentDocument.isRejected} />
           </div>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-sm text-gray-500">

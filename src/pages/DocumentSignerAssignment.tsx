@@ -443,7 +443,7 @@ const DocumentSignerAssignment: React.FC = () => {
             <h1 className="text-xl font-semibold text-gray-900">
               {currentDocument.title || currentDocument.templateName} - 서명자 지정
             </h1>
-            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.READY_FOR_REVIEW} size="md" />
+            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.READY_FOR_REVIEW} size="md" isRejected={currentDocument.isRejected} />
             {/* 현재 사용자에게 새로 할당된 작업이 있는지 확인하여 NEW 태그 표시 */}
             {currentDocument.tasks?.some(task => 
               task.assignedUserEmail === user?.email && task.isNew

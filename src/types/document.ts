@@ -73,6 +73,7 @@ export interface Document {
   createdAt: string;
   updatedAt: string;
   deadline?: string;
+  isRejected?: boolean;
   tasks?: TaskInfo[];
   template?: TemplateInfo;
   statusLogs?: DocumentStatusLog[];

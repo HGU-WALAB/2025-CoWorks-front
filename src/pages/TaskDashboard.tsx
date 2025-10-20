@@ -161,10 +161,19 @@ const TaskDashboard: React.FC = () => {
       doc.status === 'REVIEWING'
     );
 
-    // 반려된 문서 (REJECTED 상태)
-    const rejectedTasks = myDocuments.filter(doc => 
-      doc.status === 'REJECTED'
-    );
+    // 반려된 문서 (REJECTED 상태 OR isRejected=true && EDITING 상태 && 편집자가 나)
+    const rejectedTasks = myDocuments.filter(doc => {
+      if (doc.status === 'REJECTED') {
+        return true;
+      }
+      // isRejected가 true이고 EDITING 상태이고 편집자가 현재 사용자인 경우
+      if (doc.isRejected && doc.status === 'EDITING') {
+        return doc.tasks?.some(task =>
+          task.role === 'EDITOR' && task.assignedUserEmail === currentUserEmail
+        ) || false;
+      }
+      return false;
+    });
 
     // 완료된 문서 (COMPLETED 상태)
     const completedTasks = myDocuments.filter(doc => 
@@ -216,43 +225,64 @@ const TaskDashboard: React.FC = () => {
             const myTask = doc.tasks?.find(task => task.assignedUserEmail === currentUserEmail);
             const isNewTask = myTask?.isNew;
             
+            // 편집자인지 확인
+            const isEditor = doc.tasks?.some(task =>
+              task.role === 'EDITOR' && task.assignedUserEmail === currentUserEmail
+            ) || false;
+
             // 상태에 따른 색상과 아이콘 설정
-            const getStatusInfo = (status: string) => {
+            const getStatusInfo = (status: string, isRejected?: boolean, isEditor?: boolean) => {
+              // isRejected가 true이고 EDITING 상태이고 편집자가 현재 사용자인 경우 REJECTED처럼 표시
+              if (isRejected && status === 'EDITING' && isEditor) {
+                return {
+                  color: 'red',
+                  bgColor: 'bg-red-50',
+                  textColor: 'text-red-700',
+                  borderColor: 'border-red-200',
+                  label: '반려됨'
+                };
+              }
+
+              let baseInfo;
               switch (status) {
                 case 'EDITING':
-                  return {
+                  baseInfo = {
                     color: 'blue',
                     bgColor: 'bg-blue-50',
                     textColor: 'text-blue-700',
                     borderColor: 'border-blue-200',
                     label: '편집중'
                   };
+                  break;
                 case 'REVIEWING':
-                  return {
+                  baseInfo = {
                     color: 'orange',
                     bgColor: 'bg-orange-50',
                     textColor: 'text-orange-700',
                     borderColor: 'border-orange-200',
                     label: '검토중'
                   };
+                  break;
                 case 'READY_FOR_REVIEW':
-                  return {
+                  baseInfo = {
                       color: 'orange',
                       bgColor: 'bg-yellow-50',
                       textColor: 'text-orange-700',
                       borderColor: 'border-orange-200',
                       label: '서명자 지정 필요'
                       };
+                  break;
                 case 'REJECTED':
-                  return {
+                  baseInfo = {
                     color: 'red',
                     bgColor: 'bg-red-50',
                     textColor: 'text-red-700',
                     borderColor: 'border-red-200',
                     label: '반려됨'
                   };
+                  break;
                 default:
-                  return {
+                  baseInfo = {
                     color: 'gray',
                     bgColor: 'bg-gray-50',
                     textColor: 'text-gray-700',
@@ -260,9 +290,11 @@ const TaskDashboard: React.FC = () => {
                     label: '처리 필요'
                   };
               }
+
+              return baseInfo;
             };
 
-            const statusInfo = getStatusInfo(doc.status);
+            const statusInfo = getStatusInfo(doc.status, doc.isRejected, isEditor);
             const deadlineDate = doc.deadline ? new Date(doc.deadline) : null;
             const isOverdue = deadlineDate && deadlineDate < new Date();
             
@@ -373,7 +405,7 @@ const TaskDashboard: React.FC = () => {
                       </svg>
                       서명하기
                     </Link>
-                  ) : doc.status === 'REJECTED' ? (
+                  ) : doc.status === 'REJECTED' || (doc.isRejected && doc.status === 'EDITING' && isEditor) ? (
                     <Link
                       to={`/documents/${doc.id}`}
                       className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
