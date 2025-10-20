@@ -405,7 +405,7 @@ const TaskDashboard: React.FC = () => {
 
   // 문서 현황 카드 UI
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-4">
       <div className="space-y-8">
         {/* 페이지 헤더 */}
         <div>
