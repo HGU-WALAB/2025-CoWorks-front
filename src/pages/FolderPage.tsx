@@ -94,9 +94,12 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDownloadAlertModal, setShowDownloadAlertModal] = useState(false);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [showBulkDeleteAlertModal, setShowBulkDeleteAlertModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [renameLoading, setRenameLoading] = useState(false);
   const [moveLoading, setMoveLoading] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
   // 컴포넌트 마운트 시 권한 확인
   useEffect(() => {
@@ -385,6 +388,49 @@ const FolderPage: React.FC<FolderPageProps> = () => {
     } catch (error) {
       console.error('❌ ZIP 다운로드 실패:', error);
       alert(`문서 다운로드 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
+  };
+
+  // 선택된 문서 삭제 핸들러
+  const handleBulkDelete = () => {
+    // 선택된 문서가 없으면 알림 모달 표시
+    if (selectedDocuments.size === 0) {
+      setShowBulkDeleteAlertModal(true);
+      return;
+    }
+
+    // 삭제 확인 모달 표시
+    setShowBulkDeleteModal(true);
+  };
+
+  // 선택된 문서 삭제 확인
+  const handleBulkDeleteConfirm = async () => {
+    setBulkDeleteLoading(true);
+    try {
+      const documentsToDelete = Array.from(selectedDocuments);
+      console.log('🗑️ 선택된 문서 삭제 시작:', documentsToDelete.length, '개');
+
+      // 각 문서를 순차적으로 삭제
+      for (const documentId of documentsToDelete) {
+        console.log('🗑️ 문서 삭제:', documentId);
+        await deleteDocument(documentId);
+      }
+
+      console.log('✅ 모든 문서 삭제 완료');
+      
+      // 선택 상태 초기화
+      setSelectedDocuments(new Set());
+      
+      // 삭제 후 폴더 내용 다시 로드
+      await loadFolderContents(folderId || null);
+      
+      setShowBulkDeleteModal(false);
+    } catch (error: any) {
+      console.error('❌ 문서 삭제 실패:', error);
+      alert(`문서 삭제 중 오류가 발생했습니다: ${error.message}`);
+      clearError();
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -750,7 +796,39 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            {selectedDocuments.size > 0 ? `문서 다운로드 (선택된 ${selectedDocuments.size}개)` : '문서 다운로드'}
+                            문서 다운로드
+                          </>
+                        )}
+                      </button>
+                  )}
+
+                  {/* 문서 삭제 버튼 */}
+                  {documents.length > 0 && (
+                      <button
+                          onClick={handleBulkDelete}
+                          disabled={bulkDeleteLoading}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${
+                            bulkDeleteLoading
+                              ? 'bg-gray-400 cursor-not-allowed text-white'
+                              : 'bg-red-600 text-white hover:bg-red-700'
+                          }`}
+                      >
+                        {bulkDeleteLoading ? (
+                          <>
+                            <svg className="w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="32" strokeDashoffset="32">
+                                <animate attributeName="stroke-dasharray" dur="1s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
+                                <animate attributeName="stroke-dashoffset" dur="1s" values="0;-16;-32;-32" repeatCount="indefinite"/>
+                              </circle>
+                            </svg>
+                            삭제 중...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            문서 삭제
                           </>
                         )}
                       </button>
@@ -1117,6 +1195,44 @@ const FolderPage: React.FC<FolderPageProps> = () => {
               </div>
             </div>
           )}
+
+          {/* 삭제 안내 모달 */}
+          {showBulkDeleteAlertModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-md w-full p-6">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-yellow-100 rounded-full">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">문서를 선택해주세요</h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    삭제할 문서를 먼저 선택하신 후 삭제 버튼을 클릭해주세요.
+                  </p>
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setShowBulkDeleteAlertModal(false)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      확인
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 선택된 문서 삭제 확인 모달 */}
+          <DeleteConfirmModal
+            isOpen={showBulkDeleteModal}
+            onClose={() => setShowBulkDeleteModal(false)}
+            onConfirm={handleBulkDeleteConfirm}
+            loading={bulkDeleteLoading}
+            title="선택된 문서 삭제"
+            message={`정말로 선택된 ${selectedDocuments.size}개의 문서를 삭제하시겠습니까?`}
+            itemName={`${selectedDocuments.size}개의 문서`}
+          />
         </div>
       </div>
   );
