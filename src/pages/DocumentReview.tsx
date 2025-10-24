@@ -630,11 +630,14 @@ const DocumentReview: React.FC = () => {
                   .filter((field: any) => !field.page || field.page === currentPage)
                   .map((field: any) => {
                   const signatureData = signatures[field.reviewerEmail];
+                  const isMySignature = field.reviewerEmail === user?.email;
 
                   return (
                     <div
                       key={`existing-signature-${field.id}`}
-                      className="absolute border-2 border-green-500 flex flex-col justify-center items-center p-1"
+                      className={`absolute border-2 flex flex-col justify-center items-center p-1 ${
+                        isMySignature ? 'border-red-500 bg-red-100 bg-opacity-30' : 'border-green-500'
+                      }`}
                       style={{
                         left: `${field.x}px`,
                         top: `${field.y}px`,
@@ -649,7 +652,7 @@ const DocumentReview: React.FC = () => {
                           className="max-w-full max-h-full object-contain"
                         />
                       ) : (
-                        <div className="text-xs text-green-700 font-medium text-center">
+                        <div className="text-sm font-bold text-center text-black">
                           {field.reviewerName} 서명
                         </div>
                       )}
