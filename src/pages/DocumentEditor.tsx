@@ -1319,23 +1319,29 @@ const DocumentEditor: React.FC = () => {
                 >
                   {isEditorSignature ? (
                     // 편집자 서명 필드 렌더링
-                    <div className="w-full h-full p-2 flex flex-col items-center justify-center">
-                      <div
-                        className="font-medium mb-1 text-green-700 truncate"
-                        style={{
-                          fontSize: `${12 * scale}px`
-                        }}
-                      >
-                        {field.label}
-                        {field.required && <span className="text-red-500">*</span>}
-                      </div>
+                    <div className="w-full h-full flex flex-col">
+                      {!field.value && (
+                        <div
+                          className="font-medium text-green-700 truncate px-2 py-1"
+                          style={{
+                            fontSize: `${12 * scale}px`
+                          }}
+                        >
+                          {field.label}
+                          {field.required && <span className="text-red-500">*</span>}
+                        </div>
+                      )}
                       {field.value && (
-                        <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-full h-full flex items-center justify-center p-1">
                           {field.value.startsWith('data:image') ? (
                             <img
                               src={field.value}
                               alt="편집자 서명"
                               className="w-full h-full object-contain"
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '100%'
+                              }}
                             />
                           ) : (
                             <div
@@ -1786,11 +1792,13 @@ const DocumentEditor: React.FC = () => {
                         fontWeight: '600',
                         color: 'black',
                         border: '1px solid #ccc',
-                        padding: '4px'
+                        padding: '2px'
                       }}>
-                        <div style={{ fontSize: '10px', marginBottom: '2px' }}>
-                          {field.label}
-                        </div>
+                        {!field.value && (
+                          <div style={{ fontSize: '10px', marginBottom: '2px' }}>
+                            {field.label}
+                          </div>
+                        )}
                         {field.value ? (
                           field.value.startsWith('data:image') ? (
                             <img
@@ -1798,13 +1806,15 @@ const DocumentEditor: React.FC = () => {
                               alt="편집자 서명"
                               style={{
                                 width: '100%',
-                                height: 'calc(100% - 14px)',
-                                objectFit: 'contain'
+                                height: '100%',
+                                objectFit: 'contain',
+                                maxWidth: '100%',
+                                maxHeight: '100%'
                               }}
                             />
                           ) : (
-                            <div style={{ fontSize: '9px', textAlign: 'center' }}><br/>
-                              {new Date().toLocaleDateString()}
+                            <div style={{ fontSize: '9px', textAlign: 'center' }}>
+                              서명됨: {new Date().toLocaleDateString()}
                             </div>
                           )
                         ) : (

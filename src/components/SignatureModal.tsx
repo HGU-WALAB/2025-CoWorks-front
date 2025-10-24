@@ -35,7 +35,16 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      loadSavedSignatures();
+      // 저장된 서명을 먼저 로드
+      const saved = loadSavedSignatures();
+      
+      // 저장된 서명이 있으면 '저장된 서명' 탭을 기본으로 표시
+      if (saved && saved.length > 0) {
+        setActiveTab('saved');
+      } else {
+        setActiveTab('draw');
+      }
+      
       if (canvasRef.current) {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
@@ -49,7 +58,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 4;
+          ctx.lineWidth = 5;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
         }
@@ -66,14 +75,32 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
     }
   }, [isOpen, cameraStream]);
 
+  // 탭 전환 시 캔버스 스타일 재설정
+  useEffect(() => {
+    if (activeTab === 'draw' && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+      }
+    }
+  }, [activeTab]);
+
   const loadSavedSignatures = () => {
     try {
       const saved = localStorage.getItem('savedSignatures');
       if (saved) {
-        setSavedSignatures(JSON.parse(saved));
+        const signatures = JSON.parse(saved);
+        setSavedSignatures(signatures);
+        return signatures;
       }
+      return [];
     } catch (error) {
       console.error('Failed to load saved signatures:', error);
+      return [];
     }
   };
 
@@ -184,7 +211,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
     const signatureData = canvas.toDataURL('image/png');
 
     // 로컬 저장 옵션 제공
-    const shouldSaveLocally = confirm('이 서명을 로컬에 저장하여 나중에 재사용하시겠습니까?');
+    const shouldSaveLocally = confirm('이 서명을 저장하여 나중에 재사용하시겠습니까?');
     if (shouldSaveLocally) {
       const name = prompt('서명 이름을 입력하세요:', `${reviewerName}의 서명`) || `${reviewerName}의 서명`;
       saveSignatureToLocal(signatureData, name);
@@ -314,7 +341,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         <div className="border-b border-gray-200 px-6 py-4">
           <h2 className="text-xl font-bold text-gray-800">전자서명</h2>
           <p className="text-sm text-gray-600 mt-1">
-            {reviewerName}님의 서명을 아래 영역에 그려주세요
+            {reviewerName}님의 서명을 등록해주세요
           </p>
         </div>
 
