@@ -7,13 +7,33 @@ interface WorkflowModalProps {
   document: Document | null;
 }
 
-// 워크플로우 단계 정의
+// 워크플로우 단계 정의 (role과 매핑)
 const getWorkflowSteps = () => {
   return [
-    { key: 'EDITING', label: '편집중', description: '문서 내용 편집 및 수정' },
-    { key: 'READY_FOR_REVIEW', label: '서명자 지정', description: '서명자 지정 및 설정' },
-    { key: 'REVIEWING', label: '검토중', description: '검토자가 문서 검토' },
-    { key: 'COMPLETED', label: '완료', description: '모든 작업 완료' }
+    { 
+      key: 'EDITING', 
+      label: '편집중', 
+      description: '문서 내용 편집 및 수정',
+      roles: ['EDITOR'] // 이 단계에 해당하는 역할
+    },
+    { 
+      key: 'READY_FOR_REVIEW', 
+      label: '서명자 지정', 
+      description: '서명자 지정 및 설정',
+      roles: ['EDITOR'] // 편집자가 서명자를 지정
+    },
+    { 
+      key: 'REVIEWING', 
+      label: '검토중', 
+      description: '검토자가 문서 검토',
+      roles: ['REVIEWER'] // 검토자/서명자
+    },
+    { 
+      key: 'COMPLETED', 
+      label: '완료', 
+      description: '모든 작업 완료',
+      roles: [] // 완료 단계는 특정 역할 없음
+    }
   ];
 };
 
@@ -40,6 +60,13 @@ const getStatusCompletionTime = (statusLogs: DocumentStatusLog[] | undefined, st
     });
   }
   return null;
+};
+
+// 해당 단계의 담당자들을 가져오는 함수
+const getAssignedUsers = (tasks: any[] | undefined, roles: string[]) => {
+  if (!tasks || roles.length === 0) return [];
+  
+  return tasks.filter(task => roles.includes(task.role));
 };
 
 const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document }) => {
@@ -88,7 +115,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                         {isCompleted ? '✓' : index + 1}
                       </div>
 
-                      <div className="h-[100px] flex flex-col justify-start items-center">
+                      <div className="h-auto flex flex-col justify-start items-center min-w-[140px]">
                         <div className={`font-medium text-sm mb-1 text-center ${
                           isCompleted || isActive
                             ? 'text-gray-900'
@@ -104,8 +131,25 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                           {step.description}
                         </div>
 
+                        {/* 담당자 표시 */}
+                        {step.roles && step.roles.length > 0 && (
+                          <div className="mb-2 flex flex-col items-center gap-1">
+                            {getAssignedUsers(document.tasks, step.roles).map((task, idx) => (
+                              <div 
+                                key={idx}
+                                className="bg-gray-50 px-3 py-1 rounded-md"
+                                title={task.assignedUserEmail}
+                              >
+                                <span className="text-xs font-medium text-gray-700">
+                                  {task.assignedUserName}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         {/* 상태 표시 - 고정된 높이 영역 */}
-                        <div className="h-12 flex flex-col items-center justify-center">
+                        <div className="min-h-12 flex flex-col items-center justify-center">
                           {isActive && (
                             <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full mb-1">
                               진행중
@@ -147,6 +191,54 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
               })}
             </div>
           </div>
+
+          {/* 문서 작업자 상세 정보 섹션 */}
+          {document.tasks && document.tasks.length > 0 && (
+            <div className="mt-8 border-t pt-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">문서 작업자</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 편집자 */}
+                {document.tasks.filter(task => task.role === 'EDITOR').map((task, idx) => (
+                  <div key={`editor-${idx}`} className="bg-blue-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="font-medium text-gray-900">{task.assignedUserName}</div>
+                        <div className="text-sm text-gray-600">{task.assignedUserEmail}</div>
+                      </div>
+                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                        편집자
+                      </span>
+                    </div>
+                    {task.lastViewedAt && (
+                      <div className="text-xs text-gray-500 mt-2">
+                        최근 확인: {new Date(task.lastViewedAt).toLocaleString('ko-KR')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* 검토자/서명자 */}
+                {document.tasks.filter(task => task.role === 'REVIEWER').map((task, idx) => (
+                  <div key={`reviewer-${idx}`} className="bg-green-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="font-medium text-gray-900">{task.assignedUserName}</div>
+                        <div className="text-sm text-gray-600">{task.assignedUserEmail}</div>
+                      </div>
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                        검토자
+                      </span>
+                    </div>
+                    {task.lastViewedAt && (
+                      <div className="text-xs text-gray-500 mt-2">
+                        최근 확인: {new Date(task.lastViewedAt).toLocaleString('ko-KR')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
