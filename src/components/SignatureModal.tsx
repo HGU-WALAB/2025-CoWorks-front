@@ -49,7 +49,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 4;
+          ctx.lineWidth = 6;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
         }
