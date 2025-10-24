@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { SignatureModal } from '../components/SignatureModal';
+import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import { API_BASE_URL } from '../config/api';
 import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
@@ -75,6 +76,9 @@ const DocumentReview: React.FC = () => {
   // 모달 상태
   const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  
+  // 미리보기 모달 상태
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // 문서별 서명 필드를 로컬 스토리지에서 로드 (제거됨 - 서명자 지정은 별도 페이지에서 처리)
 
@@ -263,6 +267,15 @@ const DocumentReview: React.FC = () => {
     }
   };
 
+  // 미리보기 핸들러
+  const handlePreview = () => {
+    if (!currentDocument) {
+      console.warn('⚠️ DocumentReview - currentDocument가 없습니다');
+      return;
+    }
+    setShowPreviewModal(true);
+  };
+
   // PDF 페이지 관리 훅 사용
   const {
     currentPage,
@@ -330,50 +343,68 @@ const DocumentReview: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-gray-50">
       {/* 헤더 - 고정 위치 */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b px-6 py-4 flex justify-between items-center w-full">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-gray-900">
-              {currentDocument.title || currentDocument.templateName} - 검토
-            </h1>
-            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.REVIEWING} size="md" isRejected={currentDocument.isRejected} />
+      <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b px-6 py-4 w-full">
+        <div className="flex items-center justify-between w-full">
+          {/* 왼쪽: 문서 제목 및 정보 */}
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-semibold text-gray-900">
+                {currentDocument.title || currentDocument.templateName} - 검토
+              </h1>
+              <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.REVIEWING} size="md" isRejected={currentDocument.isRejected} />
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm text-gray-500">
+                생성일: {new Date(currentDocument.createdAt).toLocaleDateString()}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-gray-500">
-              생성일: {new Date(currentDocument.createdAt).toLocaleDateString()}
-            </p>
+
+          {/* 중앙: 검토 액션 버튼들 */}
+          <div className="flex items-center gap-2 absolute left-1/2 transform -translate-x-1/2">
+            {canReview() && (
+              <>
+                <button
+                  onClick={handleApprove}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  승인
+                </button>
+                <button
+                  onClick={handleReject}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  반려
+                </button>
+              </>
+            )}
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* 검토 액션 버튼들 */}
-          {canReview() && (
-            <>
-              <button
-                onClick={handleApprove}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                승인
-              </button>
-              <button
-                onClick={handleReject}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                반려
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => navigate(-1)}
-            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            돌아가기
-          </button>
+
+          {/* 오른쪽: 미리보기 및 돌아가기 버튼 */}
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <button
+              onClick={handlePreview}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg flex items-center gap-2 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              미리보기
+            </button>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              돌아가기
+            </button>
+          </div>
         </div>
       </div>
 
@@ -755,6 +786,26 @@ const DocumentReview: React.FC = () => {
         onClose={() => setShowRejectModal(false)}
         onReject={executeReject}
       />
+
+      {/* 미리보기 모달 */}
+      {showPreviewModal && currentDocument && (
+        <DocumentPreviewModal
+          isOpen={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          pdfImageUrl={getPdfImageUrl()}
+          pdfImageUrls={pdfPages}
+          coordinateFields={currentDocument.data?.coordinateFields || []}
+          signatureFields={(() => {
+            const docSignatureFields = currentDocument.data?.signatureFields || [];
+            const docSignatures = currentDocument.data?.signatures || {};
+            return docSignatureFields.map((field: any) => ({
+              ...field,
+              signatureData: docSignatures[field.reviewerEmail]
+            }));
+          })()}
+          documentTitle={currentDocument.title || currentDocument.templateName}
+        />
+      )}
     </div>
   );
 };
