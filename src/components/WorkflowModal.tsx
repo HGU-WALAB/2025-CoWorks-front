@@ -24,8 +24,8 @@ const getWorkflowSteps = () => {
     },
     { 
       key: 'REVIEWING', 
-      label: '검토중', 
-      description: '검토자가 문서 검토',
+      label: '검토중',
+      description: '서명자가 문서 검토',
       roles: ['REVIEWER'] // 검토자/서명자
     },
     { 
@@ -91,8 +91,8 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
         </div>
         <div className="p-6">
           {/* Horizontal Stepper */}
-          <div className="flex justify-center py-8">
-            <div className="flex items-start max-w-4xl w-full px-8">
+          <div className="flex justify-center pt-4 pb-2">
+            <div className="flex items-start max-w-4xl w-full px-4">
               {getWorkflowSteps().map((step, index) => {
                 const currentIndex = getCurrentStepIndex(document.status);
                 const isCompleted = document.status === 'COMPLETED' 
@@ -105,7 +105,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                   <React.Fragment key={step.key}>
                     {/* Step Circle and Content */}
                     <div className="flex flex-col items-center text-center">
-                      <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center font-medium text-sm mb-2 ${
+                      <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center font-medium text-sm mb-1 ${
                         isCompleted
                           ? 'bg-green-500 text-white border-green-500'
                           : isActive
@@ -115,7 +115,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                         {isCompleted ? '✓' : index + 1}
                       </div>
 
-                      <div className="h-auto flex flex-col justify-start items-center min-w-[140px]">
+                      <div className="h-auto flex flex-col justify-start items-center min-w-[120px]">
                         <div className={`font-medium text-sm mb-1 text-center ${
                           isCompleted || isActive
                             ? 'text-gray-900'
@@ -123,7 +123,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                         }`}>
                           {step.label}
                         </div>
-                        <div className={`text-xs text-center px-2 mb-2 ${
+                        <div className={`text-xs text-center px-2 mb-1 ${
                           isCompleted || isActive
                             ? 'text-gray-600'
                             : 'text-gray-400'
@@ -131,25 +131,8 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                           {step.description}
                         </div>
 
-                        {/* 담당자 표시 */}
-                        {step.roles && step.roles.length > 0 && (
-                          <div className="mb-2 flex flex-col items-center gap-1">
-                            {getAssignedUsers(document.tasks, step.roles).map((task, idx) => (
-                              <div 
-                                key={idx}
-                                className="bg-gray-50 px-3 py-1 rounded-md"
-                                title={task.assignedUserEmail}
-                              >
-                                <span className="text-xs font-medium text-gray-700">
-                                  {task.assignedUserName}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
                         {/* 상태 표시 - 고정된 높이 영역 */}
-                        <div className="min-h-12 flex flex-col items-center justify-center">
+                        <div className="min-h-10 flex flex-col items-center justify-center">
                           {isActive && (
                             <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full mb-1">
                               진행중
@@ -171,12 +154,29 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                             </>
                           )}
                         </div>
+
+                        {/* 담당자 표시 */}
+                        {step.roles && step.roles.length > 0 && (
+                          <div className="flex flex-col items-center gap-1">
+                            {getAssignedUsers(document.tasks, step.roles).map((task, idx) => (
+                              <div 
+                                key={idx}
+                                className="bg-gray-50 px-3 py-1 rounded-md"
+                                title={task.assignedUserEmail}
+                              >
+                                <span className="text-xs font-medium text-gray-700">
+                                  {task.assignedUserName}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     {/* Connector Line */}
                     {!isLastStep && (
-                      <div className="flex-1 flex items-center justify-center mx-6" style={{ marginTop: '20px' }}>
+                      <div className="flex-1 flex items-center justify-center mx-4" style={{ marginTop: '10px' }}>
                         <div className={`h-0.5 w-full ${
                           index < currentIndex
                             ? 'bg-green-500'
@@ -203,7 +203,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <div className="font-medium text-gray-900">{task.assignedUserName}</div>
-                        <div className="text-sm text-gray-600">{task.assignedUserEmail}</div>
+                        {/* <div className="text-sm text-gray-600">{task.assignedUserEmail}</div> */}
                       </div>
                       <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
                         편집자
@@ -223,10 +223,10 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <div className="font-medium text-gray-900">{task.assignedUserName}</div>
-                        <div className="text-sm text-gray-600">{task.assignedUserEmail}</div>
+                        {/* <div className="text-sm text-gray-600">{task.assignedUserEmail}</div> */}
                       </div>
                       <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-                        검토자
+                        서명자
                       </span>
                     </div>
                     {task.lastViewedAt && (
