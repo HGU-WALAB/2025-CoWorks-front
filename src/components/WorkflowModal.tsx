@@ -203,7 +203,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <div className="font-medium text-gray-900">{task.assignedUserName}</div>
-                        {/* <div className="text-sm text-gray-600">{task.assignedUserEmail}</div> */}
+                        <div className="text-sm text-gray-600">{task.assignedUserEmail}</div>
                       </div>
                       <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
                         편집자
@@ -223,7 +223,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <div className="font-medium text-gray-900">{task.assignedUserName}</div>
-                        {/* <div className="text-sm text-gray-600">{task.assignedUserEmail}</div> */}
+                        <div className="text-sm text-gray-600">{task.assignedUserEmail}</div>
                       </div>
                       <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
                         서명자
