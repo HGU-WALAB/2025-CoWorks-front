@@ -145,7 +145,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Main content - 헤더 높이만큼 상단 여백 추가 */}
-      <main className="w-full py-8 pt-32">
+      <main className="w-full py-8 pt-24">
         {children}
       </main>
     </div>
