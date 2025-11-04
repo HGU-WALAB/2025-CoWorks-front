@@ -13,6 +13,9 @@ export default {
           600: '#2563eb',
           700: '#1d4ed8',
         }
+      },
+      fontFamily: {
+        sans: ['Pretendard', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       }
     },
   },
