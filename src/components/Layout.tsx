@@ -13,11 +13,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, isAuthenticated, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
+  // position에 따라 로고 결정
+  const getLogoPath = () => {
+    if (!user?.position) return '/CoWorks_admin.jpeg';
+    
+    switch (user.position) {
+      case '학생':
+        return '/CoWorks_student.jpeg';
+      case '교수':
+        return '/CoWorks_professor.jpeg';
+      case '교직원':
+        return '/CoWorks_staff.jpeg';
+      default:
+        return '/CoWorks_admin.jpeg';
+    }
+  };
+
   const navigation = [
     { name: '대시보드', href: '/tasks' },
     { name: '템플릿', href: '/templates' },
     { name: '문서', href: '/documents' },
-    { name: '폴더', href: '/folders' },
+    ...(user?.hasFolderAccess === true ? [{ name: '폴더', href: '/folders' }] : []),
   ];
 
   const handleLogout = () => {
@@ -30,11 +46,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Header - 고정 위치 */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
-              <Link to="/tasks" className="text-xl font-bold text-primary-600">
-                CoWorks
+              <Link to="/tasks" className="flex items-center">
+                <img 
+                  src={getLogoPath()} 
+                  alt="CoWorks Logo" 
+                  className="h-14 w-auto"
+                />
               </Link>
             </div>
             
@@ -125,7 +145,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Main content - 헤더 높이만큼 상단 여백 추가 */}
-      <main className="w-full px-4 sm:px-6 lg:px-8 py-8 pt-24">
+      <main className="w-full py-8 pt-32">
         {children}
       </main>
     </div>
