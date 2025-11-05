@@ -6,11 +6,13 @@ import folderService from '../services/folderService';
 export interface FolderSidebarProps {
   currentFolderId?: string | null;
   onFolderSelect: (folderId: string | null) => void;
+  onClose?: () => void; // 모바일에서 사이드바 닫기용
 }
 
 const FolderSidebar: React.FC<FolderSidebarProps> = ({
   currentFolderId,
-  onFolderSelect
+  onFolderSelect,
+  onClose
 }) => {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,7 +44,7 @@ const FolderSidebar: React.FC<FolderSidebarProps> = ({
   };
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 shadow-sm flex flex-col h-full">
+    <div className="w-64 lg:w-72 xl:w-80 bg-white border-r border-gray-200 shadow-sm flex flex-col h-full flex-shrink-0">
       {/* 헤더 */}
       <div className="p-4 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center justify-between">
@@ -54,6 +56,19 @@ const FolderSidebar: React.FC<FolderSidebarProps> = ({
           </h2>
           
           <div className="flex items-center space-x-1">
+            {/* 모바일 닫기 버튼 */}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="lg:hidden p-1.5 hover:bg-gray-200 rounded transition-colors"
+                title="닫기"
+              >
+                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            
             {/* 새로고침 버튼 */}
             <button
               onClick={handleRefresh}
