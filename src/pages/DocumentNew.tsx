@@ -398,9 +398,9 @@ const DocumentNew: React.FC = () => {
                     const now = new Date();
                     const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
                     const targetDate = new Date(koreaTime.getTime() + (option.days * 24 * 60 * 60 * 1000));
-                    const targetValue = targetDate.toISOString().slice(0, 16);
+                    const targetValue = `${targetDate.toISOString().slice(0, 10)}T23:59`;
                     const isSelected = deadline === targetValue;
-                    
+
                     return (
                       <button
                         key={option.days}
@@ -427,18 +427,45 @@ const DocumentNew: React.FC = () => {
                   )}
                 </div>
                 
-                <input
-                  type="datetime-local"
-                  value={deadline}
-                  min={(() => {
-                    const now = new Date();
-                    const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
-                    return koreaTime.toISOString().slice(0, 16);
-                  })()}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                  placeholder="직접 날짜와 시간을 선택하세요"
-                />
+                {/* 날짜와 시간 선택을 분리 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* 날짜 선택 */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">날짜</label>
+                    <input
+                      type="date"
+                      value={deadline ? deadline.slice(0, 10) : ''}
+                      min={(() => {
+                        const now = new Date();
+                        const koreaTime = new Date(now.getTime() + (9 * 60 * 60 * 1000)); // UTC+9
+                        return koreaTime.toISOString().slice(0, 10);
+                      })()}
+                      onChange={(e) => {
+                        const dateValue = e.target.value;
+                        const timeValue = deadline ? deadline.slice(11, 16) : '00:00';
+                        setDeadline(dateValue && timeValue ? `${dateValue}T${timeValue}` : '');
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    />
+                  </div>
+
+                  {/* 시간 선택 */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">시간</label>
+                    <input
+                      type="time"
+                      value={deadline ? deadline.slice(11, 16) : ''}
+                      onChange={(e) => {
+                        const dateValue = deadline ? deadline.slice(0, 10) : '';
+                        const timeValue = e.target.value;
+                        if (dateValue && timeValue) {
+                          setDeadline(`${dateValue}T${timeValue}`);
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    />
+                  </div>
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
                   편집자가 문서 편집을 완료해야 하는 마감일을 지정할 수 있습니다. 현재 시간 이후로만 선택 가능합니다.
                 </p>
