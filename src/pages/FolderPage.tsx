@@ -349,9 +349,17 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   };
 
   // 작업현황 모달 핸들러
-  const handleWorkflow = (document: Document) => {
-    setSelectedWorkflowDocument(document);
-    setShowWorkflowModal(true);
+  const handleWorkflow = async (document: Document) => {
+    try {
+      // 문서 상세 정보 (tasks 포함)를 가져오기
+      const { getDocument } = useDocumentStore.getState();
+      const fullDocument = await getDocument(document.id);
+      setSelectedWorkflowDocument(fullDocument);
+      setShowWorkflowModal(true);
+    } catch (error) {
+      console.error('작업현황 로드 오류:', error);
+      alert('작업현황을 불러오는 중 오류가 발생했습니다.');
+    }
   };
 
   // 전체 문서 다운로드 핸들러 (ZIP)
