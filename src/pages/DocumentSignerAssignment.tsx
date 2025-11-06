@@ -436,8 +436,8 @@ const DocumentSignerAssignment: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b px-6 py-4 flex justify-between items-center w-full">
+      {/* 액션 바 - Layout 헤더 아래 고정 위치 */}
+      <div className="fixed top-[88px] left-0 right-0 z-40 bg-white border-b px-6 py-4 flex justify-between items-center w-full shadow-sm">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold text-gray-900">
@@ -476,8 +476,8 @@ const DocumentSignerAssignment: React.FC = () => {
         </div>
       </div>
 
-      {/* 메인 콘텐츠 */}
-      <div className="fixed top-24 left-0 right-0 bottom-0 flex w-full">
+      {/* 메인 콘텐츠 - Layout 헤더 + 액션 바 아래 고정 레이아웃 */}
+      <div className="fixed top-[160px] left-0 right-0 bottom-0 flex w-full">
         {/* 문서 미리보기 영역 */}
         <div className="flex-1 bg-gray-100 overflow-auto flex flex-col items-center p-4">
           {/* 페이지 네비게이션 (다중 페이지인 경우에만 표시) */}

@@ -104,21 +104,25 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        <Route 
-          path="/documents/:id" 
+        <Route
+          path="/documents/:id"
           element={
             <ProtectedRoute>
-              <DocumentEditor />
+              <Layout>
+                <DocumentEditor />
+              </Layout>
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/documents/:id/edit" 
+        <Route
+          path="/documents/:id/edit"
           element={
             <ProtectedRoute>
-              <DocumentEditor />
+              <Layout>
+                <DocumentEditor />
+              </Layout>
             </ProtectedRoute>
-          } 
+          }
         />
         <Route 
           path="/documents/:id/signer-assignment" 
