@@ -101,6 +101,9 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [moveLoading, setMoveLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
+  // 사이드바 토글 상태 (모바일용)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // 컴포넌트 마운트 시 권한 확인
   useEffect(() => {
     const verifyAccess = async () => {
@@ -686,21 +689,49 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
   return (
       <div className="min-h-screen bg-gray-50 flex">
-        {/* 사이드바 */}
-        <FolderSidebar
-            currentFolderId={folderId}
-            onFolderSelect={handleSidebarFolderSelect}
-        />
+        {/* 모바일 오버레이 */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-[60] lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* 사이드바 - 반응형 */}
+        <div className={`
+          fixed lg:static inset-y-0 left-0 z-[70] lg:z-0
+          transform transition-transform duration-300 ease-in-out
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
+          <FolderSidebar
+              currentFolderId={folderId}
+              onFolderSelect={(folderId) => {
+                handleSidebarFolderSelect(folderId);
+                setIsSidebarOpen(false); // 폴더 선택 시 모바일에서 사이드바 닫기
+              }}
+              onClose={() => setIsSidebarOpen(false)}
+          />
+        </div>
 
         {/* 메인 콘텐츠 */}
         <div className="flex-1 flex flex-col">
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 w-full">
             {/* 헤더 */}
             <div className="px-4 py-6 sm:px-0">
-              <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+              <div className="flex items-center">
+                {/* 모바일 메뉴 버튼 */}
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="lg:hidden mr-3 p-2 rounded-md text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center">
                   <svg
-                      className="w-8 h-8 mr-3 text-yellow-500"
+                      className="w-6 h-6 sm:w-8 sm:h-8 mr-2 sm:mr-3 text-yellow-500 flex-shrink-0"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                       xmlns="http://www.w3.org/2000/svg"
@@ -753,14 +784,14 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
             {/* 액션 버튼 영역 */}
             <div className="px-4 pb-6 sm:px-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2">
                   {currentFolder && (
                       <button
                           onClick={handleGoBack}
-                          className="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors flex items-center"
+                          className="bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition-colors flex items-center whitespace-nowrap"
                       >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
                         </svg>
                         상위 폴더
@@ -768,9 +799,9 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                   )}
                   <button
                       onClick={() => setShowCreateModal(true)}
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center"
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors flex items-center whitespace-nowrap"
                   >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                     새 폴더
@@ -783,7 +814,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                       <button
                           onClick={handleBulkDownload}
                           disabled={isDownloading}
-                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center whitespace-nowrap ${
                             isDownloading
                               ? 'bg-gray-400 cursor-not-allowed text-white'
                               : 'bg-green-600 text-white hover:bg-green-700'
@@ -791,20 +822,22 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                       >
                         {isDownloading ? (
                           <>
-                            <svg className="w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 mr-2 flex-shrink-0 animate-spin" viewBox="0 0 24 24">
                               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="32" strokeDashoffset="32">
                                 <animate attributeName="stroke-dasharray" dur="1s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
                                 <animate attributeName="stroke-dashoffset" dur="1s" values="0;-16;-32;-32" repeatCount="indefinite"/>
                               </circle>
                             </svg>
-                            다운로드 중... ({progress.current}/{progress.total})
+                            <span className="hidden sm:inline">다운로드 중... ({progress.current}/{progress.total})</span>
+                            <span className="sm:hidden">다운로드...</span>
                           </>
                         ) : (
                           <>
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            문서 다운로드
+                            <span className="hidden sm:inline">문서 다운로드</span>
+                            <span className="sm:hidden">다운로드</span>
                           </>
                         )}
                       </button>
@@ -815,7 +848,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                       <button
                           onClick={handleBulkDelete}
                           disabled={bulkDeleteLoading}
-                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center whitespace-nowrap ${
                             bulkDeleteLoading
                               ? 'bg-gray-400 cursor-not-allowed text-white'
                               : 'bg-red-600 text-white hover:bg-red-700'
@@ -823,7 +856,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                       >
                         {bulkDeleteLoading ? (
                           <>
-                            <svg className="w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 mr-2 flex-shrink-0 animate-spin" viewBox="0 0 24 24">
                               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" strokeDasharray="32" strokeDashoffset="32">
                                 <animate attributeName="stroke-dasharray" dur="1s" values="0 32;16 16;0 32;0 32" repeatCount="indefinite"/>
                                 <animate attributeName="stroke-dashoffset" dur="1s" values="0;-16;-32;-32" repeatCount="indefinite"/>
@@ -833,10 +866,11 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                           </>
                         ) : (
                           <>
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            문서 삭제
+                            <span className="hidden sm:inline">문서 삭제</span>
+                            <span className="sm:hidden">삭제</span>
                           </>
                         )}
                       </button>
@@ -845,8 +879,8 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
                 {/* 문서 상태 필터 */}
                 {documents.length > 0 && (
-                    <div className="flex items-center space-x-4 text-sm">
-                      <div className="flex items-center space-x-3 bg-gray-50 px-4 py-2 rounded-lg">
+                    <div className="flex items-center text-sm overflow-x-auto">
+                      <div className="flex items-center space-x-3 bg-gray-50 px-4 py-2 rounded-lg whitespace-nowrap">
                         {(() => {
                           const stats = getDocumentStats();
                           return (
