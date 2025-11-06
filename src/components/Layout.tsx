@@ -16,14 +16,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   // position에 따라 로고 결정
   const getLogoPath = () => {
     if (!user?.position) return '/CoWorks_admin.jpeg';
-    
+
     switch (user.position) {
       case '학생':
-        return '/CoWorks_student.jpeg';
+        return '/CoWorks_Student.jpeg';
       case '교수':
-        return '/CoWorks_professor.jpeg';
+        return '/CoWorks_Professor.jpeg';
       case '교직원':
-        return '/CoWorks_staff.jpeg';
+        return '/CoWorks_Staff.jpeg';
       default:
         return '/CoWorks_admin.jpeg';
     }
