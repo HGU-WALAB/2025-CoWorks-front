@@ -360,13 +360,15 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
 
     // 편집자 서명 필드인지 확인
     const isEditorSignature = field.type === 'editor_signature';
+    const isReviewerSignature = field.type === 'reviewer_signature';
     const isSignerSignature = field.type === 'signer_signature';
 
     // 필드 타입에 따른 색상 설정
     const getFieldColor = () => {
-      if (isEditorSignature) return 'bg-green-100 border-green-500';
+      if (isEditorSignature) return 'bg-blue-100 border-blue-500';
+      if (isReviewerSignature) return 'bg-green-100 border-green-500';
       if (isSignerSignature) return 'bg-orange-100 border-orange-500';
-      return 'bg-blue-100 border-blue-500';
+      return 'bg-gray-100 border-gray-500';
     };
 
     return (

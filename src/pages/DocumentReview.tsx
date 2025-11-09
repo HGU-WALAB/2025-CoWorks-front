@@ -213,10 +213,10 @@ const DocumentReview: React.FC = () => {
         allSignatures: updatedDocument?.data?.signatures
       });
 
-      alert('✅ 문서가 승인되었습니다! 서명이 문서에 추가되었습니다.');
+      alert('✅ 문서가 승인되었습니다! 서명이 문서에 추가되었습니다. 페이지에서 서명을 확인하세요.');
 
-      // 승인 후 문서 목록 페이지로 이동
-      navigate('/documents');
+      // 승인 후 페이지에 남아서 서명 확인 가능하도록 함
+      // navigate('/documents'); // 제거: 바로 이동하지 않음
 
     } catch (error: any) {
       console.error('❌ 승인 실패:', error);
@@ -490,11 +490,17 @@ const DocumentReview: React.FC = () => {
                 // 테이블 필드인지 확인
                 let isTableField = false;
                 let isEditorSignature = false;
+                let isReviewerSignature = false;
                 let tableInfo = null;
 
                 // 편집자 서명 필드 확인
                 if (field.type === 'editor_signature') {
                   isEditorSignature = true;
+                }
+
+                // 검토자 서명 필드 확인
+                if (field.type === 'reviewer_signature') {
+                  isReviewerSignature = true;
                 }
 
                 // 1. tableData 속성으로 확인
@@ -525,6 +531,7 @@ const DocumentReview: React.FC = () => {
                     key={field.id}
                     className={`absolute border-2 bg-opacity-30 flex flex-col justify-center ${
                       isEditorSignature ? 'bg-green-100 border-green-500' :
+                      isReviewerSignature ? 'bg-red-100 border-red-500' :
                       isTableField ? 'bg-purple-100 border-purple-500' : 'bg-blue-100 border-blue-500'
                     }`}
                     style={{
@@ -555,6 +562,29 @@ const DocumentReview: React.FC = () => {
                         ) : (
                           <div className="text-xs text-gray-500 text-center">
                             미서명
+                          </div>
+                        )}
+                      </div>
+                    ) : isReviewerSignature ? (
+                      // 검토자 서명 필드 렌더링
+                      <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
+                        {field.value && field.value.startsWith('data:image') ? (
+                          <img
+                            src={field.value}
+                            alt={`${field.reviewerName || '검토자'} 서명`}
+                            className="max-w-full h-full object-contain bg-transparent"
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              background: 'transparent'
+                            }}
+                          />
+                        ) : (
+                          <div className="text-xs text-red-700 font-medium text-center">
+                            {field.reviewerName || field.reviewerEmail || '검토자'} 서명
+                            {field.reviewerEmail === user?.email && (
+                              <div className="text-red-500 mt-1">(본인)</div>
+                            )}
                           </div>
                         )}
                       </div>
