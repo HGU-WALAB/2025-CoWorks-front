@@ -293,8 +293,10 @@ const DocumentEditor: React.FC = () => {
     if (Array.isArray(templateFields) && templateFields.length > 0) {
       
       // 템플릿 필드 기반으로 coordinateFields 초기화 (픽셀값 직접 사용)
+      // 검토자 서명 필드는 제외 (편집자는 검토자 필드를 볼 수 없음)
       const initialFields = templateFields
         .filter(field => field.x !== undefined && field.y !== undefined)
+        .filter(field => field.fieldType !== 'reviewer_signature') // 검토자 서명 필드 제외
         .map(field => {
           // 픽셀 좌표를 그대로 사용 (변환 없음)
           const pixelCoords = {
@@ -354,26 +356,29 @@ const DocumentEditor: React.FC = () => {
         currentDocument?.data?.coordinateFields && 
         Array.isArray(currentDocument.data.coordinateFields)) {
       // 기존 문서 데이터 기반으로 설정 (이 문서의 저장된 값 사용)
-      const processedFields = currentDocument.data.coordinateFields.map(field => ({
-        id: field.id.toString(),
-        label: field.label || `필드 ${field.id}`,
-        x: field.x,
-        y: field.y,
-        width: field.width || 100,
-        height: field.height || 20,
-        type: (
-          field.type === 'editor_signature' ? 'editor_signature' :
-          field.type === 'date' ? 'date' :
-          'text'
-        ) as 'text' | 'date' | 'editor_signature',
-        value: field.value || '', // 이 문서에 저장된 값 사용
-        required: field.required || false,
-        fontSize: field.fontSize || 16, // 폰트 크기 추가
-        fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
-        page: 1, // page 속성 추가
-        // 테이블 정보도 보존
-        ...(field.tableData && { tableData: field.tableData })
-      }));
+      // 검토자 서명 필드는 제외
+      const processedFields = currentDocument.data.coordinateFields
+        .filter((field: any) => field.type !== 'reviewer_signature') // 검토자 서명 필드 제외
+        .map((field: any) => ({
+          id: field.id.toString(),
+          label: field.label || `필드 ${field.id}`,
+          x: field.x,
+          y: field.y,
+          width: field.width || 100,
+          height: field.height || 20,
+          type: (
+            field.type === 'editor_signature' ? 'editor_signature' :
+            field.type === 'date' ? 'date' :
+            'text'
+          ) as 'text' | 'date' | 'editor_signature',
+          value: field.value || '', // 이 문서에 저장된 값 사용
+          required: field.required || false,
+          fontSize: field.fontSize || 16, // 폰트 크기 추가
+          fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
+          page: 1, // page 속성 추가
+          // 테이블 정보도 보존
+          ...(field.tableData && { tableData: field.tableData })
+        }));
       setCoordinateFields(processedFields);
     }
   }, [currentDocument?.data?.coordinateFields, currentDocument?.id, id, templateFields]);
@@ -788,27 +793,30 @@ const DocumentEditor: React.FC = () => {
       }
       
       // coordinateFields를 템플릿 필드 형태로 변환
-      const convertedFields = parsedFields.map((field, index) => {
-        const converted = {
-          id: parseInt(field.id?.replace(/\D/g, '') || index.toString()), // ID에서 숫자만 추출
-          fieldKey: field.id,
-          label: field.label,
-          fieldType: field.type === 'table' ? 'table' : field.type === 'editor_signature' ? 'editor_signature' : 'text',
-          x: field.x,
-          y: field.y,
-          width: field.width,
-          height: field.height,
-          required: field.required || false,
-          page: field.page || 1, // 페이지 정보 추가
-          type: field.type || 'field',
-          fontSize: field.fontSize || 14, // 기본 폰트 크기를 14px로 설정
-          fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
-          tableData: field.tableData
-        };
+      // 검토자 서명 필드는 제외 (편집자는 검토자 필드를 볼 수 없음)
+      const convertedFields = parsedFields
+        .filter(field => field.type !== 'reviewer_signature') // 검토자 서명 필드 제외
+        .map((field, index) => {
+          const converted = {
+            id: parseInt(field.id?.replace(/\D/g, '') || index.toString()), // ID에서 숫자만 추출
+            fieldKey: field.id,
+            label: field.label,
+            fieldType: field.type === 'table' ? 'table' : field.type === 'editor_signature' ? 'editor_signature' : 'text',
+            x: field.x,
+            y: field.y,
+            width: field.width,
+            height: field.height,
+            required: field.required || false,
+            page: field.page || 1, // 페이지 정보 추가
+            type: field.type || 'field',
+            fontSize: field.fontSize || 14, // 기본 폰트 크기를 14px로 설정
+            fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
+            tableData: field.tableData
+          };
 
-        
-        return converted;
-      });
+          
+          return converted;
+        });
 
       setTemplateFields(convertedFields);
       

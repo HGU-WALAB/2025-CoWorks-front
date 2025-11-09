@@ -395,10 +395,22 @@ const TemplateUpload: React.FC = () => {
 
   const handleNewField = (field: TemplateField) => {
     // 현재 선택된 페이지 번호를 필드에 추가
-    const fieldWithPage = {
+    let fieldWithPage = {
       ...field,
       page: newFieldSelection?.pageNumber || currentPageNumber || 1
     };
+    
+    // 검토자 서명 필드인 경우 reviewerIndex 자동 계산 (라벨은 사용자가 입력한 값 유지)
+    if (field.type === 'reviewer_signature') {
+      const existingReviewerFields = fields.filter(f => f.type === 'reviewer_signature');
+      const nextIndex = existingReviewerFields.length + 1;
+      fieldWithPage = {
+        ...fieldWithPage,
+        reviewerIndex: nextIndex
+        // label은 사용자가 입력한 값을 그대로 사용
+      };
+    }
+    
     addField(fieldWithPage);
     clearSelection();
   };

@@ -21,7 +21,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
 }) => {
   const [label, setLabel] = useState('');
   const [required, setRequired] = useState(false);
-  const [fieldTypeOption, setFieldTypeOption] = useState<'normal' | 'table' | 'editor_signature'>('normal');
+  const [fieldTypeOption, setFieldTypeOption] = useState<'normal' | 'table' | 'editor_signature' | 'reviewer_signature'>('normal');
   const [tableRows, setTableRows] = useState(2);
   const [tableCols, setTableCols] = useState(2);
 
@@ -35,6 +35,13 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
     }
   }, [isOpen]);
 
+  // 검토자 서명 필드의 인덱스 계산 (기존 검토자 필드 개수 + 1)
+  const getReviewerIndex = (): number => {
+    // 이 함수는 실제 구현 시 부모 컴포넌트에서 전달받은 fields를 확인해야 하지만,
+    // 현재는 모달에서 직접 접근할 수 없으므로 저장 시점에 부모에서 처리하도록 함
+    return 1;
+  };
+
   if (!isOpen) return null;
 
   const handleSave = () => {
@@ -42,6 +49,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 8);
       const fieldType = fieldTypeOption === 'editor_signature' ? 'editor_signature' : 
+                        fieldTypeOption === 'reviewer_signature' ? 'reviewer_signature' :
                         fieldTypeOption === 'table' ? 'table' : 'field';
       const autoId = `${fieldType}_${timestamp}_${randomStr}`;
 
@@ -69,6 +77,10 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
             cells: Array(tableRows).fill(null).map(() => Array(tableCols).fill('')),
             columnWidths: Array(tableCols).fill(1 / tableCols)
           }
+        }),
+        // 검토자 서명 필드인 경우 reviewerIndex 추가 (부모에서 재계산됨)
+        ...(fieldTypeOption === 'reviewer_signature' && {
+          reviewerIndex: getReviewerIndex()
         })
       };
 
@@ -147,14 +159,28 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
             <div className="flex items-center">
               <input
                 type="radio"
-                id="signatureField"
+                id="editorSignatureField"
                 name="fieldType"
                 checked={fieldTypeOption === 'editor_signature'}
                 onChange={() => setFieldTypeOption('editor_signature')}
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
-              <label htmlFor="signatureField" className="ml-2 text-sm text-gray-700">
+              <label htmlFor="editorSignatureField" className="ml-2 text-sm text-gray-700">
                 편집자 서명
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="radio"
+                id="reviewerSignatureField"
+                name="fieldType"
+                checked={fieldTypeOption === 'reviewer_signature'}
+                onChange={() => setFieldTypeOption('reviewer_signature')}
+                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
+              />
+              <label htmlFor="reviewerSignatureField" className="ml-2 text-sm text-gray-700">
+                검토자 서명
               </label>
             </div>
           </div>

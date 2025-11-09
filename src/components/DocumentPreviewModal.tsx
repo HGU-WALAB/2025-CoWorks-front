@@ -413,12 +413,18 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 // 필드 타입 확인 - 편집 페이지와 동일한 로직
                 let isTableField = false;
                 let isEditorSignature = false;
+                let isReviewerSignature = false;
                 let tableInfo = null;
                 let tableData = null;
 
                 // 편집자 서명 필드 확인
                 if (field.type === 'editor_signature') {
                   isEditorSignature = true;
+                }
+
+                // 검토자 서명 필드 확인
+                if (field.type === 'reviewer_signature') {
+                  isReviewerSignature = true;
                 }
                 
                 // 테이블 데이터 확인 - 편집 페이지와 동일한 우선순위
@@ -519,6 +525,33 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                             }}
                           >
                             {/* 빈 서명 영역 - 표시하지 않음 */}
+                          </div>
+                        )}
+                      </div>
+                    ) : isReviewerSignature ? (
+                      // 검토자 서명 필드 렌더링
+                      <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
+                        {field.value && field.value.startsWith('data:image') ? (
+                          <img
+                            src={field.value}
+                            alt={`${(field as any).reviewerName || '검토자'} 서명`}
+                            className="max-w-full h-full object-contain bg-transparent"
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              background: 'transparent'
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="text-center text-gray-600"
+                            style={{
+                              fontSize: `${(field.fontSize || 12)}px !important`,
+                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
+                              fontWeight: '500 !important'
+                            }}
+                          >
+                            {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명 대기
                           </div>
                         )}
                       </div>

@@ -7,7 +7,7 @@ export interface TemplateField {
   height: number;
   page: number;
   required: boolean;
-  type?: 'field' | 'table' | 'editor_signature' | 'signer_signature';
+  type?: 'field' | 'table' | 'editor_signature' | 'signer_signature' | 'reviewer_signature';
   fontSize?: number;
   fontFamily?: string;
   tableData?: {
@@ -16,6 +16,7 @@ export interface TemplateField {
     cells: string[][];
     columnWidths?: number[];
   };
+  reviewerIndex?: number; // 여러 검토자 필드 구분용
 }
 
 export interface CoordinateField {
@@ -27,9 +28,10 @@ export interface CoordinateField {
   height: number;
   page: number;
   required: boolean;
-  type?: 'field' | 'table' | 'editor_signature' | 'signer_signature';
+  type?: 'field' | 'table' | 'editor_signature' | 'signer_signature' | 'reviewer_signature';
   value?: string;
   fontSize?: number;
   fontFamily?: string;
   tableData?: any;
+  reviewerIndex?: number; // 여러 검토자 필드 구분용
 }
