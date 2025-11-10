@@ -75,7 +75,7 @@ const TemplateUpload: React.FC = () => {
   } | null>(null);
   
   // Font settings
-  const [defaultFontSize, setDefaultFontSize] = useState(12);
+  const [defaultFontSize, setDefaultFontSize] = useState(16);
   const [defaultFontFamily, setDefaultFontFamily] = useState('Arial');
   
   const availableFonts = [

@@ -32,6 +32,47 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [capturedSignature, setCapturedSignature] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
+  const originalBodyOverflow = useRef<string | null>(null);
+  const originalBodyTouchAction = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      originalBodyOverflow.current = document.body.style.overflow;
+      originalBodyTouchAction.current = (document.body.style as any).touchAction ?? null;
+      document.body.style.overflow = 'hidden';
+      (document.body.style as any).touchAction = 'none';
+    } else {
+      if (originalBodyOverflow.current !== null) {
+        document.body.style.overflow = originalBodyOverflow.current;
+        originalBodyOverflow.current = null;
+      } else {
+        document.body.style.removeProperty('overflow');
+      }
+
+      if (originalBodyTouchAction.current !== null) {
+        (document.body.style as any).touchAction = originalBodyTouchAction.current;
+        originalBodyTouchAction.current = null;
+      } else {
+        (document.body.style as any).removeProperty?.('touch-action');
+      }
+    }
+
+    return () => {
+      if (originalBodyOverflow.current !== null) {
+        document.body.style.overflow = originalBodyOverflow.current;
+        originalBodyOverflow.current = null;
+      } else {
+        document.body.style.removeProperty('overflow');
+      }
+
+      if (originalBodyTouchAction.current !== null) {
+        (document.body.style as any).touchAction = originalBodyTouchAction.current;
+        originalBodyTouchAction.current = null;
+      } else {
+        (document.body.style as any).removeProperty?.('touch-action');
+      }
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -383,7 +424,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               <div className="border-2 border-gray-300 rounded-lg mb-4">
                 <canvas
                   ref={canvasRef}
-                  className="w-full h-48 cursor-crosshair block"
+                  className="w-full h-48 cursor-crosshair block touch-none"
                   onMouseDown={startDrawing}
                   onMouseMove={draw}
                   onMouseUp={stopDrawing}

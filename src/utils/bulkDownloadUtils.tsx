@@ -155,7 +155,7 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
                     <div
                       className="text-center text-gray-800"
                       style={{
-                        fontSize: `${(field.fontSize || 14)}px !important`,
+                        fontSize: `${(field.fontSize || 16)}px !important`,
                         fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                         fontWeight: '500 !important',
                         color: '#1f2937 !important'
@@ -199,7 +199,7 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
                             className="border border-gray-800 flex items-center justify-center"
                             style={{ 
                               minHeight: '20px',
-                              fontSize: `${(field.fontSize || 14)}px !important`,
+                              fontSize: `${(field.fontSize || 16)}px !important`,
                               fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                               color: '#1f2937',
                               fontWeight: '500 !important',
@@ -222,7 +222,7 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
                               style={{
                                 display: 'block',
                                 width: '100%',
-                                fontSize: `${(field.fontSize || 14)}px !important`,
+                                fontSize: `${(field.fontSize || 16)}px !important`,
                                 fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                 fontWeight: '500 !important',
                                 color: '#1f2937 !important',
@@ -248,7 +248,7 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
                 <div 
                   className="text-gray-900 flex items-center justify-center w-full h-full"
                   style={{
-                    fontSize: `${(field.fontSize || 14)}px !important`,
+                    fontSize: `${(field.fontSize || 16)}px !important`,
                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                     fontWeight: '500 !important',
                     color: '#111827 !important',

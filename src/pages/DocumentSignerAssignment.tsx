@@ -833,7 +833,7 @@ const DocumentSignerAssignment: React.FC = () => {
                       <div 
                         className="text-gray-900 p-1 truncate text-center"
                         style={{
-                          fontSize: `${field.fontSize || 14}px`,
+                          fontSize: `${field.fontSize || 16}px`,
                           fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                           fontWeight: '500'
                         }}

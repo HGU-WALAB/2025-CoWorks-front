@@ -24,6 +24,7 @@ interface DocumentStore {
   fetchDocuments: () => Promise<void>;
   fetchTodoDocuments: () => Promise<void>;
   createDocument: (request: DocumentCreateRequest) => Promise<Document>;
+  duplicateDocument: (sourceDocumentId: number, request: DocumentCreateRequest) => Promise<Document>;
   getDocument: (id: number) => Promise<Document>;
   markAsViewed: (id: number) => Promise<void>;
   updateDocument: (id: number, request: DocumentUpdateRequest) => Promise<Document>;
@@ -97,6 +98,64 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
     } catch (error) {
       console.error('DocumentStore: Create document error:', error);
       set({ error: '문서 생성에 실패했습니다.', loading: false });
+      throw error;
+    }
+  },
+
+  duplicateDocument: async (sourceDocumentId: number, request: DocumentCreateRequest) => {
+    set({ loading: true, error: null });
+    try {
+      console.log('DocumentStore: Duplicating document:', sourceDocumentId);
+      
+      // 원본 문서 가져오기
+      const sourceDoc = await get().getDocument(sourceDocumentId);
+      
+      // 원본 문서의 데이터를 복사하되, type이 'text' (실제로는 'field')인 필드만 값 복사
+      let duplicateData = undefined;
+      if (sourceDoc.data) {
+        const filteredCoordinateFields = sourceDoc.data.coordinateFields?.map((field: any) => {
+          // type이 'text' 또는 'field'인 경우에만 value를 복사, 그 외는 value 제거
+          if (field.type === 'text' || field.type === 'field' || !field.type) {
+            return field;
+          } else {
+            // text/field가 아닌 필드는 value를 제거하고 나머지는 유지
+            const { value, ...fieldWithoutValue } = field;
+            return fieldWithoutValue;
+          }
+        });
+
+        duplicateData = {
+          ...sourceDoc.data,
+          coordinateFields: filteredCoordinateFields,
+          // 서명 필드는 초기화 (새로운 문서이므로 서명 다시 받아야 함)
+          signatures: {}
+        };
+      }
+
+      const duplicateRequest = {
+        ...request,
+        data: duplicateData
+      };
+      
+      console.log('DocumentStore: Creating duplicate with data (text fields only):', duplicateRequest);
+      const response = await axios.post(`${API_BASE_URL}/documents`, duplicateRequest);
+      const newDocument = response.data;
+      
+      set((state) => ({
+        documents: [newDocument, ...state.documents],
+        loading: false,
+      }));
+      
+      // 문서 생성 이벤트 발생
+      console.log('DocumentStore: Duplicate document created, dispatching event');
+      window.dispatchEvent(new CustomEvent('documentCreated', {
+        detail: { document: newDocument }
+      }));
+      
+      return newDocument;
+    } catch (error) {
+      console.error('DocumentStore: Duplicate document error:', error);
+      set({ error: '문서 복사에 실패했습니다.', loading: false });
       throw error;
     }
   },
