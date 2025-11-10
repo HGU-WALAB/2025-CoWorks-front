@@ -16,7 +16,7 @@ export interface TemplateField {
     cells: string[][];
     columnWidths?: number[];
   };
-  reviewerIndex?: number; // 여러 검토자 필드 구분용
+  reviewerIndex?: number; // 여러 서명자 필드 구분용
 }
 
 export interface CoordinateField {
@@ -33,5 +33,5 @@ export interface CoordinateField {
   fontSize?: number;
   fontFamily?: string;
   tableData?: any;
-  reviewerIndex?: number; // 여러 검토자 필드 구분용
+  reviewerIndex?: number; // 여러 서명자 필드 구분용
 }

@@ -56,7 +56,7 @@ export const generatePrintHTML = (
     let tableInfo = null;
     let tableData = null;
 
-    // 편집자 서명 필드 확인
+    // 작성자 서명 필드 확인
     if (field.type === 'editor_signature') {
       isEditorSignature = true;
     }
@@ -184,7 +184,7 @@ export const generatePrintHTML = (
         </table>
       </div>`;
     } else if (isEditorSignature) {
-      // 편집자 서명 필드 HTML 생성
+      // 작성자 서명 필드 HTML 생성
       if (field.value && field.value.startsWith('data:image')) {
         return `<div class="editor-signature-overlay" style="
           left: ${field.x * 0.64}px;
@@ -194,7 +194,7 @@ export const generatePrintHTML = (
           position: absolute;
           z-index: 10;
         ">
-          <img src="${field.value}" alt="편집자 서명" class="editor-signature-img" style="
+          <img src="${field.value}" alt="작성자 서명" class="editor-signature-img" style="
             width: 100%;
             height: 100%;
             object-fit: contain;
@@ -218,7 +218,7 @@ export const generatePrintHTML = (
         //   color: #666;
         //   background: transparent;
         // ">
-        //   편집자 서명
+        //   작성자 서명
         // </div>`;
       }
     } else {

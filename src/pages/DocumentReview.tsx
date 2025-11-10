@@ -129,7 +129,7 @@ const DocumentReview: React.FC = () => {
     }
   }, [id, getDocument]);
 
-  // 검토자 권한 확인
+  // 서명자 권한 확인
   const isReviewer = () => {
     if (!currentDocument || !user) return false;
     return currentDocument.tasks?.some(task =>
@@ -153,7 +153,7 @@ const DocumentReview: React.FC = () => {
     ) || false;
   };
 
-  // 검토 가능한 상태인지 확인 (서명하지 않은 검토자만 가능)
+  // 검토 가능한 상태인지 확인 (서명하지 않은 서명자만 가능)
   const canReview = () => {
     if (!currentDocument || !user) return false;
     return isReviewer() && 
@@ -408,7 +408,7 @@ const DocumentReview: React.FC = () => {
                 </button>
               </>
             )}
-            {/* 이미 서명한 검토자에게 안내 메시지 표시 */}
+            {/* 이미 서명한 서명자에게 안내 메시지 표시 */}
             {isReviewer() && currentDocument.status === 'REVIEWING' && hasCurrentUserSigned() && (
               <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
                 <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
@@ -528,12 +528,12 @@ const DocumentReview: React.FC = () => {
                 let isReviewerSignature = false;
                 let tableInfo = null;
 
-                // 편집자 서명 필드 확인
+                // 작성자 서명 필드 확인
                 if (field.type === 'editor_signature') {
                   isEditorSignature = true;
                 }
 
-                // 검토자 서명 필드 확인
+                // 서명자 서명 필드 확인
                 if (field.type === 'reviewer_signature') {
                   isReviewerSignature = true;
                 }
@@ -577,12 +577,12 @@ const DocumentReview: React.FC = () => {
                     }}
                   >
                     {isEditorSignature ? (
-                      // 편집자 서명 필드 렌더링
+                      // 작성자 서명 필드 렌더링
                       <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
                         {field.value && field.value.startsWith('data:image') ? (
                           <img
                             src={field.value}
-                            alt="편집자 서명"
+                            alt="작성자 서명"
                             className="max-w-full h-full object-contain bg-transparent"
                             style={{
                               maxWidth: '100%',
@@ -601,12 +601,12 @@ const DocumentReview: React.FC = () => {
                         )}
                       </div>
                     ) : isReviewerSignature ? (
-                      // 검토자 서명 필드 렌더링
+                      // 서명자 서명 필드 렌더링
                       <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
                         {field.value && field.value.startsWith('data:image') ? (
                           <img
                             src={field.value}
-                            alt={`${field.reviewerName || '검토자'} 서명`}
+                            alt={`${field.reviewerName || '서명자'} 서명`}
                             className="max-w-full h-full object-contain bg-transparent"
                             style={{
                               maxWidth: '100%',
@@ -616,7 +616,7 @@ const DocumentReview: React.FC = () => {
                           />
                         ) : (
                           <div className="text-xs text-red-700 font-medium text-center">
-                            {field.reviewerName || field.reviewerEmail || '검토자'} 서명
+                            {field.reviewerName || field.reviewerEmail || '서명자'} 서명
                             {field.reviewerEmail === user?.email && (
                               <div className="text-red-500 mt-1">(본인)</div>
                             )}
@@ -760,17 +760,17 @@ const DocumentReview: React.FC = () => {
           </div>
         </div>
 
-        {/* 오른쪽 패널 - 검토자 리스트 및 정보 (고정 너비, 고정 위치) */}
+        {/* 오른쪽 패널 - 서명자 리스트 및 정보 (고정 너비, 고정 위치) */}
         <div className="w-80 bg-white border-l overflow-y-auto flex-shrink-0 h-full">
           <div className="p-4 border-b bg-gray-50">
             <h2 className="font-medium text-gray-900">검토 정보</h2>
             <p className="text-sm text-gray-500 mt-1">
-              문서 상태 및 검토자 정보
+              문서 상태 및 서명자 정보
             </p>
           </div>
 
           <div className="p-4 space-y-4">
-            {/* 검토자 목록 */}
+            {/* 서명자 목록 */}
             <div className="border rounded-lg p-3">
               <h3 className="text-sm font-medium text-gray-900 mb-3">서명자</h3>
               <div className="space-y-2">
@@ -838,10 +838,10 @@ const DocumentReview: React.FC = () => {
               </div>
             </div>
 
-            {/* 편집자 정보 (참고용) */}
+            {/* 작성자 정보 (참고용) */}
             {currentDocument.tasks && currentDocument.tasks.some(task => task.role === 'EDITOR') && (
               <div className="border rounded-lg p-3">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">편집자</h3>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">작성자</h3>
                 <div className="space-y-2">
                   {currentDocument.tasks
                     .filter(task => task.role === 'EDITOR')

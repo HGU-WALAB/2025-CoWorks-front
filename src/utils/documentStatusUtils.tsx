@@ -43,7 +43,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
   [DOCUMENT_STATUS.REVIEWING]: {
     color: 'bg-yellow-100 text-yellow-800',
     text: '검토중',
-    description: '검토자가 문서를 검토하고 있습니다'
+    description: '서명자가 문서를 검토하고 있습니다'
   },
   [DOCUMENT_STATUS.COMPLETED]: {
     color: 'bg-green-100 text-green-800',

@@ -21,7 +21,7 @@ export const formatKoreanShortDateTime = (dateInput: string | number | Date): st
 
 /**
  * 문서 상태에 따라 적절한 역할 지정 시간 메시지를 반환합니다.
- * EDITING 상태면 편집자 할당 시간, REVIEWING 상태면 서명자 할당 시간을 표시합니다.
+ * EDITING 상태면 작성자 할당 시간, REVIEWING 상태면 서명자 할당 시간을 표시합니다.
  * @param document 문서 객체
  * @param userEmail 현재 사용자 이메일
  * @returns 역할 지정 시간 메시지 또는 null
@@ -38,7 +38,7 @@ export const getRoleAssignmentMessage = (
 
   if (document.status === 'EDITING') {
     targetRole = 'EDITOR';
-    label = '편집자로 지정된 시간';
+    label = '작성자로 지정된 시간';
   } else if (document.status === 'REVIEWING') {
     targetRole = 'REVIEWER';
     label = '서명자로 지정된 시간';
@@ -59,7 +59,7 @@ export const getRoleAssignmentMessage = (
 
 /**
  * 짧은 형식의 역할 지정 시간 메시지를 반환합니다.
- * 문서 상태에 따라 EDITING이면 편집자 할당 시간, REVIEWING이면 서명자 할당 시간을 표시합니다.
+ * 문서 상태에 따라 EDITING이면 작성자 할당 시간, REVIEWING이면 서명자 할당 시간을 표시합니다.
  * @param document 문서 객체
  * @param userEmail 현재 사용자 이메일
  * @returns 짧은 형식의 역할 지정 시간 메시지 또는 null
@@ -76,7 +76,7 @@ export const getRoleAssignmentMessageShort = (
 
   if (document.status === 'EDITING') {
     targetRole = 'EDITOR';
-    label = '편집자 지정';
+    label = '작성자 지정';
   } else if (document.status === 'REVIEWING') {
     targetRole = 'REVIEWER';
     label = '서명자 지정';

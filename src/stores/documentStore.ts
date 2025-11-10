@@ -240,7 +240,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       
       return updatedDocument;
     } catch (error) {
-      set({ error: '편집자 할당에 실패했습니다.', loading: false });
+      set({ error: '작성자 할당에 실패했습니다.', loading: false });
       throw error;
     }
   },
