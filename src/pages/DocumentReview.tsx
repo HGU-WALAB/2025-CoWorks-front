@@ -9,6 +9,7 @@ import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 import { getReviewerSignatureFields, hasReviewerSigned } from '../utils/reviewerSignatureUtils';
+import { getResponsiveFontSize, getResponsiveFontSizeForTableCell } from '../utils/fontUtils';
 
 interface RejectModalProps {
   isOpen: boolean;
@@ -331,6 +332,24 @@ const DocumentReview: React.FC = () => {
     return '';
   };
 
+  // 반응형 폰트 크기 계산 함수
+  const getResponsiveFontSize = (baseFontSize: number | undefined, options: { height: number }) => {
+    if (baseFontSize === undefined) return 16; // 기본값
+    const { height } = options;
+    if (height < 100) return baseFontSize * 0.8; // 높이가 작을 때 폰트 크기 조절
+    if (height > 200) return baseFontSize * 1.2; // 높이가 클 때 폰트 크기 조절
+    return baseFontSize;
+  };
+
+  // 테이블 셀 폰트 크기 계산 함수
+  const getResponsiveFontSizeForTableCell = (baseFontSize: number | undefined, options: { totalHeight: number; rowCount: number }) => {
+    if (baseFontSize === undefined) return 12; // 기본값
+    const { totalHeight, rowCount } = options;
+    if (totalHeight < 100) return baseFontSize * 0.7; // 높이가 작을 때 폰트 크기 조절
+    if (totalHeight > 200) return baseFontSize * 1.1; // 높이가 클 때 폰트 크기 조절
+    return baseFontSize;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -510,221 +529,254 @@ const DocumentReview: React.FC = () => {
               {(currentDocument.data?.coordinateFields || [])
                 .filter((field: any) => !field.page || field.page === currentPage)
                 .map((field: any) => {
-                console.log('🎯 검토 화면 - 필드 렌더링:', {
-                  id: field.id,
-                  label: field.label,
-                  x: field.x,
-                  y: field.y,
-                  width: field.width,
-                  height: field.height,
-                  value: field.value,
-                  hasTableData: !!field.tableData,
-                  tableData: field.tableData,
-                  fieldType: field.type,
-                  fontSize: field.fontSize,
-                  fontFamily: field.fontFamily
-                });
+                  const responsiveFontSize = getResponsiveFontSize(field.fontSize, {
+                    height: field.height,
+                  });
+                  const placeholderFontSize = Math.max(8, responsiveFontSize * 0.75);
 
-                // 픽셀값 직접 사용
-                const leftPercent = field.x;
-                const topPercent = field.y;
-                const widthPercent = field.width;
-                const heightPercent = field.height;
+                  console.log('🎯 검토 화면 - 필드 렌더링:', {
+                    id: field.id,
+                    label: field.label,
+                    x: field.x,
+                    y: field.y,
+                    width: field.width,
+                    height: field.height,
+                    value: field.value,
+                    hasTableData: !!field.tableData,
+                    tableData: field.tableData,
+                    fieldType: field.type,
+                    fontSize: field.fontSize,
+                    fontFamily: field.fontFamily
+                  });
 
-                // 테이블 필드인지 확인
-                let isTableField = false;
-                let isEditorSignature = false;
-                let isReviewerSignature = false;
-                let tableInfo = null;
+                  // 픽셀값 직접 사용
+                  const leftPercent = field.x;
+                  const topPercent = field.y;
+                  const widthPercent = field.width;
+                  const heightPercent = field.height;
 
-                // 편집자 서명 필드 확인
-                if (field.type === 'editor_signature') {
-                  isEditorSignature = true;
-                }
+                  // 테이블 필드인지 확인
+                  let isTableField = false;
+                  let isEditorSignature = false;
+                  let isReviewerSignature = false;
+                  let tableInfo = null;
 
-                // 검토자 서명 필드 확인
-                if (field.type === 'reviewer_signature') {
-                  isReviewerSignature = true;
-                }
-
-                // 1. tableData 속성으로 확인
-                if (field.tableData) {
-                  isTableField = true;
-                  tableInfo = field.tableData;
-                } else {
-                  // 2. value를 파싱해서 테이블 데이터 확인
-                  try {
-                    if (field.value && typeof field.value === 'string') {
-                      const parsedValue = JSON.parse(field.value);
-                      if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
-                        isTableField = true;
-                        tableInfo = {
-                          rows: parsedValue.rows,
-                          cols: parsedValue.cols,
-                          columnWidths: parsedValue.columnWidths
-                        };
-                      }
-                    }
-                  } catch (e) {
-                    // JSON 파싱 실패 시 일반 필드로 처리
+                  // 편집자 서명 필드 확인
+                  if (field.type === 'editor_signature') {
+                    isEditorSignature = true;
                   }
-                }
 
-                return (
-                  <div
-                    key={field.id}
-                    className={`absolute border-2 bg-opacity-30 flex flex-col justify-center ${
-                      isEditorSignature ? 'bg-green-100 border-green-500' :
-                      isReviewerSignature ? 'bg-red-100 border-red-500' :
-                      isTableField ? 'bg-purple-100 border-purple-500' : 'bg-blue-100 border-blue-500'
-                    }`}
-                    style={{
-                      left: `${leftPercent}px`,
-                      top: `${topPercent}px`,
-                      width: `${widthPercent}px`,
-                      height: `${heightPercent}px`,
-                    }}
-                  >
-                    {isEditorSignature ? (
-                      // 편집자 서명 필드 렌더링
-                      <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
-                        {field.value && field.value.startsWith('data:image') ? (
-                          <img
-                            src={field.value}
-                            alt="편집자 서명"
-                            className="max-w-full h-full object-contain bg-transparent"
-                            style={{
-                              maxWidth: '100%',
-                              maxHeight: '100%',
-                              background: 'transparent'
-                            }}
-                          />
-                        ) : field.value ? (
-                          <div className="text-xs text-gray-600 text-center">
-                            서명됨
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-500 text-center">
-                            미서명
-                          </div>
-                        )}
-                      </div>
-                    ) : isReviewerSignature ? (
-                      // 검토자 서명 필드 렌더링
-                      <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
-                        {field.value && field.value.startsWith('data:image') ? (
-                          <img
-                            src={field.value}
-                            alt={`${field.reviewerName || '검토자'} 서명`}
-                            className="max-w-full h-full object-contain bg-transparent"
-                            style={{
-                              maxWidth: '100%',
-                              maxHeight: '100%',
-                              background: 'transparent'
-                            }}
-                          />
-                        ) : (
-                          <div className="text-xs text-red-700 font-medium text-center">
-                            {field.reviewerName || field.reviewerEmail || '검토자'} 서명
-                            {field.reviewerEmail === user?.email && (
-                              <div className="text-red-500 mt-1">(본인)</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : isTableField && tableInfo ? (
-                      // 테이블 렌더링
-                      <div className="w-full h-full p-1">
-                        <div className="text-xs font-medium mb-1 text-purple-700 truncate">
-                          {field.label} ({tableInfo.rows}×{tableInfo.cols})
-                          {field.required && <span className="text-red-500">*</span>}
-                        </div>
-                        <div
-                          className="grid gap-px bg-purple-300"
-                          style={{
-                            gridTemplateColumns: tableInfo.columnWidths
-                              ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
-                              : `repeat(${tableInfo.cols}, 1fr)`,
-                            height: 'calc(100% - 20px)'
-                          }}
-                        >
-                          {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>
-                            Array(tableInfo.cols).fill(null).map((_, colIndex) => {
-                              let cellText = '';
-                              try {
-                                let tableValue: any = {};
-                                if (field.value) {
-                                  if (typeof field.value === 'string') {
-                                    tableValue = JSON.parse(field.value);
-                                  } else {
-                                    tableValue = field.value;
-                                  }
-                                }
+                  // 검토자 서명 필드 확인
+                  if (field.type === 'reviewer_signature') {
+                    isReviewerSignature = true;
+                  }
 
-                                cellText = tableValue.cells?.[rowIndex]?.[colIndex] || '';
+                  // 1. tableData 속성으로 확인
+                  if (field.tableData) {
+                    isTableField = true;
+                    tableInfo = field.tableData;
+                  } else {
+                    // 2. value를 파싱해서 테이블 데이터 확인
+                    try {
+                      if (field.value && typeof field.value === 'string') {
+                        const parsedValue = JSON.parse(field.value);
+                        if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
+                          isTableField = true;
+                          tableInfo = {
+                            rows: parsedValue.rows,
+                            cols: parsedValue.cols,
+                            columnWidths: parsedValue.columnWidths
+                          };
+                        }
+                      }
+                    } catch (e) {
+                      // JSON 파싱 실패 시 일반 필드로 처리
+                    }
+                  }
 
-                              } catch (error) {
-                                console.error(`테이블 값 파싱 실패 [${rowIndex}][${colIndex}]:`, {
-                                  fieldId: field.id,
-                                  rawValue: field.value,
-                                  error
-                                });
-                                cellText = '';
-                              }
-
-                              return (
-                                <div
-                                  key={`${rowIndex}-${colIndex}`}
-                                  className="border border-purple-200 flex items-center justify-center p-1"
-                                  style={{
-                                    minHeight: '20px',
-                                    fontSize: `${field.fontSize || 14}px !important`,
-                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                    color: '#6b21a8',
-                                    fontWeight: '500'
-                                  }}
-                                  title={cellText || ''}
-                                >
-                                  <span
-                                    className="text-center truncate leading-tight"
-                                    style={{
-                                      display: 'block',
-                                      width: '100%',
-                                      fontSize: `${field.fontSize || 14}px !important`,
-                                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                      fontWeight: '500 !important',
-                                      color: '#6b21a8 !important'
-                                    }}
-                                  >
-                                    {cellText}
-                                  </span>
-                                </div>
-                              );
-                            })
+                  return (
+                    <div
+                      key={field.id}
+                      className={`absolute border-2 bg-opacity-30 flex flex-col justify-center ${
+                        isEditorSignature ? 'bg-green-100 border-green-500' :
+                        isReviewerSignature ? 'bg-red-100 border-red-500' :
+                        isTableField ? 'bg-purple-100 border-purple-500' : 'bg-blue-100 border-blue-500'
+                      }`}
+                      style={{
+                        left: `${leftPercent}px`,
+                        top: `${topPercent}px`,
+                        width: `${widthPercent}px`,
+                        height: `${heightPercent}px`,
+                      }}
+                    >
+                      {isEditorSignature ? (
+                        // 편집자 서명 필드 렌더링
+                        <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
+                          {field.value && field.value.startsWith('data:image') ? (
+                            <img
+                              src={field.value}
+                              alt="편집자 서명"
+                              className="max-w-full h-full object-contain bg-transparent"
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '100%',
+                                background: 'transparent'
+                              }}
+                            />
+                          ) : field.value ? (
+                            <div
+                              className="text-gray-600 text-center"
+                              style={{
+                                fontSize: `${responsiveFontSize}px`
+                              }}
+                            >
+                              서명됨
+                            </div>
+                          ) : (
+                            <div
+                              className="text-gray-500 text-center"
+                              style={{
+                                fontSize: `${placeholderFontSize}px`
+                              }}
+                            >
+                              미서명
+                            </div>
                           )}
                         </div>
-                      </div>
-                    ) : field.value ? (
-                      // 일반 필드 - 값이 있는 경우
-                      <div className="text-gray-900 p-1 truncate text-center"
-                        style={{
-                          fontSize: `${field.fontSize || 14}px !important`,
-                          fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                          fontWeight: '500 !important'
-                        }}
-                      >
-                        {field.value}
-                      </div>
-                    ) : (
-                      // 일반 필드 - 값이 없는 경우
-                      <div className="text-xs text-blue-700 font-medium p-1 truncate text-center">
-                        {field.label}
-                        {field.required && <span className="text-red-500">*</span>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      ) : isReviewerSignature ? (
+                        // 검토자 서명 필드 렌더링
+                        <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
+                          {field.value && field.value.startsWith('data:image') ? (
+                            <img
+                              src={field.value}
+                              alt={`${field.reviewerName || '검토자'} 서명`}
+                              className="max-w-full h-full object-contain bg-transparent"
+                              style={{
+                                maxWidth: '100%',
+                                maxHeight: '100%',
+                                background: 'transparent'
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="text-red-700 font-medium text-center"
+                              style={{
+                                fontSize: `${placeholderFontSize}px`
+                              }}
+                            >
+                              {field.reviewerName || field.reviewerEmail || '검토자'} 서명
+                              {field.reviewerEmail === user?.email && (
+                                <div className="text-red-500 mt-1" style={{ fontSize: `${Math.max(8, placeholderFontSize * 0.75)}px` }}>(본인)</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : isTableField && tableInfo ? (
+                        // 테이블 렌더링
+                        <div className="w-full h-full p-1">
+                          <div className="text-purple-700 font-medium mb-1 truncate"
+                            style={{
+                              fontSize: `${placeholderFontSize}px`
+                            }}
+                          >
+                            {field.label} ({tableInfo.rows}×{tableInfo.cols})
+                            {field.required && <span className="text-red-500">*</span>}
+                          </div>
+                          <div
+                            className="grid gap-px bg-purple-300"
+                            style={{
+                              gridTemplateColumns: tableInfo.columnWidths
+                                ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
+                                : `repeat(${tableInfo.cols}, 1fr)`,
+                              height: 'calc(100% - 20px)'
+                            }}
+                          >
+                            {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>
+                              Array(tableInfo.cols).fill(null).map((_, colIndex) => {
+                                let cellText = '';
+                                try {
+                                  let tableValue: any = {};
+                                  if (field.value) {
+                                    if (typeof field.value === 'string') {
+                                      tableValue = JSON.parse(field.value);
+                                    } else {
+                                      tableValue = field.value;
+                                    }
+                                  }
+
+                                  cellText = tableValue.cells?.[rowIndex]?.[colIndex] || '';
+
+                                } catch (error) {
+                                  console.error(`테이블 값 파싱 실패 [${rowIndex}][${colIndex}]:`, {
+                                    fieldId: field.id,
+                                    rawValue: field.value,
+                                    error
+                                  });
+                                  cellText = '';
+                                }
+
+                                const cellFontSize = getResponsiveFontSizeForTableCell(field.fontSize, {
+                                  totalHeight: field.height,
+                                  rowCount: tableInfo.rows,
+                                });
+
+                                return (
+                                  <div
+                                    key={`${rowIndex}-${colIndex}`}
+                                    className="border border-purple-200 flex items-center justify-center p-1"
+                                    style={{
+                                      minHeight: '20px',
+                                      fontSize: `${cellFontSize}px !important`,
+                                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
+                                      color: '#6b21a8',
+                                      fontWeight: '500'
+                                    }}
+                                    title={cellText || ''}
+                                  >
+                                    <span
+                                      className="text-center truncate leading-tight"
+                                      style={{
+                                        display: 'block',
+                                        width: '100%',
+                                        fontSize: `${cellFontSize}px !important`,
+                                        fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
+                                        fontWeight: '500 !important',
+                                        color: '#6b21a8 !important'
+                                      }}
+                                    >
+                                      {cellText}
+                                    </span>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      ) : field.value ? (
+                        // 일반 필드 - 값이 있는 경우
+                        <div className="text-gray-900 p-1 truncate text-center"
+                          style={{
+                            fontSize: `${responsiveFontSize}px !important`,
+                            fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
+                            fontWeight: '500 !important'
+                          }}
+                        >
+                          {field.value}
+                        </div>
+                      ) : (
+                        // 일반 필드 - 값이 없는 경우
+                        <div className="text-xs text-blue-700 font-medium p-1 truncate text-center"
+                          style={{
+                            fontSize: `${placeholderFontSize}px`
+                          }}
+                        >
+                          {field.label}
+                          {field.required && <span className="text-red-500">*</span>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
               {/* 기존 서명 필드 렌더링 - 현재 페이지만 표시 */}
               {(() => {

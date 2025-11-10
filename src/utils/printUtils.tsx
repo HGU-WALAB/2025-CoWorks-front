@@ -147,7 +147,7 @@ export const generatePrintHTML = (
           
           return `<td style="
             width: ${cellWidth}; 
-            font-size: ${Math.max((field.fontSize || 14) * 0.64, 8)}px; 
+            font-size: ${Math.max((field.fontSize || 16) * 0.64, 8)}px; 
             font-family: '${field.fontFamily || 'Arial'}', sans-serif;
             border: 1px solid #000;
             text-align: center;
@@ -223,7 +223,7 @@ export const generatePrintHTML = (
       }
     } else {
       // 일반 필드 HTML 생성
-      return `<div class="field-overlay" style="left: ${field.x * 0.64}px; top: ${field.y * 0.64}px; width: ${field.width * 0.64}px; height: ${field.height * 0.64}px; font-size: ${(field.fontSize || 14) * 0.64}px; font-family: '${field.fontFamily || 'Arial'}', sans-serif;">${field.value || ''}</div>`;
+      return `<div class="field-overlay" style="left: ${field.x * 0.64}px; top: ${field.y * 0.64}px; width: ${field.width * 0.64}px; height: ${field.height * 0.64}px; font-size: ${(field.fontSize || 16) * 0.64}px; font-family: '${field.fontFamily || 'Arial'}', sans-serif;">${field.value || ''}</div>`;
     }
   }).join('');
   

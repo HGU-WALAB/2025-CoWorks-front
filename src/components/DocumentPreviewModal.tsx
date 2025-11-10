@@ -140,7 +140,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               top: `${field.y}px`,
               width: `${field.width}px`,
               height: `${field.height}px`,
-              fontSize: `${field.fontSize || 14}px`,
+              fontSize: `${field.fontSize || 16}px`,
               fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
               fontWeight: '500',
               overflow: 'visible',
@@ -170,7 +170,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                             className="border border-black text-center"
                             style={{
                               width: cellWidth,
-                              fontSize: `${Math.max((field.fontSize || 14) * 0.9, 10)}px`,
+                              fontSize: `${Math.max((field.fontSize || 16) * 1.2, 10)}px`,
                               fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                               padding: '4px',
                               fontWeight: '500',
@@ -190,7 +190,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               <div
                 className="text-gray-900 flex items-center justify-center w-full h-full"
                 style={{
-                  fontSize: `${field.fontSize || 14}px`,
+                  fontSize: `${field.fontSize || 16}px`,
                   fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                   fontWeight: '500',
                   color: '#111827',
@@ -508,7 +508,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                           <div
                             className="text-center text-gray-800"
                             style={{
-                              fontSize: `${(field.fontSize || 14)}px !important`,
+                              fontSize: `${(field.fontSize || 16)}px !important`,
                               fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                               fontWeight: '500 !important',
                               color: '#1f2937 !important'
@@ -546,9 +546,9 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                           <div
                             className="text-center text-gray-600"
                             style={{
-                              fontSize: `${(field.fontSize || 12)}px !important`,
-                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                              fontWeight: '500 !important'
+                              fontSize: `${(field.fontSize || 16)}px`,
+                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                              fontWeight: '500'
                             }}
                           >
                             {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명 대기
@@ -590,7 +590,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                                   className="border border-gray-800 flex items-center justify-center"
                                   style={{ 
                                     minHeight: '20px',
-                                    fontSize: `${(field.fontSize || 14)}px !important`,
+                                    fontSize: `${(field.fontSize || 16)}px !important`,
                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                     color: '#1f2937', // 진한 회색 텍스트
                                     fontWeight: '500 !important',
@@ -613,7 +613,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                                     style={{
                                       display: 'block',
                                       width: '100%',
-                                      fontSize: `${(field.fontSize || 14)}px !important`,
+                                      fontSize: `${(field.fontSize || 16)}px !important`,
                                       fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                       fontWeight: '500 !important',
                                       color: '#1f2937 !important',
@@ -639,11 +639,11 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                       <div 
                         className="text-gray-900 flex items-center justify-center w-full h-full"
                         style={{
-                          fontSize: `${(field.fontSize || 14)}px !important`,
-                          fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                          fontWeight: '500 !important',
-                          color: '#111827 !important',
-                          lineHeight: '1.4 !important',
+                          fontSize: `${field.fontSize || 16}px`,
+                          fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                          fontWeight: '500',
+                          color: '#111827',
+                          lineHeight: '1.4',
                           textAlign: 'center',
                           wordBreak: 'keep-all',
                           overflow: 'visible',
