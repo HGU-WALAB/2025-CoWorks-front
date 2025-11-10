@@ -263,7 +263,7 @@ export const useDocumentStore = create<DocumentStore>((set, get) => ({
       
       return updatedDocument;
     } catch (error) {
-      set({ error: '검토자 할당에 실패했습니다.', loading: false });
+      set({ error: '서명자 할당에 실패했습니다.', loading: false });
       throw error;
     }
   },

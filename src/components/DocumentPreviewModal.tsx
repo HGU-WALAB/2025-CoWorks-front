@@ -534,7 +534,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                         {field.value && field.value.startsWith('data:image') ? (
                           <img
                             src={field.value}
-                            alt={`${(field as any).reviewerName || '검토자'} 서명`}
+                            alt={`${(field as any).reviewerName || '서명자'} 서명`}
                             className="max-w-full h-full object-contain bg-transparent"
                             style={{
                               maxWidth: '100%',

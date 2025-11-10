@@ -996,7 +996,7 @@ const DocumentSignerAssignment: React.FC = () => {
               return reviewerFields.length > 0 && (
                 <div className="mt-6">
                   <h3 className="text-md font-medium text-gray-900 mb-3">
-                    검토자 서명 필드 매핑
+                    서명자 서명 필드 매핑
                     <span className="ml-2 text-xs text-gray-500">
                       ({reviewerFields.length}개 필드)
                     </span>
@@ -1045,7 +1045,7 @@ const DocumentSignerAssignment: React.FC = () => {
                             }}
                             className="w-full text-sm px-2 py-1.5 border border-red-300 rounded focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           >
-                            <option value="">검토자 선택...</option>
+                            <option value="">서명자 선택...</option>
                             {availableReviewers.map(task => (
                               <option key={task.id} value={task.assignedUserEmail}>
                                 {task.assignedUserName || task.assignedUserEmail}

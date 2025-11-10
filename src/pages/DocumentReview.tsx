@@ -772,7 +772,7 @@ const DocumentReview: React.FC = () => {
           <div className="p-4 space-y-4">
             {/* 검토자 목록 */}
             <div className="border rounded-lg p-3">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">검토자</h3>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">서명자</h3>
               <div className="space-y-2">
                 {currentDocument.tasks && currentDocument.tasks.length > 0 ? (
                   currentDocument.tasks
@@ -874,7 +874,7 @@ const DocumentReview: React.FC = () => {
           isOpen={showSignatureModal}
           onClose={() => setShowSignatureModal(false)}
           onSave={handleSignatureSave}
-          reviewerName={user?.name || '검토자'}
+          reviewerName={user?.name || '서명자'}
         />
       )}
 
