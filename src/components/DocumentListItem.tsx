@@ -177,9 +177,10 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
 
 
   return (
-    <div className="px-6 py-4 hover:bg-gray-50">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3 flex-1">
+    <div className="px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 flex-1">
+          <div className="flex items-start gap-3">
           {showCheckbox && (
             <input
               type="checkbox"
@@ -190,9 +191,9 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
             />
           )}
           
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <h3 className={`${showCheckbox ? 'text-s' : 'text-lg'} font-medium text-gray-900`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <h3 className={`${showCheckbox ? 'text-sm' : 'text-lg'} font-semibold text-gray-900 leading-tight truncate`}>
                 {document.title || document.templateName}
               </h3>
               <StatusBadge
@@ -219,28 +220,33 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
               )}
             </div>
 
-            <div className="flex flex-col space-y-1 text-sm text-gray-600">
-              <span className="text-gray-900 font-medium">
-                생성일: {formatKoreanFullDateTime(document.createdAt)}
-              </span>
-              <span className="text-gray-900 font-medium">
-                수정일: {formatKoreanFullDateTime(document.updatedAt || document.createdAt)}
-              </span>
+            <div className="flex flex-col gap-1 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 w-14 shrink-0">생성일</span>
+                <span className="text-gray-900 font-medium truncate">{formatKoreanFullDateTime(document.createdAt)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-gray-500 w-14 shrink-0">수정일</span>
+                <span className="text-gray-900 font-medium truncate">{formatKoreanFullDateTime(document.updatedAt || document.createdAt)}</span>
+              </div>
               {document.deadline && (
-                <span className={`flex items-center space-x-1 ${
-                  new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED
-                    ? 'text-red-600 font-medium' 
-                    : 'text-orange-600'
-                }`}>
-                  <span>
-                    마감일: {formatKoreanFullDateTime(document.deadline as string)}
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500 w-14 shrink-0">마감일</span>
+                  <span
+                    className={`truncate ${
+                      new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED
+                        ? 'text-red-600 font-medium'
+                        : 'text-orange-600'
+                    }`}
+                  >
+                    {formatKoreanFullDateTime(document.deadline as string)}
                   </span>
-                </span>
+                </div>
               )}
               {(() => {
                 const roleInfo = getRoleAssignmentMessage(document, currentUser?.email || '');
                 return roleInfo ? (
-                  <span className={`flex items-center space-x-1 font-medium ${
+                  <div className={`flex items-center gap-1 font-medium ${
                     document.status === 'REVIEWING' 
                       ? 'text-orange-600' 
                       : 'text-blue-600'
@@ -248,16 +254,16 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span>{roleInfo.label}: {roleInfo.time}</span>
-                  </span>
+                    <span className="truncate">{roleInfo.label}: {roleInfo.time}</span>
+                  </div>
                 ) : null;
               })()}
             </div>
 
             {/* 담당자 정보 표시 */}
             {showAssigneeInfo && (
-              <div className="mt-3 space-y-1">
-                <div className="flex flex-wrap gap-4">
+              <div className="mt-3 space-y-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
                   {(() => {
                     const assignees = getTaskAssignees(document);
                     return (
@@ -272,9 +278,12 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
             )}
           </div>
         </div>
+        </div>
 
         <div className="flex items-center space-x-2">
-          {!showCheckbox && renderActionButton()}
+          {!showCheckbox && (
+            <>{renderActionButton()}</>
+          )}
 
           <button
             onClick={() => onWorkflow(document)}

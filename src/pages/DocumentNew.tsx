@@ -98,7 +98,7 @@ const DocumentNew: React.FC = () => {
             height: field.height || 30,
             required: field.required || false,
             page: field.page || 1,
-            fontSize: field.fontSize || 14,
+            fontSize: field.fontSize || 16,
             fontFamily: field.fontFamily || 'Arial',
             ...(field.tableData && { tableData: field.tableData })
           }));
@@ -708,6 +708,7 @@ const DocumentNew: React.FC = () => {
                     onFieldResize={() => {}}
                     onTableCellClick={() => {}}
                     onCanvasClick={() => {}}
+                    isInteractive={false}
                   />
                 </div>
               ) : (

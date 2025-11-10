@@ -11,6 +11,7 @@ import { createDebounce } from '../utils/debounce';
 import { usePdfPages } from '../hooks/usePdfPages';
 import { usePrint, type PrintField, type PrintSignatureField } from '../utils/printUtils';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
+import { getResponsiveFontSize, getResponsiveFontSizeForTableCell } from '../utils/fontUtils';
 
 // CoordinateField 타입 정의 (PdfViewer에서 가져오지 않고 직접 정의)
 interface CoordinateField {
@@ -328,7 +329,7 @@ const DocumentEditor: React.FC = () => {
                 }) 
               : '', // 테이블인 경우 기본 빈 셀 배열 생성, 아니면 빈 값
             required: field.required || false,
-            fontSize: field.fontSize || 16, // 기본 폰트 크기를 14px로 설정
+            fontSize: field.fontSize || 16, // 기본 폰트 크기를 16px로 설정
             fontFamily: field.fontFamily || 'Arial',
             page: 1, // page 속성 추가
             // 테이블 정보 추가
@@ -809,7 +810,7 @@ const DocumentEditor: React.FC = () => {
             required: field.required || false,
             page: field.page || 1, // 페이지 정보 추가
             type: field.type || 'field',
-            fontSize: field.fontSize || 14, // 기본 폰트 크기를 14px로 설정
+        fontSize: field.fontSize || 16, // 기본 폰트 크기를 16px로 설정
             fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
             tableData: field.tableData
           };
@@ -892,7 +893,7 @@ const DocumentEditor: React.FC = () => {
           ) as 'text' | 'date' | 'editor_signature',
           value: value,
           required: templateField.required || false,
-          fontSize: templateField.fontSize || 14, // 기본 폰트 크기를 14px로 설정
+        fontSize: templateField.fontSize || 16, // 기본 폰트 크기를 16px로 설정
           fontFamily: templateField.fontFamily || 'Arial',
           page: templateField.page || 1, // 템플릿 필드의 실제 page 정보 사용
           // 테이블 정보 보존
@@ -945,7 +946,7 @@ const DocumentEditor: React.FC = () => {
           ) as 'text' | 'date' | 'editor_signature',
           value: defaultValue,
           required: templateField.required || false,
-          fontSize: templateField.fontSize || 14, // 기본 폰트 크기를 14px로 설정
+        fontSize: templateField.fontSize || 16, // 기본 폰트 크기를 16px로 설정
           fontFamily: templateField.fontFamily || 'Arial',
           page: 1, // page 속성 추가
           // 테이블 정보 보존
@@ -1370,7 +1371,7 @@ const DocumentEditor: React.FC = () => {
                       <div
                         className="font-medium mb-1 text-purple-700 truncate"
                         style={{
-                          fontSize: `${12 * scale}px`
+                          fontSize: `${16 * scale}px`
                         }}
                       >
                         {field.label} ({tableInfo.rows}×{tableInfo.cols})
@@ -1453,7 +1454,7 @@ const DocumentEditor: React.FC = () => {
                                     display: 'block',
                                     width: '100%',
                                     // 명시적으로 폰트 스타일 적용
-                                    fontSize: `${(field.fontSize || 14) * scale}px !important`,
+                                    fontSize: `${(field.fontSize || 16) * scale}px !important`,
                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                     fontWeight: '500 !important',
                                     color: cellText ? '#6b21a8 !important' : '#9CA3AF !important'
@@ -1471,7 +1472,7 @@ const DocumentEditor: React.FC = () => {
                     // 일반 필드 - 값이 있는 경우
                     <div className="text-gray-900 p-1 truncate text-center"
                       style={{
-                        fontSize: `${(field.fontSize || 14) * scale}px !important`,
+                        fontSize: `${(field.fontSize || 16) * scale}px !important`,
                         fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                         fontWeight: '500 !important'
                       }}
@@ -1483,7 +1484,7 @@ const DocumentEditor: React.FC = () => {
                     <div
                       className="text-blue-700 font-medium p-1 truncate text-center"
                       style={{
-                        fontSize: `${12 * scale}px`
+                        fontSize: `${16 * scale}px`
                       }}
                     >
                       {field.label}
@@ -1742,6 +1743,11 @@ const DocumentEditor: React.FC = () => {
               
               {/* 필드 데이터 오버레이 */}
               {coordinateFields.map((field) => {
+                const responsiveFontSize = getResponsiveFontSize(field.fontSize, {
+                  height: field.height,
+                });
+                const placeholderFontSize = Math.max(8, responsiveFontSize * 0.75);
+
                 // 필드 타입 확인
                 let isTableField = false;
                 let isEditorSignature = false;
@@ -1782,7 +1788,7 @@ const DocumentEditor: React.FC = () => {
                       top: `${field.y}px`,
                       width: `${field.width}px`,
                       height: `${field.height}px`,
-                      fontSize: `${field.fontSize || 14}px`,
+                      fontSize: `${responsiveFontSize}px`,
                       fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                     }}
                   >
@@ -1795,7 +1801,9 @@ const DocumentEditor: React.FC = () => {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: `${field.fontSize || 12}px`,
+                        fontSize: `${getResponsiveFontSize(field.fontSize ?? 16, {
+                          height: field.height,
+                        })}px`,
                         fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                         fontWeight: '600',
                         color: 'black',
@@ -1803,7 +1811,7 @@ const DocumentEditor: React.FC = () => {
                         padding: '2px'
                       }}>
                         {!field.value && (
-                          <div style={{ fontSize: '10px', marginBottom: '2px' }}>
+                          <div style={{ fontSize: `${placeholderFontSize}px`, marginBottom: '2px' }}>
                             {field.label}
                           </div>
                         )}
@@ -1821,12 +1829,12 @@ const DocumentEditor: React.FC = () => {
                               }}
                             />
                           ) : (
-                            <div style={{ fontSize: '9px', textAlign: 'center' }}>
+                            <div style={{ fontSize: `${Math.max(8, placeholderFontSize)}px`, textAlign: 'center' }}>
                               서명됨: {new Date().toLocaleDateString()}
                             </div>
                           )
                         ) : (
-                          <div style={{ fontSize: '9px', color: '#666' }}>
+                          <div style={{ fontSize: `${Math.max(8, placeholderFontSize)}px`, color: '#666' }}>
                             미서명
                           </div>
                         )}
@@ -1839,12 +1847,16 @@ const DocumentEditor: React.FC = () => {
                             <tr key={rowIndex}>
                               {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
                                 const cellContent = tableData.cells?.[rowIndex]?.[colIndex] || '';
+                                const cellFontSize = getResponsiveFontSizeForTableCell(field.fontSize, {
+                                  totalHeight: field.height,
+                                  rowCount: tableInfo!.rows,
+                                });
                                 return (
                                   <td
                                     key={colIndex}
                                     style={{
                                       width: tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`,
-                                      fontSize: `${field.fontSize || 14}px`,
+                                      fontSize: `${cellFontSize}px`,
                                       fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                       textAlign: 'center',
                                       verticalAlign: 'middle'
@@ -1866,7 +1878,7 @@ const DocumentEditor: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: `${field.fontSize || 14}px`,
+                        fontSize: `${responsiveFontSize}px`,
                         fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                         fontWeight: '600',
                         color: 'black'

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import NotificationDropdown from './NotificationDropdown';
@@ -12,6 +12,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const navigation = useMemo(() => {
+    const base = [
+      { name: '대시보드', href: '/tasks' },
+      { name: '템플릿', href: '/templates' },
+      { name: '문서', href: '/documents' },
+    ];
+
+    if (user?.hasFolderAccess === true) {
+      base.push({ name: '폴더', href: '/folders' });
+    }
+
+    return base;
+  }, [user?.hasFolderAccess]);
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      const height = headerRef.current?.offsetHeight ?? 0;
+      setHeaderHeight(height);
+    };
+
+    updateHeaderHeight();
+
+    window.addEventListener('resize', updateHeaderHeight);
+    return () => window.removeEventListener('resize', updateHeaderHeight);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const height = headerRef.current?.offsetHeight ?? 0;
+      setHeaderHeight(height);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [isAuthenticated, navigation.length]);
+
 
   // position에 따라 로고 결정
   const getLogoPath = () => {
@@ -29,13 +65,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   };
 
-  const navigation = [
-    { name: '대시보드', href: '/tasks' },
-    { name: '템플릿', href: '/templates' },
-    { name: '문서', href: '/documents' },
-    ...(user?.hasFolderAccess === true ? [{ name: '폴더', href: '/folders' }] : []),
-  ];
-
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -45,10 +74,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header - 고정 위치 */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b">
+      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b">
         <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
+          <div className="flex flex-wrap items-center gap-4 py-4 md:flex-nowrap md:justify-between">
+            <div className="flex w-full items-center justify-between md:w-auto md:justify-start">
               <Link to="/tasks" className="flex items-center">
                 <img 
                   src={getLogoPath()} 
@@ -56,15 +85,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className="h-14 w-auto"
                 />
               </Link>
+
+              {isAuthenticated && (
+                <div className="flex items-center gap-3 md:hidden">
+                  <NotificationDropdown />
+                </div>
+              )}
             </div>
             
             {isAuthenticated && (
-              <nav className="flex space-x-8">
+              <nav className="order-3 flex w-full gap-3 overflow-x-auto rounded-md bg-gray-50 px-2 py-2 text-sm font-medium text-gray-600 md:order-none md:w-auto md:bg-transparent md:px-0 md:py-0 md:text-base md:text-gray-600 md:[&::-webkit-scrollbar]:hidden">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`whitespace-nowrap px-3 py-2 rounded-md transition-colors ${
                       location.pathname.startsWith(item.href)
                         ? 'bg-primary-100 text-primary-700'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -76,11 +111,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </nav>
             )}
 
-            <div className="flex items-center space-x-4">
-              {isAuthenticated && <NotificationDropdown />}
+            <div className="flex items-center gap-4 md:flex-none">
+              {isAuthenticated && (
+                <div className="hidden md:block">
+                  <NotificationDropdown />
+                </div>
+              )}
               
               {isAuthenticated ? (
-                <div className="relative">
+                <div className="relative hidden md:block">
                   <button
                     onClick={() => setShowUserMenu(!showUserMenu)}
                     className="flex items-center space-x-2 text-sm rounded-full p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
@@ -90,7 +129,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         {user?.name?.charAt(0) || 'U'}
                       </span>
                     </div>
-                    <span className="hidden md:block font-medium">{user?.name}</span>
+                    <span className="font-medium">{user?.name}</span>
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
@@ -145,7 +184,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Main content - 헤더 높이만큼 상단 여백 추가 */}
-      <main className="w-full py-8 pt-24">
+      <main
+        className="w-full py-8"
+        style={{ paddingTop: headerHeight }}
+      >
         {children}
       </main>
     </div>
