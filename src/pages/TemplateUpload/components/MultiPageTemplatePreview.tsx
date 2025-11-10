@@ -18,6 +18,7 @@ interface MultiPageTemplatePreviewProps {
   onFieldResize: (fieldId: string, updates: Partial<TemplateField>) => void;
   onTableCellClick: (fieldId: string, row: number, col: number) => void;
   onCanvasClick: (selection: { x: number; y: number; width: number; height: number; pageNumber: number }) => void;
+  isInteractive?: boolean;
 }
 
 const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
@@ -28,13 +29,12 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   onFieldMove,
   onFieldResize,
   onTableCellClick,
-  onCanvasClick
+  onCanvasClick,
+  isInteractive = true
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  // 페이지별 보기만 지원하도록 고정
-  const viewMode = 'single';
   const [currentPageNumber, setCurrentPageNumber] = useState(1);
   const [isCreatingField, setIsCreatingField] = useState(false);
   const [dragStart, setDragStart] = useState<Position | null>(null);
@@ -59,7 +59,6 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
 
   // 이미지 로딩 상태 추가
   const [imageLoadErrors, setImageLoadErrors] = useState<Set<number>>(new Set());
-  const [imageLoadSuccess, setImageLoadSuccess] = useState<Set<number>>(new Set());
 
   // PDF 원본 크기 (A4 기준)
   const PDF_WIDTH = 1240;
@@ -79,7 +78,6 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   // 이미지 로딩 핸들러
   const handleImageLoad = (pageNumber: number) => {
     console.log(`✅ 페이지 ${pageNumber} 이미지 로드 성공`);
-    setImageLoadSuccess(prev => new Set([...prev, pageNumber]));
     setImageLoadErrors(prev => {
       const newSet = new Set(prev);
       newSet.delete(pageNumber);
@@ -90,11 +88,6 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   const handleImageError = (pageNumber: number, imageUrl: string) => {
     console.error(`❌ 페이지 ${pageNumber} 이미지 로드 실패:`, imageUrl);
     setImageLoadErrors(prev => new Set([...prev, pageNumber]));
-    setImageLoadSuccess(prev => {
-      const newSet = new Set(prev);
-      newSet.delete(pageNumber);
-      return newSet;
-    });
   };
 
   // 페이지 변경 함수
@@ -146,6 +139,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   });
 
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (!isInteractive) return;
     if (!canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
@@ -158,7 +152,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    if (!isCreatingField || !dragStart) return;
+    if (!isInteractive || !isCreatingField || !dragStart) return;
 
     const target = e.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
@@ -177,6 +171,8 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   };
 
   const handleCanvasMouseUp = () => {
+    if (!isInteractive) return;
+
     if (isCreatingField && currentSelection) {
       const { width, height } = currentSelection;
 
@@ -195,6 +191,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   };
 
   const handleFieldMouseDown = (field: TemplateField, e: React.MouseEvent, action: 'move' | 'resize') => {
+    if (!isInteractive) return;
     e.stopPropagation();
 
     if (action === 'move') {
@@ -216,6 +213,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
 
   // 테이블 컬럼 너비 조절 시작
   const handleColumnResizeMouseDown = (field: TemplateField, columnIndex: number, e: React.MouseEvent) => {
+    if (!isInteractive) return;
     e.stopPropagation();
     e.preventDefault();
 
@@ -230,6 +228,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isInteractive) return;
     if (!canvasRef.current) return;
 
     if (draggingField) {
@@ -294,6 +293,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   };
 
   const handleMouseUp = () => {
+    if (!isInteractive) return;
     if (draggingField || resizingField || resizingColumn) {
       setDraggingField(null);
       setResizingField(null);
@@ -307,7 +307,6 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   const renderField = (field: TemplateField) => {
     const isSelected = selectedFieldId === field.id;
     const isDragging = draggingField === field.id;
-    const isResizing = resizingField === field.id;
     const scaledPos = actualToScale({ x: field.x, y: field.y });
     const scaledSize = {
       width: field.width * scale,
@@ -318,7 +317,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
       return (
         <div
           key={field.id}
-          className={`absolute border-2 bg-purple-100 bg-opacity-30 hover:bg-opacity-50 border-purple-500 group cursor-move transition-colors ${
+          className={`absolute border-2 bg-purple-100 bg-opacity-30 hover:bg-opacity-50 border-purple-500 group ${isInteractive ? 'cursor-move' : 'cursor-default'} transition-colors ${
             isDragging ? 'opacity-75' : ''
           }`}
           style={{
@@ -326,12 +325,15 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
             top: scaledPos.y,
             width: scaledSize.width,
             height: scaledSize.height,
-            fontSize: (field.fontSize || 12) * scale,
+            fontSize: (field.fontSize || 16) * scale,
             fontFamily: field.fontFamily || 'Arial'
           }}
-          onMouseDown={(e) => handleFieldMouseDown(field, e, 'move')}
+          onMouseDown={isInteractive ? (e) => handleFieldMouseDown(field, e, 'move') : undefined}
           onClick={(e) => {
             e.stopPropagation();
+            if (isInteractive) {
+              onFieldClick(field);
+            }
           }}
         >
           <div className="w-full h-full overflow-hidden pointer-events-none">
@@ -357,9 +359,9 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
                     {colIndex + 1}
                     {colIndex < field.tableData!.cols - 1 && (
                       <div
-                        className="absolute right-0 top-0 w-2 h-full cursor-col-resize bg-purple-500 bg-opacity-0 hover:bg-opacity-30 transition-colors z-10 pointer-events-auto"
-                        onMouseDown={(e) => handleColumnResizeMouseDown(field, colIndex, e)}
-                        title="드래그하여 컬럼 너비 조절"
+                        className={`absolute right-0 top-0 w-2 h-full ${isInteractive ? 'cursor-col-resize pointer-events-auto' : 'pointer-events-none'} bg-purple-500 bg-opacity-0 hover:bg-opacity-30 transition-colors z-10`}
+                        onMouseDown={isInteractive ? (e) => handleColumnResizeMouseDown(field, colIndex, e) : undefined}
+                        title={isInteractive ? '드래그하여 컬럼 너비 조절' : undefined}
                       />
                     )}
                   </div>
@@ -380,17 +382,17 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
                       return (
                         <div
                           key={`${rowIndex}-${colIndex}`}
-                          className="bg-white bg-opacity-70 border-r border-purple-200 hover:bg-opacity-90 cursor-pointer flex items-center justify-center text-xs p-1 transition-colors last:border-r-0 pointer-events-auto"
+                          className={`bg-white bg-opacity-70 border-r border-purple-200 hover:bg-opacity-90 ${isInteractive ? 'cursor-pointer pointer-events-auto' : 'cursor-default pointer-events-none'} flex items-center justify-center text-xs p-1 transition-colors last:border-r-0`}
                           style={{
                             width: field.tableData?.columnWidths
                               ? `${field.tableData.columnWidths[colIndex] * 100}%`
                               : `${100 / field.tableData!.cols}%`
                           }}
-                          onClick={(e) => {
+                          onClick={isInteractive ? (e) => {
                             e.stopPropagation();
                             onTableCellClick(field.id, rowIndex, colIndex);
-                          }}
-                          title={cellContent || '클릭하여 편집'}
+                          } : undefined}
+                          title={isInteractive ? (cellContent || '클릭하여 편집') : cellContent || undefined}
                         >
                           <span className="text-center text-purple-700 font-medium truncate leading-tight">
                             {cellContent || `${rowIndex + 1}-${colIndex + 1}`}
@@ -405,8 +407,8 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
           </div>
 
           <div
-            className="absolute bottom-0 right-0 w-3 h-3 bg-purple-500 cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
-            onMouseDown={(e) => handleFieldMouseDown(field, e, 'resize')}
+            className={`absolute bottom-0 right-0 w-3 h-3 bg-purple-500 ${isInteractive ? 'cursor-se-resize' : 'cursor-default'} opacity-0 group-hover:opacity-100 transition-opacity`}
+            onMouseDown={isInteractive ? (e) => handleFieldMouseDown(field, e, 'resize') : undefined}
           />
 
           {isSelected && (
@@ -434,7 +436,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
     return (
       <div
         key={field.id}
-        className={`absolute border-2 bg-opacity-30 hover:bg-opacity-50 transition-colors flex items-center justify-center cursor-move group ${
+        className={`absolute border-2 bg-opacity-30 hover:bg-opacity-50 transition-colors flex items-center justify-center ${isInteractive ? 'cursor-move' : 'cursor-default'} group ${
           getFieldColor()
         } ${isDragging ? 'opacity-75' : ''}`}
         style={{
@@ -442,12 +444,15 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
           top: scaledPos.y,
           width: scaledSize.width,
           height: scaledSize.height,
-          fontSize: (field.fontSize || 12) * scale,
+          fontSize: (field.fontSize || 16) * scale,
           fontFamily: field.fontFamily || 'Arial'
         }}
-        onMouseDown={(e) => handleFieldMouseDown(field, e, 'move')}
+        onMouseDown={isInteractive ? (e) => handleFieldMouseDown(field, e, 'move') : undefined}
         onClick={(e) => {
           e.stopPropagation();
+          if (isInteractive) {
+            onFieldClick(field);
+          }
         }}
       >
         <div className="text-center p-1">
@@ -458,10 +463,10 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
         </div>
 
         <div
-          className={`absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity ${
+          className={`absolute bottom-0 right-0 w-3 h-3 ${isInteractive ? 'cursor-se-resize' : 'cursor-default'} opacity-0 group-hover:opacity-100 transition-opacity ${
             isEditorSignature ? 'bg-green-500' : 'bg-blue-500'
           }`}
-          onMouseDown={(e) => handleFieldMouseDown(field, e, 'resize')}
+          onMouseDown={isInteractive ? (e) => handleFieldMouseDown(field, e, 'resize') : undefined}
         />
 
         {isSelected && (
@@ -500,9 +505,15 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
     <div className="bg-white rounded-lg shadow-lg overflow-hidden h-full flex flex-col">
       <div className="bg-gray-100 px-4 py-3 border-b flex-shrink-0">
         <h3 className="font-medium text-gray-800">템플릿 미리보기</h3>
-        <p className="text-sm text-gray-500">
-          드래그하여 필드 생성 | 필드 드래그로 이동 | 모서리 드래그로 크기 조절
-        </p>
+        {isInteractive ? (
+          <p className="text-sm text-gray-500">
+            드래그하여 필드 생성 | 필드 드래그로 이동 | 모서리 드래그로 크기 조절
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500">
+            템플릿 구조를 확인할 수 있습니다.
+          </p>
+        )}
         {scale !== 1 && (
           <p className="text-xs text-blue-600 mt-1">
             화면에 맞춰 {Math.round(scale * 100)}%로 {scale < 1 ? '축소' : '확대'}됨
@@ -557,16 +568,16 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
       <div
         ref={containerRef}
         className="relative bg-gray-100 h-full overflow-auto p-4"
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseMove={isInteractive ? handleMouseMove : undefined}
+        onMouseUp={isInteractive ? handleMouseUp : undefined}
+        onMouseLeave={isInteractive ? handleMouseUp : undefined}
       >
         {/* 페이지별 보기만 지원 */}
         {currentPage && (
           <div className="flex justify-center">
             <div
               ref={canvasRef}
-              className="relative bg-white shadow-lg cursor-crosshair select-none"
+              className={`relative bg-white shadow-lg ${isInteractive ? 'cursor-crosshair select-none' : 'cursor-default'}`}
               style={{
                 width: PDF_WIDTH * scale,
                 height: PDF_HEIGHT * scale,
@@ -574,7 +585,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
                 minHeight: PDF_HEIGHT * scale,
                 flexShrink: 0
               }}
-              onMouseDown={handleCanvasMouseDown}
+              onMouseDown={isInteractive ? handleCanvasMouseDown : undefined}
             >
               <img
                 src={currentPage.imageUrl}
@@ -601,7 +612,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
               {currentPageFields.map(renderField)}
 
               {/* 새 필드 생성 중 선택 영역 */}
-              {isCreatingField && currentSelection && (
+              {isInteractive && isCreatingField && currentSelection && (
                 <div
                   className="absolute border-2 border-dashed border-blue-500 bg-blue-200 bg-opacity-20 pointer-events-none"
                   style={{

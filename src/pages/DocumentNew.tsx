@@ -708,6 +708,7 @@ const DocumentNew: React.FC = () => {
                     onFieldResize={() => {}}
                     onTableCellClick={() => {}}
                     onCanvasClick={() => {}}
+                    isInteractive={false}
                   />
                 </div>
               ) : (
