@@ -221,14 +221,14 @@ const TaskDashboard: React.FC = () => {
             const myTask = doc.tasks?.find(task => task.assignedUserEmail === currentUserEmail);
             const isNewTask = myTask?.isNew;
             
-            // 편집자인지 확인
+            // 작성자인지 확인
             const isEditor = doc.tasks?.some(task =>
               task.role === 'EDITOR' && task.assignedUserEmail === currentUserEmail
             ) || false;
 
             // 상태에 따른 색상과 아이콘 설정
             const getStatusInfo = (status: string, isRejected?: boolean, isEditor?: boolean) => {
-              // isRejected가 true이고 EDITING 상태이고 편집자가 현재 사용자인 경우 REJECTED처럼 표시
+              // isRejected가 true이고 EDITING 상태이고 작성자가 현재 사용자인 경우 REJECTED처럼 표시
               if (isRejected && status === 'EDITING' && isEditor) {
                 return {
                   color: 'red',
@@ -435,7 +435,7 @@ const TaskDashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
            {/* 1. 편집 중인 문서 - 파란색 */}
            <Link to="/documents?status=EDITING" className="block group">
-             <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
+             <div className="bg-gradient-to-br from-blue-500 via-blue-500 to-blue-500 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
                {/* 배경 패턴 */}
                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
@@ -457,7 +457,8 @@ const TaskDashboard: React.FC = () => {
 
            {/* 2. 검토 중인 문서 - 노란색 */}
            <Link to="/documents?status=REVIEWING" className="block group">
-             <div className="bg-gradient-to-br from-yellow-500 via-orange-500 to-orange-600 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
+               <div className="bg-gradient-to-br from-blue-700 via-blue-700 to-blue-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
+             {/*<div className="bg-gradient-to-br from-yellow-500 via-orange-500 to-orange-600 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">*/}
                {/* 배경 패턴 */}
                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
@@ -479,7 +480,8 @@ const TaskDashboard: React.FC = () => {
 
            {/* 3. 반려된 문서 - 빨간색 */}
            <Link to="/documents?status=REJECTED" className="block group">
-             <div className="bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
+               <div className="bg-gradient-to-br from-blue-900 via-blu-900 to-blue-900 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
+             {/*<div className="bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">*/}
                {/* 배경 패턴 */}
                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
@@ -501,15 +503,16 @@ const TaskDashboard: React.FC = () => {
 
            {/* 4. 완료된 문서 - 초록색 */}
            <Link to="/documents?status=COMPLETED" className="block group">
-             <div className="bg-gradient-to-br from-green-500 via-green-600 to-green-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
+               <div className="bg-gradient-to-br from-blue-900 via-blue-900 to-blue-900 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
+             {/*<div className="bg-gradient-to-br from-green-500 via-green-600 to-green-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">*/}
                {/* 배경 패턴 */}
                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
                <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
-               
+
               <div className="relative">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-2xl font-medium text-white">
-                    완료됨 : 
+                    완료됨 :
                     <span className="text-2xl font-medium"> </span>
                     <span className="text-2xl font-bold">{tasks.completedTasks.length}</span>
                   </p>

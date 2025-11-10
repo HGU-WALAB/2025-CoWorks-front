@@ -4,7 +4,7 @@ import { useAuthStore, type LoginRequest } from '../stores/authStore';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login, loading, error, clearError, isAuthenticated } = useAuthStore();
+  const { login, loading, error, clearError, isAuthenticated, refreshUser } = useAuthStore();
 
   const [formData, setFormData] = useState<LoginRequest>({
     email: '',
@@ -39,6 +39,8 @@ const Login: React.FC = () => {
 
     try {
       await login(formData);
+      // 로그인 성공 후 최신 사용자 정보 가져오기
+      await refreshUser();
       navigate('/tasks');
     } catch (error) {
       // 에러는 store에서 처리됨

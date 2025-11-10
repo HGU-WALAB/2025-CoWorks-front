@@ -4,7 +4,7 @@ import { useAuthStore, type SignupRequest } from '../stores/authStore';
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
-  const { signup, loading, error, clearError, isAuthenticated } = useAuthStore();
+  const { signup, loading, error, clearError, isAuthenticated, refreshUser } = useAuthStore();
 
   const [formData, setFormData] = useState<SignupRequest>({
     email: '',
@@ -61,6 +61,8 @@ const Signup: React.FC = () => {
 
     try {
       await signup(formData);
+      // 회원가입 성공 후 최신 사용자 정보 가져오기
+      await refreshUser();
       navigate('/tasks');
     } catch (error) {
       // 에러는 store에서 처리됨
