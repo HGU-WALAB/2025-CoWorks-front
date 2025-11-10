@@ -138,10 +138,27 @@ const DocumentReview: React.FC = () => {
     );
   };
 
-  // 검토 가능한 상태인지 확인
+  // 현재 사용자가 이미 서명했는지 확인
+  const hasCurrentUserSigned = () => {
+    if (!currentDocument || !user) return false;
+    
+    // coordinateFields에서 현재 사용자의 reviewer_signature 필드 확인
+    return currentDocument.data?.coordinateFields?.some(
+      (field: any) => 
+        field.type === 'reviewer_signature' &&
+        field.reviewerEmail === user.email &&
+        field.value && 
+        field.value !== null && 
+        field.value !== ''
+    ) || false;
+  };
+
+  // 검토 가능한 상태인지 확인 (서명하지 않은 검토자만 가능)
   const canReview = () => {
     if (!currentDocument || !user) return false;
-    return isReviewer() && currentDocument.status === 'REVIEWING';
+    return isReviewer() && 
+           currentDocument.status === 'REVIEWING' && 
+           !hasCurrentUserSigned(); // 이미 서명한 경우 검토 불가
   };
 
   // 승인 핸들러
@@ -213,10 +230,17 @@ const DocumentReview: React.FC = () => {
         allSignatures: updatedDocument?.data?.signatures
       });
 
-      alert('✅ 문서가 승인되었습니다! 서명이 문서에 추가되었습니다. 페이지에서 서명을 확인하세요.');
-
-      // 승인 후 페이지에 남아서 서명 확인 가능하도록 함
-      // navigate('/documents'); // 제거: 바로 이동하지 않음
+      // 문서 상태에 따라 메시지 표시
+      if (response.data.status === 'COMPLETED') {
+        alert('✅ 모든 서명자가 서명을 완료하여 문서가 최종 승인되었습니다!');
+        // 완료 시 문서 목록으로 이동
+        setTimeout(() => {
+          navigate('/documents');
+        }, 1000);
+      } else {
+        alert('✅ 서명이 완료되었습니다. 다른 서명자의 서명을 기다리고 있습니다.');
+        // REVIEWING 상태 유지 - 페이지에 남아서 서명 확인 가능
+      }
 
     } catch (error: any) {
       console.error('❌ 승인 실패:', error);
@@ -383,6 +407,17 @@ const DocumentReview: React.FC = () => {
                   반려
                 </button>
               </>
+            )}
+            {/* 이미 서명한 검토자에게 안내 메시지 표시 */}
+            {isReviewer() && currentDocument.status === 'REVIEWING' && hasCurrentUserSigned() && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg">
+                <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium text-green-800">
+                  서명 완료 - 다른 서명자 대기 중
+                </span>
+              </div>
             )}
           </div>
 
@@ -742,21 +777,54 @@ const DocumentReview: React.FC = () => {
                 {currentDocument.tasks && currentDocument.tasks.length > 0 ? (
                   currentDocument.tasks
                     .filter(task => task.role === 'REVIEWER')
-                    .map((reviewer, index) => (
-                      <div key={index} className="flex items-center space-x-3 p-2 rounded-lg bg-green-50 border border-green-200">
-                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
-                          {reviewer.assignedUserName ? reviewer.assignedUserName.charAt(0).toUpperCase() : 'R'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900">
-                            {reviewer.assignedUserName || '이름 없음'}
+                    .map((reviewer, index) => {
+                      // 서명 완료 여부 확인
+                      const hasSigned = currentDocument.data?.coordinateFields?.some(
+                        (field: any) => 
+                          field.type === 'reviewer_signature' &&
+                          field.reviewerEmail === reviewer.assignedUserEmail &&
+                          field.value && 
+                          field.value !== null && 
+                          field.value !== ''
+                      ) || false;
+
+                      return (
+                        <div 
+                          key={index} 
+                          className={`flex items-center space-x-3 p-2 rounded-lg border ${
+                            hasSigned 
+                              ? 'bg-green-50 border-green-300' 
+                              : 'bg-yellow-50 border-yellow-300'
+                          }`}
+                        >
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${
+                            hasSigned ? 'bg-green-500' : 'bg-yellow-500'
+                          }`}>
+                            {hasSigned ? (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              reviewer.assignedUserName ? reviewer.assignedUserName.charAt(0).toUpperCase() : 'R'
+                            )}
                           </div>
-                          <div className="text-xs text-gray-500 truncate">
-                            {reviewer.assignedUserEmail}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-900">
+                              {reviewer.assignedUserName || '이름 없음'}
+                              {hasSigned && (
+                                <span className="ml-2 text-xs text-green-600 font-semibold">✓ 서명완료</span>
+                              )}
+                              {!hasSigned && (
+                                <span className="ml-2 text-xs text-yellow-600 font-semibold">⏳ 서명대기</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {reviewer.assignedUserEmail}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                 ) : (
                   <div className="text-center py-6 text-gray-500">
                     <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">

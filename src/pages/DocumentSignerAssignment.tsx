@@ -150,16 +150,6 @@ const DocumentSignerAssignment: React.FC = () => {
       return;
     }
 
-    // 이미 지정된 서명자인지 확인
-    const isAlreadyAssigned = currentDocument.tasks?.some(
-      task => task.role === 'REVIEWER' && task.assignedUserEmail === selectedReviewer.trim()
-    );
-    
-    if (isAlreadyAssigned) {
-      alert('이미 지정된 서명자입니다.');
-      return;
-    }
-
     setIsAssigningReviewer(true);
 
     try {
@@ -197,6 +187,50 @@ const DocumentSignerAssignment: React.FC = () => {
       }
     } finally {
       setIsAssigningReviewer(false);
+    }
+  };
+
+  // 서명자 제거 핸들러
+  const handleRemoveReviewer = async (reviewerEmail: string) => {
+    if (!currentDocument) {
+      alert('문서 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    if (!confirm(`서명자 ${reviewerEmail}을(를) 제거하시겠습니까?`)) {
+      return;
+    }
+
+    try {
+      const response = await axios.delete(
+        `${API_BASE_URL}/documents/${currentDocument.id}/remove-reviewer`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: { reviewerEmail }
+        }
+      );
+
+      if (response.status === 200) {
+        console.log('✅ 서명자 제거 성공:', response.data);
+        
+        // 문서 정보 다시 로드
+        await getDocument(parseInt(id!));
+        
+        alert('서명자가 성공적으로 제거되었습니다.');
+      }
+    } catch (error: any) {
+      console.error('❌ 서명자 제거 실패:', error);
+      if (axios.isAxiosError(error)) {
+        const errorMessage = error.response?.data?.error || 
+                            error.response?.data?.message || 
+                            error.message;
+        alert(`서명자 제거에 실패했습니다: ${errorMessage}`);
+      } else {
+        alert('서명자 제거 중 오류가 발생했습니다.');
+      }
     }
   };
 
@@ -909,7 +943,7 @@ const DocumentSignerAssignment: React.FC = () => {
                 disabled={isAssigningReviewer || !selectedReviewer.trim()}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isAssigningReviewer ? '지정 중...' : '서명자 지정'}
+                {isAssigningReviewer ? '지정 중...' : '서명자 추가'}
               </button>
             </div>
 
@@ -937,6 +971,13 @@ const DocumentSignerAssignment: React.FC = () => {
                             </div>
                             <div className="text-sm text-gray-500 ml-6">{task.assignedUserEmail}</div>
                           </div>
+                          <button
+                            onClick={() => handleRemoveReviewer(task.assignedUserEmail)}
+                            className="ml-2 px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+                            title="서명자 제거"
+                          >
+                            제거
+                          </button>
                         </div>
                       </div>
                     ))

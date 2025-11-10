@@ -90,16 +90,33 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     }
 
     if (document.status === 'REVIEWING') {
+      // 서명 진행 상황 계산
+      const totalReviewers = document.tasks?.filter(task => task.role === 'REVIEWER').length || 0;
+      const signedCount = document.data?.coordinateFields?.filter(
+        (field: any) => 
+          field.type === 'reviewer_signature' &&
+          field.value && 
+          field.value !== null && 
+          field.value !== ''
+      ).length || 0;
+
       return (
-        <Link
-          to={`/documents/${document.id}/review`}
-          className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center"
-        >
-          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-          </svg>
-          검토
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/documents/${document.id}/review`}
+            className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium flex items-center"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            검토
+          </Link>
+          {totalReviewers > 0 && (
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              {signedCount}/{totalReviewers} 서명
+            </span>
+          )}
+        </div>
       );
     }
 
