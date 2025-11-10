@@ -8,6 +8,7 @@ import { API_BASE_URL } from '../config/api';
 import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
+import { getReviewerSignatureFields, hasReviewerSigned } from '../utils/reviewerSignatureUtils';
 
 interface RejectModalProps {
   isOpen: boolean;
@@ -141,16 +142,11 @@ const DocumentReview: React.FC = () => {
   // 현재 사용자가 이미 서명했는지 확인
   const hasCurrentUserSigned = () => {
     if (!currentDocument || !user) return false;
-    
-    // coordinateFields에서 현재 사용자의 reviewer_signature 필드 확인
-    return currentDocument.data?.coordinateFields?.some(
-      (field: any) => 
-        field.type === 'reviewer_signature' &&
-        field.reviewerEmail === user.email &&
-        field.value && 
-        field.value !== null && 
-        field.value !== ''
-    ) || false;
+
+    return hasReviewerSigned(
+      currentDocument.data?.coordinateFields || [],
+      user.email
+    );
   };
 
   // 검토 가능한 상태인지 확인 (서명하지 않은 검토자만 가능)
@@ -186,8 +182,7 @@ const DocumentReview: React.FC = () => {
       });
 
       const requestBody = {
-        signatureData,
-        reviewerEmail: user.email
+        signatureData
       };
 
       console.log('📤 요청 본문:', requestBody);
@@ -206,13 +201,20 @@ const DocumentReview: React.FC = () => {
       console.log('✅ 응답 성공:', response.data);
 
       // 응답에서 직접 서명 데이터 확인
+      const responseHasSignature = response.data?.data?.coordinateFields?.some(
+        (field: any) =>
+          field.type === 'reviewer_signature' &&
+          field.reviewerEmail === user.email &&
+          field.value
+      );
+
       console.log('🔍 응답에서 서명 데이터 확인:', {
         documentId: response.data.id,
         documentStatus: response.data.status,
-        signatureFields: response.data.data?.signatureFields,
-        signatures: response.data.data?.signatures,
-        hasSignatureData: !!response.data.data?.signatures?.[user.email],
-        allSignatures: response.data.data?.signatures
+        reviewerSignatureFields: response.data.data?.coordinateFields?.filter(
+          (field: any) => field.type === 'reviewer_signature'
+        ) || [],
+        hasSignatureData: responseHasSignature
       });
 
       // 서명 모달 닫기
@@ -221,13 +223,20 @@ const DocumentReview: React.FC = () => {
       // 서명 저장 후 문서를 다시 로드하여 서명이 표시되도록 함
       const updatedDocument = await getDocument(Number(id));
 
+      const reloadedHasSignature = updatedDocument?.data?.coordinateFields?.some(
+        (field: any) =>
+          field.type === 'reviewer_signature' &&
+          field.reviewerEmail === user.email &&
+          field.value
+      );
+
       console.log('🔄 문서 재로드 후 서명 데이터 확인 (직접):', {
         documentId: updatedDocument?.id,
         documentStatus: updatedDocument?.status,
-        signatureFields: updatedDocument?.data?.signatureFields,
-        signatures: updatedDocument?.data?.signatures,
-        hasSignatureData: !!updatedDocument?.data?.signatures?.[user.email],
-        allSignatures: updatedDocument?.data?.signatures
+        reviewerSignatureFields: updatedDocument?.data?.coordinateFields?.filter(
+          (field: any) => field.type === 'reviewer_signature'
+        ) || [],
+        hasSignatureData: reloadedHasSignature
       });
 
       // 문서 상태에 따라 메시지 표시
@@ -719,42 +728,45 @@ const DocumentReview: React.FC = () => {
 
               {/* 기존 서명 필드 렌더링 - 현재 페이지만 표시 */}
               {(() => {
-                const existingSignatureFields = currentDocument.data?.signatureFields || [];
-                const signatures = currentDocument.data?.signatures || {};
+                const reviewerSignatureFields = getReviewerSignatureFields(
+                  currentDocument.data?.coordinateFields || []
+                );
 
-                return existingSignatureFields
+                return reviewerSignatureFields
                   .filter((field: any) => !field.page || field.page === currentPage)
                   .map((field: any) => {
-                  const signatureData = signatures[field.reviewerEmail];
-                  const isMySignature = field.reviewerEmail === user?.email;
+                    const signatureData = field.signatureData || field.value || null;
+                    const isMySignature =
+                      (field.reviewerEmail || '').toLowerCase() ===
+                      (user?.email || '').toLowerCase();
 
-                  return (
-                    <div
-                      key={`existing-signature-${field.id}`}
-                      className={`absolute border-2 flex flex-col justify-center items-center p-1 ${
-                        isMySignature ? 'border-red-500 bg-red-100 bg-opacity-30' : 'border-green-500'
-                      }`}
-                      style={{
-                        left: `${field.x}px`,
-                        top: `${field.y}px`,
-                        width: `${field.width}px`,
-                        height: `${field.height}px`,
-                      }}
-                    >
-                      {signatureData ? (
-                        <img
-                          src={signatureData}
-                          alt={`${field.reviewerName} 서명`}
-                          className="max-w-full max-h-full object-contain"
-                        />
-                      ) : (
-                        <div className="text-sm font-bold text-center text-black">
-                          {field.reviewerName} 서명
-                        </div>
-                      )}
-                    </div>
-                  );
-                });
+                    return (
+                      <div
+                        key={`existing-signature-${field.id}`}
+                        className={`absolute border-2 flex flex-col justify-center items-center p-1 ${
+                          isMySignature ? 'border-red-500 bg-red-100 bg-opacity-30' : 'border-green-500'
+                        }`}
+                        style={{
+                          left: `${field.x}px`,
+                          top: `${field.y}px`,
+                          width: `${field.width}px`,
+                          height: `${field.height}px`,
+                        }}
+                      >
+                        {signatureData ? (
+                          <img
+                            src={signatureData}
+                            alt={`${field.reviewerName || field.reviewerEmail} 서명`}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        ) : (
+                          <div className="text-sm font-bold text-center text-black">
+                            {field.reviewerName || '서명'} 서명
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
               })()}
             </div>
           </div>
