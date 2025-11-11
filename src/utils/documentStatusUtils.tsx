@@ -5,6 +5,7 @@ export interface DocumentStatus {
   EDITING: string;
   READY_FOR_REVIEW: string;
   REVIEWING: string;
+  SIGNING: string;
   COMPLETED: string;
   REJECTED: string;
 }
@@ -20,6 +21,7 @@ export const DOCUMENT_STATUS: DocumentStatus = {
   EDITING: 'EDITING',
   READY_FOR_REVIEW: 'READY_FOR_REVIEW',
   REVIEWING: 'REVIEWING',
+  SIGNING: 'SIGNING',
   COMPLETED: 'COMPLETED',
   REJECTED: 'REJECTED'
 };
@@ -33,17 +35,22 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
   [DOCUMENT_STATUS.EDITING]: {
     color: 'bg-blue-100 text-blue-800',
     text: '작성중',
-    description: '현재 문서를 편집하고 있습니다'
+    description: '현재 문서를 작성하고 있습니다'
   },
   [DOCUMENT_STATUS.READY_FOR_REVIEW]: {
-    color: 'bg-orange-100 text-orange-800',
+    color: 'bg-purple-100 text-purple-800',
     text: '서명자 지정',
-    description: '서명자 지정을 기다리고 있습니다'
+    description: '검토자 지정을 기다리고 있습니다'
   },
   [DOCUMENT_STATUS.REVIEWING]: {
     color: 'bg-yellow-100 text-yellow-800',
     text: '검토중',
-    description: '서명자가 문서를 검토하고 있습니다'
+    description: '검토자가 문서를 검토하고 있습니다'
+  },
+  [DOCUMENT_STATUS.SIGNING]: {
+    color: 'bg-orange-100 text-orange-800',
+    text: '서명중',
+    description: '서명자가 문서에 서명하고 있습니다'
   },
   [DOCUMENT_STATUS.COMPLETED]: {
     color: 'bg-green-100 text-green-800',

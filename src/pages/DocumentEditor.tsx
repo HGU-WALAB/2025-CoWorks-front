@@ -537,7 +537,7 @@ const DocumentEditor: React.FC = () => {
     setShowCompleteModal(true);
   }, [id, currentDocument, validateRequiredFields]);
 
-  // 편집 완료 확인 함수
+  // 작성 완료 확인 함수
   const confirmCompleteEditing = useCallback(async () => {
     if (!id) return;
 
@@ -556,10 +556,10 @@ const DocumentEditor: React.FC = () => {
         );
 
         if (hasAssignReviewerPermission) {
-          alert('편집이 완료되었습니다. 서명자 지정 단계로 이동합니다.');
+          alert('문서 작성이 완료되었습니다. 서명자 지정 단계로 이동합니다.');
           navigate(`/documents/${id}/signer-assignment`);
         } else {
-          alert('편집이 완료되었습니다. 생성자 또는 권한이 있는 작성자가 서명자를 지정할 수 있습니다.');
+          alert('작성이 완료되었습니다. 생성자 또는 권한이 있는 작성자가 서명자를 지정할 수 있습니다.');
           navigate('/documents');
         }
       }
@@ -1670,7 +1670,7 @@ const DocumentEditor: React.FC = () => {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                편집완료
+                작성완료
               </>
             )}
           </button>
@@ -2240,10 +2240,10 @@ const DocumentEditor: React.FC = () => {
             
             <div className="space-y-4">
               <p className="text-gray-600">
-                문서 편집을 완료하시겠습니까?
+                문서 작성을 완료하시겠습니까?
               </p>
               <p className="text-sm text-amber-600">
-                ⚠️ 편집 완료 후에는 문서를 수정할 수 없으며, 서명자 지정 단계로 이동합니다.
+                ⚠️ 작성 완료 후에는 문서를 수정할 수 없으며, 서명자 지정 단계로 이동합니다.
               </p>
             </div>
 
