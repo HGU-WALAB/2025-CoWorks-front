@@ -79,6 +79,10 @@ export const getRoleAssignmentMessageShort = (
     label = '작성자 지정';
   } else if (document.status === 'REVIEWING') {
     targetRole = 'REVIEWER';
+    label = '검토자 지정';
+  }
+  else if (document.status === 'SIGNING') {
+    targetRole = 'SIGNER';
     label = '서명자 지정';
   } else {
     // 다른 상태의 경우 표시하지 않음

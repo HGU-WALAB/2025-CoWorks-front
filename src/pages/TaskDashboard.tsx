@@ -387,7 +387,7 @@ const TaskDashboard: React.FC = () => {
                   {/* 역할 지정 시간 */}
                   {roleAssignmentInfo && (
                     <div className={`flex items-center text-sm px-3 py-2 rounded-md ${
-                      doc.status === 'REVIEWING' 
+                      doc.status === 'SIGNING' 
                         ? 'text-orange-700 bg-orange-50' 
                         : 'text-blue-700 bg-blue-50'
                     }`}>
