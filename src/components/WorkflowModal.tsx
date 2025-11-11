@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, DocumentStatusLog } from '../types/document';
+import { Document, DocumentStatusLog, TaskInfo } from '../types/document';
 
 interface WorkflowModalProps {
   isOpen: boolean;
@@ -17,16 +17,16 @@ const getWorkflowSteps = () => {
       roles: ['EDITOR'] // 이 단계에 해당하는 역할
     },
     { 
-      key: 'READY_FOR_REVIEW', 
-      label: '서명자 지정', 
-      description: '서명자 지정 및 설정',
-      roles: ['EDITOR'] // 작성자가 서명자를 지정
-    },
-    { 
       key: 'REVIEWING', 
       label: '검토중',
-      description: '서명자가 문서 검토',
-      roles: ['REVIEWER'] // 서명자/서명자
+      description: '검토자가 문서 검토',
+      roles: ['REVIEWER'] // 검토자
+    },
+    { 
+      key: 'SIGNING', 
+      label: '서명중',
+      description: '서명자가 문서 서명',
+      roles: ['SIGNER'] // 서명자
     },
     { 
       key: 'COMPLETED', 
@@ -63,7 +63,7 @@ const getStatusCompletionTime = (statusLogs: DocumentStatusLog[] | undefined, st
 };
 
 // 해당 단계의 담당자들을 가져오는 함수
-const getAssignedUsers = (tasks: any[] | undefined, roles: string[]) => {
+const getAssignedUsers = (tasks: TaskInfo[] | undefined, roles: string[]) => {
   if (!tasks || roles.length === 0) return [];
   
   return tasks.filter(task => roles.includes(task.role));
@@ -217,9 +217,29 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                   </div>
                 ))}
 
-                {/* 서명자/서명자 */}
+                {/* 검토자 */}
                 {document.tasks.filter(task => task.role === 'REVIEWER').map((task, idx) => (
-                  <div key={`reviewer-${idx}`} className="bg-green-50 rounded-lg p-4">
+                  <div key={`reviewer-${idx}`} className="bg-yellow-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="font-medium text-gray-900">{task.assignedUserName}</div>
+                        <div className="text-sm text-gray-600">{task.assignedUserEmail}</div>
+                      </div>
+                      <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded-full">
+                        검토자
+                      </span>
+                    </div>
+                    {task.lastViewedAt && (
+                      <div className="text-xs text-gray-500 mt-2">
+                        최근 확인: {new Date(task.lastViewedAt).toLocaleString('ko-KR')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* 서명자 */}
+                {document.tasks.filter(task => task.role === 'SIGNER').map((task, idx) => (
+                  <div key={`signer-${idx}`} className="bg-green-50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <div className="font-medium text-gray-900">{task.assignedUserName}</div>
