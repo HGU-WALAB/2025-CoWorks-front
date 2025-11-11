@@ -4,7 +4,6 @@ import { useDocumentStore, type Document } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import WorkflowModal from '../components/WorkflowModal';
-import DocumentDuplicateModal from '../components/DocumentDuplicateModal';
 import DocumentListItem from '../components/DocumentListItem';
 // import { handlePrint as printDocument, type PrintOptions } from '../utils/printUtils';
 import { getStatusText } from '../utils/documentStatusUtils';
@@ -25,8 +24,6 @@ const DocumentList: React.FC = () => {
   // const [printingDocumentId, setPrintingDocumentId] = useState<number | null>(null);
   const [showWorkflowModal, setShowWorkflowModal] = useState(false);
   const [selectedWorkflowDocument, setSelectedWorkflowDocument] = useState<Document | null>(null);
-  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-  const [selectedDuplicateDocument, setSelectedDuplicateDocument] = useState<Document | null>(null);
 
   // 필터링 상태
   const [searchTerm, setSearchTerm] = useState('');
@@ -193,12 +190,6 @@ const DocumentList: React.FC = () => {
     setShowWorkflowModal(true);
   };
 
-  // 문서 복사 모달 핸들러
-  const handleDuplicate = (document: Document) => {
-    setSelectedDuplicateDocument(document);
-    setShowDuplicateModal(true);
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -349,7 +340,7 @@ const DocumentList: React.FC = () => {
             >
               <option value="all">전체</option>
               <option value="DRAFT">초안</option>
-              <option value="EDITING">편집중</option>
+              <option value="EDITING">작성중</option>
               <option value="READY_FOR_REVIEW">서명자 지정</option>
               <option value="REVIEWING">검토중</option>
               <option value="COMPLETED">완료</option>
@@ -418,7 +409,6 @@ const DocumentList: React.FC = () => {
               document={document}
               onPreview={handlePreview}
               onWorkflow={handleWorkflow}
-              onDuplicate={handleDuplicate}
               showAssigneeInfo={true}
             />
           ))}
@@ -466,20 +456,6 @@ const DocumentList: React.FC = () => {
         onClose={() => setShowWorkflowModal(false)}
         document={selectedWorkflowDocument}
       />
-
-      {/* 문서 복사 모달 */}
-      {showDuplicateModal && selectedDuplicateDocument && (
-        <DocumentDuplicateModal
-          isOpen={showDuplicateModal}
-          onClose={() => {
-            setShowDuplicateModal(false);
-            setSelectedDuplicateDocument(null);
-            // 문서 목록 새로고침
-            fetchDocuments();
-          }}
-          sourceDocument={selectedDuplicateDocument}
-        />
-      )}
 
       {/* 미리보기 모달 */}
       {showPreview && previewDocument && previewDocument.template?.pdfImagePath && (
