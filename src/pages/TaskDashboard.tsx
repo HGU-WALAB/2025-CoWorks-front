@@ -10,6 +10,8 @@ const TaskDashboard: React.FC = () => {
   const location = useLocation();
 
   const currentUserEmail = user?.email || '';
+  const userPosition = (user?.position || '').toLowerCase();
+  const showReviewingCard = userPosition === '기타' || userPosition === '교직원';
 
   useEffect(() => {
     if (isAuthenticated && currentUserEmail) {
@@ -266,6 +268,15 @@ const TaskDashboard: React.FC = () => {
                     label: '작성중'
                   };
                   break;
+                case 'READY_FOR_REVIEW':
+                  baseInfo = {
+                    color: 'purple',
+                    bgColor: 'bg-purple-50',
+                    textColor: 'text-purple-700',
+                    borderColor: 'border-purple-200',
+                    label: '서명자 지정하기'
+                  };
+                  break;
                 case 'REVIEWING':
                   baseInfo = {
                     color: 'yellow',
@@ -397,7 +408,15 @@ const TaskDashboard: React.FC = () => {
 
                 {/* 카드 푸터 - 액션 버튼 (하단 고정) */}
                 <div className="px-4 pb-4 mt-auto">
-                  {doc.status === 'REVIEWING' ? (
+                  {doc.status === 'READY_FOR_REVIEW' ? (
+                    <Link
+                      to={`/documents/${doc.id}/signer-assignment`}
+                      className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-md hover:shadow-lg transition-all duration-200"
+                    >
+                      서명자 지정하기
+                    </Link>
+                  ) :
+                  doc.status === 'REVIEWING' ? (
                     <Link
                       to={`/documents/${doc.id}/review`}
                       className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 shadow-md hover:shadow-lg transition-all duration-200"
@@ -448,7 +467,7 @@ const TaskDashboard: React.FC = () => {
           </div>
 
           {/* 통계 카드 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className={`grid grid-cols-1 md:grid-cols-2 ${showReviewingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
            {/* 1. 작성 중인 문서 - 파란색 글씨 */}
            <Link to="/documents?status=EDITING" className="block group">
              <div className="bg-gray-50 rounded-xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
@@ -468,24 +487,26 @@ const TaskDashboard: React.FC = () => {
              </div>
            </Link>
 
-           {/* 2. 검토 중인 문서 - 노란색 글씨 */}
-           <Link to="/documents?status=REVIEWING" className="block group">
-             <div className="bg-gray-50 rounded-xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
-               <div className="absolute top-0 right-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -mr-12 -mt-12"></div>
-               <div className="absolute bottom-0 left-0 w-20 h-20 bg-gray-100 opacity-50 rounded-full -ml-10 -mb-10"></div>
-               
-              <div className="relative">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xl font-medium text-yellow-600">
-                    검토중
-                  </p>
-                  <span className="text-yellow-600 text-2xl opacity-70 group-hover:opacity-100">&gt;</span>
+           {/* 2. 검토 중인 문서 - 노란색 글씨 (관리자/교직원만 표시) */}
+           {showReviewingCard && (
+             <Link to="/documents?status=REVIEWING" className="block group">
+               <div className="bg-gray-50 rounded-xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
+                 <div className="absolute top-0 right-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -mr-12 -mt-12"></div>
+                 <div className="absolute bottom-0 left-0 w-20 h-20 bg-gray-100 opacity-50 rounded-full -ml-10 -mb-10"></div>
+                 
+                <div className="relative">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xl font-medium text-yellow-600">
+                      검토중
+                    </p>
+                    <span className="text-yellow-600 text-2xl opacity-70 group-hover:opacity-100">&gt;</span>
+                  </div>
+                  <p className="text-3xl font-bold text-yellow-600 mb-2">{tasks.reviewingTasks.length}</p>
+                  <div className="h-px bg-gray-300 my-2"></div>
                 </div>
-                <p className="text-3xl font-bold text-yellow-600 mb-2">{tasks.reviewingTasks.length}</p>
-                <div className="h-px bg-gray-300 my-2"></div>
-              </div>
-             </div>
-           </Link>
+               </div>
+             </Link>
+           )}
 
            {/* 3. 서명 중인 문서 - 주황색 글씨 */}
            <Link to="/documents?status=SIGNING" className="block group">
