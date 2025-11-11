@@ -27,7 +27,7 @@ export interface SignatureField {
 
 export interface DocumentStatusLog {
   id: number;
-  status: 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
+  status: 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'SIGNING' | 'COMPLETED' | 'REJECTED';
   timestamp: string;
   changedByEmail?: string;
   changedByName?: string;
@@ -69,7 +69,7 @@ export interface Document {
   title: string;
   templateName?: string;
   data?: DocumentData;
-  status: 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
+  status: 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'SIGNING' | 'COMPLETED' | 'REJECTED';
   createdAt: string;
   updatedAt: string;
   deadline?: string;
