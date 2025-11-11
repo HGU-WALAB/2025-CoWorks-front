@@ -300,6 +300,22 @@ const TemplateUpload: React.FC = () => {
       return;
     }
 
+    // 서명자 서명 필드 검증 (reviewer_signature 제외한 signer_signature 필드)
+    const signerSignatureFields = fields.filter(field => 
+      field.type === 'signer_signature' || field.type === 'reviewer_signature'
+    );
+    
+    if (signerSignatureFields.length === 0) {
+      alert('⚠️ 서명자 서명 필드가 없습니다.\n\n템플릿에는 최소 1개 이상의 서명자 서명 필드가 필요합니다.\n\n필드 추가 방법:\n1. PDF 영역을 드래그하여 선택\n2. "필드 추가" 모달에서 "서명자 서명" 또는 "검토자 서명" 선택\n3. 필드 라벨 입력 후 추가');
+      setError('서명자 서명 필드를 최소 1개 이상 추가해주세요.');
+      return;
+    }
+    
+    console.log('✅ 서명자 서명 필드 검증 통과:', {
+      signerSignatureFieldsCount: signerSignatureFields.length,
+      fields: signerSignatureFields.map(f => ({ id: f.id, label: f.label, type: f.type }))
+    });
+
     setUploading(true);
     setError(null);
 
@@ -668,6 +684,13 @@ const TemplateUpload: React.FC = () => {
     );
   }
 
+  // 서명자 서명 필드 검증
+  const signerSignatureFields = fields.filter(field => 
+    field.type === 'signer_signature' || field.type === 'reviewer_signature'
+  );
+  const hasSignerSignatureField = signerSignatureFields.length > 0;
+  const canSave = !uploading && hasSignerSignatureField;
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="max-w-7xl mx-auto px-4 py-6 flex-1 flex flex-col">
@@ -682,13 +705,25 @@ const TemplateUpload: React.FC = () => {
             >
               뒤로
             </button>
-            <button
-              onClick={handleSaveTemplate}
-              disabled={uploading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-            >
-              {uploading ? '저장 중...' : '저장'}
-            </button>
+            <div className="relative group">
+              <button
+                onClick={handleSaveTemplate}
+                disabled={!canSave}
+                className={`px-6 py-2 rounded-lg transition-colors ${
+                  canSave 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                title={!hasSignerSignatureField ? '서명자 서명 필드를 추가해주세요' : ''}
+              >
+                {uploading ? '저장 중...' : '저장'}
+              </button>
+              {!hasSignerSignatureField && (
+                <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
+                  ⚠️ 서명자 서명 필드를 최소 1개 이상 추가해주세요
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

@@ -2,19 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
+import { SignatureModal } from '../components/SignatureModal';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import { API_BASE_URL } from '../config/api';
 import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
-import { CoordinateField, TaskInfo } from '../types/document';
-
-type SignatureCoordinateField = CoordinateField & {
-  signerEmail?: string;
-  signerName?: string;
-  reviewerEmail?: string;
-  reviewerName?: string;
-};
+import { refreshDocumentsAndUser } from '../utils/documentRefreshHelpers';
 
 interface RejectModalProps {
   isOpen: boolean;
@@ -77,28 +71,22 @@ const RejectModal: React.FC<RejectModalProps> = ({ isOpen, onClose, onReject }) 
 const PDF_WIDTH = 1240;
 const PDF_HEIGHT = 1754;
 
-const DocumentReview: React.FC = () => {
+const DocumentSign: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentDocument, loading, error, getDocument } = useDocumentStore();
   const { user, token, isAuthenticated } = useAuthStore();
 
   // 모달 상태
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   
   // 미리보기 모달 상태
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const [pdfScale, setPdfScale] = useState(1);
-
-  // 문서별 서명 필드를 로컬 스토리지에서 로드 (제거됨 - 서명자 지정은 별도 페이지에서 처리)
-
-  // 문서 로드 시 기존 서명 필드는 그대로 두고, 새로운 필드만 추가 가능하도록 설정 (제거됨)
-
-  // 서명 필드 변경 시 로컬 스토리지에 저장 (제거됨)
-
-  // 서명 필드 관련 함수들 (제거됨 - 서명자 지정은 별도 페이지에서 처리)
 
   // PDF 페이지 관리 훅 사용
   const {
@@ -111,34 +99,9 @@ const DocumentReview: React.FC = () => {
     hasPreviousPage
   } = usePdfPages(currentDocument?.template, []);
 
-  const signerTasks = React.useMemo(() => {
-    return (currentDocument?.tasks?.filter((task) => task.role === 'SIGNER') ?? []) as TaskInfo[];
-  }, [currentDocument?.tasks]);
-
-  const signerInfos = React.useMemo(() => {
-    const coordinateFields = (currentDocument?.data?.coordinateFields ?? []) as SignatureCoordinateField[];
-
-    return signerTasks.map((signer) => {
-      const relatedField = coordinateFields.find((field) =>
-        (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
-        (field.signerEmail === signer.assignedUserEmail || field.reviewerEmail === signer.assignedUserEmail)
-      );
-
-      const hasSigned = typeof relatedField?.value === 'string'
-        ? relatedField.value.trim().length > 0
-        : Boolean(relatedField?.value);
-
-      return {
-        task: signer,
-        hasSigned,
-        relatedField,
-      };
-    });
-  }, [signerTasks, currentDocument?.data?.coordinateFields]);
-
   // 디버깅용 로그
   useEffect(() => {
-    console.log('🔍 DocumentReview 인증 상태:', {
+    console.log('🔍 DocumentSign 인증 상태:', {
       user: user?.email,
       token: token ? `${token.substring(0, 20)}...` : 'null',
       isAuthenticated,
@@ -178,7 +141,17 @@ const DocumentReview: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      getDocument(parseInt(id));
+      console.log('🔍 DocumentSign: 문서 로드 시작, ID:', id);
+      getDocument(parseInt(id)).then((doc) => {
+        console.log('🔍 DocumentSign: 문서 로드 완료:', {
+          documentId: doc?.id,
+          status: doc?.status,
+          coordinateFieldsCount: doc?.data?.coordinateFields?.length || 0,
+          signerSignatureFields: doc?.data?.coordinateFields?.filter(
+            (field: any) => field.type === 'signer_signature' || field.type === 'reviewer_signature'
+          ) || []
+        });
+      });
     }
   }, [id, getDocument]);
 
@@ -207,48 +180,73 @@ const DocumentReview: React.FC = () => {
     );
   }
 
-  // 검토자 권한 확인
-  const isReviewer = () => {
+  // 서명자 권한 확인
+  const isSigner = () => {
     if (!currentDocument || !user) return false;
     return currentDocument.tasks?.some(task =>
-      task.role === 'REVIEWER' &&
+      task.role === 'SIGNER' &&
       task.assignedUserEmail === user.email
     );
   };
 
-  // 검토 가능한 상태인지 확인
-  const canReview = () => {
+  // 현재 사용자가 이미 서명했는지 확인
+  const hasCurrentUserSigned = () => {
     if (!currentDocument || !user) return false;
-    return isReviewer() && currentDocument.status === 'REVIEWING';
+
+    return currentDocument.data?.coordinateFields?.some(
+      (field) => {
+        const signerEmail = (field as any).signerEmail;
+        const reviewerEmail = (field as any).reviewerEmail;
+        return (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+        (signerEmail === user.email || reviewerEmail === user.email) &&
+        field.value &&
+        field.value !== null &&
+        field.value !== '';
+      }
+    ) || false;
   };
 
-  // 승인 핸들러
-  const handleApprove = async () => {
-    if (!canReview()) {
-      alert('검토 권한이 없거나 검토 가능한 상태가 아닙니다.');
+  // 서명 가능한 상태인지 확인 (서명하지 않은 서명자만 가능)
+  const canSign = () => {
+    if (!currentDocument || !user) return false;
+    return isSigner() && 
+           currentDocument.status === 'SIGNING' && 
+           !hasCurrentUserSigned(); // 이미 서명한 경우 서명 불가
+  };
+
+  // 서명 핸들러
+  const handleSign = () => {
+    if (!canSign()) {
+      alert('서명 권한이 없거나 서명 가능한 상태가 아닙니다.');
       return;
     }
+    setShowSignatureModal(true);
+  };
 
+  // 서명 저장 핸들러
+  const handleSignatureSave = async (signatureData: string) => {
     if (!currentDocument || !user) return;
-
-    if (!confirm('이 문서를 승인하시겠습니까?\n승인 후, 지정된 서명자에게 서명 요청이 전송됩니다.')) {
-      return;
-    }
 
     try {
       const { token } = useAuthStore.getState();
 
-      console.log('📝 검토 승인 시도:', {
+      console.log('📝 서명 저장 시도:', {
         documentId: currentDocument.id,
         documentStatus: currentDocument.status,
-        userEmail: user.email
+        userEmail: user.email,
+        signatureDataLength: signatureData?.length,
+        token: token ? '있음' : '없음'
       });
 
+      const requestBody = {
+        signatureData
+      };
+
+      console.log('📤 요청 본문:', requestBody);
+
       const response = await axios.post(
-        `${API_BASE_URL}/documents/${currentDocument.id}/review/approve`,
-        {
-          comment: '검토 승인'
-        },
+        `${API_BASE_URL}/documents/${currentDocument.id}/approve`,
+        requestBody,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -257,34 +255,74 @@ const DocumentReview: React.FC = () => {
         }
       );
 
-      console.log('✅ 검토 승인 성공:', response.data);
+      console.log('✅ 응답 성공:', response.data);
 
-      // 문서 재로드
-      await getDocument(Number(id));
+      // 응답에서 직접 서명 데이터 확인
+      const responseHasSignature = response.data?.data?.coordinateFields?.some(
+        (field: any) => {
+          const signerEmail = field.signerEmail;
+          const reviewerEmail = field.reviewerEmail;
+          return (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+          (signerEmail === user.email || reviewerEmail === user.email) &&
+          field.value;
+        }
+      );
 
-      alert('✅ 검토가 승인되었습니다. 지정된 서명자에게 서명 요청이 전송되었습니다.');
-      
-      // 문서 목록으로 이동
-      setTimeout(() => {
-        navigate('/documents');
-      }, 500);
+      console.log('🔍 응답에서 서명 데이터 확인:', {
+        documentId: response.data.id,
+        documentStatus: response.data.status,
+        signerSignatureFields: response.data.data?.coordinateFields?.filter(
+          (field: any) => field.type === 'signer_signature' || field.type === 'reviewer_signature'
+        ) || [],
+        hasSignatureData: responseHasSignature
+      });
 
-  } catch (error) {
-    console.error('❌ 검토 승인 실패:', error);
-    if (axios.isAxiosError(error)) {
-      console.error('❌ 에러 응답:', error.response?.data);
-      console.error('❌ 에러 상태:', error.response?.status);
-      alert(`검토 승인 처리에 실패했습니다: ${error.response?.data?.error || error.message}`);
-    } else {
-      alert('검토 승인 처리 중 오류가 발생했습니다.');
+      // 서명 모달 닫기
+      setShowSignatureModal(false);
+
+      // 서명 저장 후 문서를 다시 로드하여 서명이 표시되도록 함
+      const updatedDocument = await getDocument(Number(id));
+
+      const reloadedHasSignature = updatedDocument?.data?.coordinateFields?.some(
+        (field: any) => {
+          const signerEmail = field.signerEmail;
+          const reviewerEmail = field.reviewerEmail;
+          return (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+          (signerEmail === user.email || reviewerEmail === user.email) &&
+          field.value;
+        }
+      );
+
+      console.log('🔄 문서 재로드 후 서명 데이터 확인 (직접):', {
+        documentId: updatedDocument?.id,
+        documentStatus: updatedDocument?.status,
+        signerSignatureFields: updatedDocument?.data?.coordinateFields?.filter(
+          (field: any) => field.type === 'signer_signature' || field.type === 'reviewer_signature'
+        ) || [],
+        hasSignatureData: reloadedHasSignature
+      });
+
+      // 문서 상태에 따라 메시지 표시
+      setIsRedirecting(true);
+      await refreshDocumentsAndUser();
+      navigate('/documents');
+
+    } catch (error) {
+      console.error('❌ 서명 실패:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('❌ 에러 응답:', error.response?.data);
+        console.error('❌ 에러 상태:', error.response?.status);
+        alert(`서명 처리에 실패했습니다: ${error.response?.data?.error || error.message}`);
+      } else {
+        alert('서명 처리 중 오류가 발생했습니다.');
+      }
     }
-  }
   };
 
   // 반려 핸들러
   const handleReject = () => {
-    if (!canReview()) {
-      alert('검토 권한이 없거나 검토 가능한 상태가 아닙니다.');
+    if (!canSign()) {
+      alert('서명 권한이 없거나 서명 가능한 상태가 아닙니다.');
       return;
     }
     setShowRejectModal(true);
@@ -298,7 +336,7 @@ const DocumentReview: React.FC = () => {
       const { token } = useAuthStore.getState();
 
       await axios.post(
-        `${API_BASE_URL}/documents/${currentDocument.id}/review/reject`,
+        `${API_BASE_URL}/documents/${currentDocument.id}/reject`,
         {
           reason
         },
@@ -324,7 +362,7 @@ const DocumentReview: React.FC = () => {
   // 미리보기 핸들러
   const handlePreview = () => {
     if (!currentDocument) {
-      console.warn('⚠️ DocumentReview - currentDocument가 없습니다');
+      console.warn('⚠️ DocumentSign - currentDocument가 없습니다');
       return;
     }
     setShowPreviewModal(true);
@@ -349,10 +387,10 @@ const DocumentReview: React.FC = () => {
     return baseFontSize;
   };
 
-  if (loading) {
+  if (loading || isRedirecting) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">로딩 중...</div>
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500"></div>
       </div>
     );
   }
@@ -373,18 +411,43 @@ const DocumentReview: React.FC = () => {
     );
   }
 
-  if (!isReviewer()) {
+  if (!isSigner()) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-center items-center h-64">
           <div className="text-center">
-            <div className="text-red-500 text-lg mb-4">이 문서의 검토 권한이 없습니다.</div>
+            <div className="text-red-500 text-lg mb-4">이 문서의 서명 권한이 없습니다.</div>
             <button
               onClick={() => navigate(-1)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               뒤로가기
             </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 상태 확인 (SIGNING 상태가 아니면 접근 불가)
+  if (currentDocument.status !== 'SIGNING') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="text-yellow-600 text-2xl mr-3">⚠️</div>
+            <div>
+              <h3 className="font-bold text-yellow-800 mb-2">잘못된 문서 상태</h3>
+              <p className="text-yellow-700 mb-4">
+                   현재 문서는 서명 단계가 아닙니다. (현재 상태: {currentDocument.status})
+              </p>
+              <button
+                onClick={() => navigate('/documents')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                문서 목록으로 돌아가기
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -400,27 +463,27 @@ const DocumentReview: React.FC = () => {
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold text-gray-900">
-                {currentDocument.title || currentDocument.templateName} - 검토
+                {currentDocument.title || currentDocument.templateName} - 서명
               </h1>
-              <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.REVIEWING} size="md" isRejected={currentDocument.isRejected} />
+              <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.SIGNING} size="md" isRejected={currentDocument.isRejected} />
             </div>
             <p className="text-sm text-gray-500 mt-1">
               생성일: {new Date(currentDocument.createdAt).toLocaleDateString()}
             </p>
           </div>
 
-          {/* 중앙: 검토 액션 버튼들 */}
+          {/* 중앙: 서명 액션 버튼들 */}
           <div className="flex flex-col gap-2 w-full sm:flex-row sm:flex-wrap sm:items-center sm:justify-center lg:w-auto">
-            {canReview() && (
+            {canSign() && (
               <div className="flex flex-col gap-2 w-full sm:flex-row sm:justify-center">
                 <button
-                  onClick={handleApprove}
+                  onClick={handleSign}
                   className="w-full sm:w-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                   </svg>
-                  승인
+                  서명하기
                 </button>
                 <button
                   onClick={handleReject}
@@ -431,6 +494,17 @@ const DocumentReview: React.FC = () => {
                   </svg>
                   반려
                 </button>
+              </div>
+            )}
+            {/* 이미 서명한 서명자에게 안내 메시지 표시 */}
+            {isSigner() && currentDocument.status === 'SIGNING' && hasCurrentUserSigned() && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-lg w-full sm:w-auto">
+                <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium text-green-800">
+                  서명 완료 - 다른 서명자 대기 중
+                </span>
               </div>
             )}
           </div>
@@ -530,20 +604,6 @@ const DocumentReview: React.FC = () => {
                           height: field.height,
                         });
                         const displayFontSize = responsiveFontSize || field.fontSize || 14;
-                        console.log('🎯 검토 화면 - 필드 렌더링:', {
-                          id: field.id,
-                          label: field.label,
-                          x: field.x,
-                          y: field.y,
-                          width: field.width,
-                          height: field.height,
-                          value: field.value,
-                          hasTableData: !!field.tableData,
-                          tableData: field.tableData,
-                          fieldType: field.type,
-                          fontSize: field.fontSize,
-                          fontFamily: field.fontFamily
-                        });
 
                         // 픽셀값 직접 사용
                         const leftPercent = field.x;
@@ -554,7 +614,7 @@ const DocumentReview: React.FC = () => {
                         // 테이블 필드인지 확인
                         let isTableField = false;
                         let isEditorSignature = false;
-                        let isReviewerSignature = false;
+                        let isSignerSignature = false;
                         let tableInfo = null;
 
                         // 편집자 서명 필드 확인
@@ -562,9 +622,9 @@ const DocumentReview: React.FC = () => {
                           isEditorSignature = true;
                         }
 
-                        // 검토자 서명 필드 확인
-                        if (field.type === 'reviewer_signature') {
-                          isReviewerSignature = true;
+                        // 서명자 서명 필드 확인 (signer_signature 또는 reviewer_signature)
+                        if (field.type === 'signer_signature' || field.type === 'reviewer_signature') {
+                          isSignerSignature = true;
                         }
 
                       // 1. tableData 속성으로 확인
@@ -595,7 +655,7 @@ const DocumentReview: React.FC = () => {
                           key={field.id}
                           className={`absolute border-2 bg-opacity-30 flex flex-col justify-center ${
                             isEditorSignature ? 'bg-green-100 border-green-500' :
-                            isReviewerSignature ? 'bg-red-100 border-red-500' :
+                            isSignerSignature ? 'bg-red-100 border-red-500' :
                             isTableField ? 'bg-purple-100 border-purple-500' : 'bg-blue-100 border-blue-500'
                           }`}
                           style={{
@@ -629,13 +689,13 @@ const DocumentReview: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                          ) : isReviewerSignature ? (
-                            // 검토자 서명 필드 렌더링
+                          ) : isSignerSignature ? (
+                            // 서명자 서명 필드 렌더링
                             <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
                               {field.value && field.value.startsWith('data:image') ? (
                                 <img
                                   src={field.value}
-                                  alt={`${(field as any).reviewerName || '검토자'} 서명`}
+                                  alt={`${(field as any).signerName || (field as any).reviewerName || '서명자'} 서명`}
                                   className="max-w-full h-full object-contain bg-transparent"
                                   style={{
                                     maxWidth: '100%',
@@ -645,8 +705,8 @@ const DocumentReview: React.FC = () => {
                                 />
                               ) : (
                                 <div className="text-xs text-red-700 font-medium text-center">
-                                  {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명
-                                  {(field as any).reviewerEmail === user?.email && (
+                                  {(field as any).signerName || (field as any).reviewerName || (field as any).signerEmail || (field as any).reviewerEmail || '서명자'} 서명
+                                  {(((field as any).signerEmail || (field as any).reviewerEmail) === user?.email) && (
                                     <div className="text-red-500 mt-1">(본인)</div>
                                   )}
                                 </div>
@@ -753,50 +813,69 @@ const DocumentReview: React.FC = () => {
           </div>
         </div>
 
-        {/* 오른쪽 패널 - 검토자 리스트 및 정보 (반응형) */}
+        {/* 오른쪽 패널 - 서명자 리스트 및 정보 (반응형) */}
         <div className="w-full lg:w-80 flex-shrink-0 bg-white border border-gray-200 rounded-lg lg:rounded-none lg:border-l lg:h-[calc(100vh-220px)] lg:overflow-y-auto">
           <div className="p-4 border-b bg-gray-50">
-            <h2 className="font-medium text-gray-900">검토 정보</h2>
+            <h2 className="font-medium text-gray-900">서명 정보</h2>
             <p className="text-sm text-gray-500 mt-1">
-              문서 상태 및 검토자 정보
+              문서 상태 및 서명자 정보
             </p>
           </div>
 
           <div className="p-4 space-y-4">
-            {/* 검토자 목록 */}
+            {/* 서명자 목록 */}
             <div className="border rounded-lg p-3">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">검토자</h3>
+              <h3 className="text-sm font-medium text-gray-900 mb-3">서명자</h3>
               <div className="space-y-2">
                 {currentDocument.tasks && currentDocument.tasks.length > 0 ? (
                   currentDocument.tasks
-                    .filter(task => task.role === 'REVIEWER')
-                    .map((reviewer, index) => {
-                      // 검토자의 경우 단순히 목록만 표시 (검토 완료 여부는 문서 상태로 판단)
-                      const isCurrentUser = reviewer.assignedUserEmail === user?.email;
+                    .filter(task => task.role === 'SIGNER')
+                    .map((signer, index) => {
+                      // 서명 완료 여부 확인
+                      const hasSigned = currentDocument.data?.coordinateFields?.some(
+                        (field) => {
+                          const signerEmail = (field as any).signerEmail;
+                          const reviewerEmail = (field as any).reviewerEmail;
+                          return (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+                          (signerEmail === signer.assignedUserEmail || reviewerEmail === signer.assignedUserEmail) &&
+                          field.value && 
+                          field.value !== null && 
+                          field.value !== '';
+                        }
+                      ) || false;
 
                       return (
                         <div 
                           key={index} 
                           className={`flex items-center space-x-3 p-2 rounded-lg border ${
-                            isCurrentUser
-                              ? 'bg-blue-50 border-blue-300' 
-                              : 'bg-gray-50 border-gray-300'
+                            hasSigned 
+                              ? 'bg-green-50 border-green-300' 
+                              : 'bg-yellow-50 border-yellow-300'
                           }`}
                         >
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${
-                            isCurrentUser ? 'bg-blue-500' : 'bg-gray-500'
+                            hasSigned ? 'bg-green-500' : 'bg-yellow-500'
                           }`}>
-                            {reviewer.assignedUserName ? reviewer.assignedUserName.charAt(0).toUpperCase() : 'R'}
+                            {hasSigned ? (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              signer.assignedUserName ? signer.assignedUserName.charAt(0).toUpperCase() : 'S'
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-gray-900">
-                              {reviewer.assignedUserName || '이름 없음'}
-                              {isCurrentUser && (
-                                <span className="ml-2 text-xs text-blue-600 font-semibold">(본인)</span>
+                              {signer.assignedUserName || '이름 없음'}
+                              {hasSigned && (
+                                <span className="ml-2 text-xs text-green-600 font-semibold">✓ 서명완료</span>
+                              )}
+                              {!hasSigned && (
+                                <span className="ml-2 text-xs text-yellow-600 font-semibold">⏳ 서명대기</span>
                               )}
                             </div>
                             <div className="text-xs text-gray-500 truncate">
-                              {reviewer.assignedUserEmail}
+                              {signer.assignedUserEmail}
                             </div>
                           </div>
                         </div>
@@ -809,79 +888,6 @@ const DocumentReview: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                       </svg>
                     </div>
-                    <p className="text-sm">지정된 검토자가 없습니다.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 서명자 목록 */}
-            <div className="border rounded-lg p-3">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">서명자</h3>
-              <div className="space-y-2">
-                {signerInfos.length > 0 ? (
-                  signerInfos.map(({ task, hasSigned, relatedField }) => {
-                    const displayName =
-                      relatedField?.signerName ||
-                      relatedField?.reviewerName ||
-                      task.assignedUserName ||
-                      task.assignedUserEmail;
-                    const isCurrentUser = task.assignedUserEmail === user?.email;
-
-                    return (
-                      <div
-                        key={task.id}
-                        className={`flex items-center justify-between p-2 rounded-lg border ${
-                          hasSigned ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-3 min-w-0">
-                          <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium ${
-                              hasSigned ? 'bg-green-500' : 'bg-orange-500'
-                            }`}
-                          >
-                            {displayName ? displayName.charAt(0).toUpperCase() : 'S'}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">
-                              {displayName}
-                              {isCurrentUser && (
-                                <span className="ml-2 text-xs text-blue-600 font-semibold">(본인)</span>
-                              )}
-                            </div>
-                            <div className="text-xs text-gray-500 truncate">
-                              {task.assignedUserEmail}
-                            </div>
-                          </div>
-                        </div>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            hasSigned ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                          }`}
-                        >
-                          {hasSigned ? '서명 완료' : '서명 대기'}
-                        </span>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-6 text-gray-500">
-                    <div className="w-12 h-12 mx-auto mb-3 bg-gray-100 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-6 h-6 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
                     <p className="text-sm">지정된 서명자가 없습니다.</p>
                   </div>
                 )}
@@ -891,7 +897,7 @@ const DocumentReview: React.FC = () => {
             {/* 편집자 정보 (참고용) */}
             {currentDocument.tasks && currentDocument.tasks.some(task => task.role === 'EDITOR') && (
               <div className="border rounded-lg p-3">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">편집자</h3>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">작성자</h3>
                 <div className="space-y-2">
                   {currentDocument.tasks
                     .filter(task => task.role === 'EDITOR')
@@ -918,6 +924,16 @@ const DocumentReview: React.FC = () => {
         </div>
       </div>
 
+      {/* 서명 모달 */}
+      {showSignatureModal && (
+        <SignatureModal
+          isOpen={showSignatureModal}
+          onClose={() => setShowSignatureModal(false)}
+          onSave={handleSignatureSave}
+          reviewerName={user?.name || '서명자'}
+        />
+      )}
+
       {/* 반려 모달 */}
       <RejectModal
         isOpen={showRejectModal}
@@ -936,11 +952,15 @@ const DocumentReview: React.FC = () => {
           signatureFields={(() => {
             const docSignatureFields = currentDocument.data?.signatureFields || [];
             const docSignatures = (currentDocument.data?.signatures || {}) as Record<string, string>;
-            return docSignatureFields.map((field) => ({
-              ...field,
-              reviewerName: (field as any).reviewerName || '',
-              signatureData: docSignatures[(field as { reviewerEmail?: string }).reviewerEmail || '']
-            }));
+            return docSignatureFields.map((field) => {
+              const signerEmail = (field as any).signerEmail;
+              const reviewerEmail = (field as any).reviewerEmail;
+              return {
+                ...field,
+                reviewerName: (field as any).reviewerName || (field as any).signerName || '',
+                signatureData: docSignatures[signerEmail || reviewerEmail || '']
+              };
+            });
           })()}
           documentTitle={currentDocument.title || currentDocument.templateName}
         />
@@ -949,4 +969,5 @@ const DocumentReview: React.FC = () => {
   );
 };
 
-export default DocumentReview; 
+export default DocumentSign;
+

@@ -7,6 +7,7 @@ import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 import { API_BASE_URL } from '../config/api';
 import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
+import { refreshDocumentsAndUser } from '../utils/documentRefreshHelpers';
 
 const DocumentSignerAssignment: React.FC = () => {
   const { id } = useParams();
@@ -45,7 +46,7 @@ const DocumentSignerAssignment: React.FC = () => {
   } = usePdfPages(currentDocument?.template, []);
 
   // 템플릿에서 서명자 서명 필드 가져오기
-  const getReviewerSignatureFieldsFromTemplate = () => {
+  const getSignerSignatureFieldsFromTemplate = () => {
     if (!currentDocument?.template?.coordinateFields) return [];
     
     try {
@@ -53,7 +54,7 @@ const DocumentSignerAssignment: React.FC = () => {
         ? JSON.parse(currentDocument.template.coordinateFields)
         : currentDocument.template.coordinateFields;
       
-      return fields.filter((field: any) => field.type === 'reviewer_signature');
+      return fields.filter((field: any) => field.type === 'signer_signature' || field.type === 'reviewer_signature'); // 하위 호환성
     } catch (error) {
       console.error('템플릿 필드 파싱 실패:', error);
       return [];
@@ -130,7 +131,7 @@ const DocumentSignerAssignment: React.FC = () => {
   }, [id, getDocument]);
 
   // 서명자 지정 권한 확인
-  const canAssignReviewer = () => {
+  const canAssignSigner = () => {
     if (!currentDocument || !user) return false;
     return currentDocument.tasks?.some(task =>
       (task.role === 'CREATOR' || (task.role === 'EDITOR')) &&
@@ -139,7 +140,7 @@ const DocumentSignerAssignment: React.FC = () => {
   };
 
   // 서명자 지정 핸들러
-  const handleAssignReviewer = async () => {
+  const handleAssignSigner = async () => {
     if (!selectedReviewer.trim()) {
       alert('서명자 이메일을 입력해주세요.');
       return;
@@ -154,8 +155,8 @@ const DocumentSignerAssignment: React.FC = () => {
 
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/documents/${currentDocument.id}/assign-reviewer`,
-        { reviewerEmail: selectedReviewer },
+        `${API_BASE_URL}/documents/${currentDocument.id}/assign-signer`,
+        { signerEmail: selectedReviewer },
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -173,7 +174,27 @@ const DocumentSignerAssignment: React.FC = () => {
         // 문서 정보 다시 로드
         await getDocument(parseInt(id!));
         
-        alert('서명자가 성공적으로 지정되었습니다.');
+        // 자동 매핑 로직: 서명자가 1명이고 서명 필드가 1개인 경우 자동 매핑
+        const signerFields = getSignerSignatureFieldsFromTemplate();
+        const updatedTasks = [...(currentDocument.tasks || []), response.data];
+        const signers = updatedTasks.filter(task => task.role === 'SIGNER');
+        
+        if (signers.length === 1 && signerFields.length === 1) {
+          const signer = signers[0];
+          const field = signerFields[0];
+          setReviewerFieldMappings({
+            [field.id]: {
+              email: signer.assignedUserEmail,
+              name: signer.assignedUserName || signer.assignedUserEmail
+            }
+          });
+          console.log('🔄 자동 매핑 완료:', {
+            fieldId: field.id,
+            signerEmail: signer.assignedUserEmail
+          });
+        }
+        
+        alert('서명자가 성공적으로 지정되었습니다.\n\n아래에서 각 서명 필드에 서명자를 매핑해주세요.');
       }
     } catch (error: any) {
       console.error('❌ 서명자 지정 실패:', error);
@@ -191,25 +212,25 @@ const DocumentSignerAssignment: React.FC = () => {
   };
 
   // 서명자 제거 핸들러
-  const handleRemoveReviewer = async (reviewerEmail: string) => {
+  const handleRemoveSigner = async (signerEmail: string) => {
     if (!currentDocument) {
       alert('문서 정보를 찾을 수 없습니다.');
       return;
     }
 
-    if (!confirm(`서명자 ${reviewerEmail}을(를) 제거하시겠습니까?`)) {
+    if (!confirm(`서명자 ${signerEmail}을(를) 제거하시겠습니까?`)) {
       return;
     }
 
     try {
       const response = await axios.delete(
-        `${API_BASE_URL}/documents/${currentDocument.id}/remove-reviewer`,
+        `${API_BASE_URL}/documents/${currentDocument.id}/remove-signer`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          data: { reviewerEmail }
+          data: { signerEmail }
         }
       );
 
@@ -355,16 +376,16 @@ const DocumentSignerAssignment: React.FC = () => {
     if (!currentDocument) return;
 
     // 서명자가 지정되었는지 확인
-    const hasReviewer = currentDocument.tasks?.some(task => task.role === 'REVIEWER');
-    if (!hasReviewer) {
+    const hasSigner = currentDocument.tasks?.some(task => task.role === 'SIGNER');
+    if (!hasSigner) {
       alert('먼저 서명자를 지정해주세요.');
       return;
     }
 
     // 템플릿의 서명자 서명 필드에 모두 서명자가 지정되었는지 확인
-    const reviewerFields = getReviewerSignatureFieldsFromTemplate();
-    if (reviewerFields.length > 0) {
-      const unassignedFields = reviewerFields.filter((field: any) => !reviewerFieldMappings[field.id]);
+    const signerFields = getSignerSignatureFieldsFromTemplate();
+    if (signerFields.length > 0) {
+      const unassignedFields = signerFields.filter((field: any) => !reviewerFieldMappings[field.id]);
       
       if (unassignedFields.length > 0) {
         const unassignedLabels = unassignedFields
@@ -380,16 +401,16 @@ const DocumentSignerAssignment: React.FC = () => {
       // 기존 coordinateFields 가져오기
       const existingFields = currentDocument.data?.coordinateFields || [];
       
-      // reviewer_signature 타입 필드들을 매핑 정보와 함께 coordinateFields에 추가
-      const reviewerSignatureFields = Object.entries(reviewerFieldMappings).map(([fieldId, reviewer]) => {
+      // signer_signature 타입 필드들을 매핑 정보와 함께 coordinateFields에 추가
+      const signerSignatureFields = Object.entries(reviewerFieldMappings).map(([fieldId, signer]) => {
         // 원본 템플릿 필드 정보 찾기
-        const templateField = reviewerFields.find((f: any) => f.id === fieldId);
+        const templateField = signerFields.find((f: any) => f.id === fieldId);
         
         return {
           ...templateField, // 원본 필드의 모든 속성 유지 (x, y, width, height, page 등)
-          type: 'reviewer_signature',
-          reviewerEmail: reviewer?.email,
-          reviewerName: reviewer?.name,
+          type: 'signer_signature',
+          signerEmail: signer?.email,
+          signerName: signer?.name,
           value: null // 아직 서명 전이므로 value는 null
         };
       });
@@ -402,10 +423,10 @@ const DocumentSignerAssignment: React.FC = () => {
         width: field.width,
         height: field.height,
         page: field.page || 1,
-        type: 'reviewer_signature',
+        type: 'signer_signature',
         label: `서명 (${field.reviewerName || field.reviewerEmail})`,
-        reviewerEmail: field.reviewerEmail,
-        reviewerName: field.reviewerName,
+        signerEmail: field.reviewerEmail,
+        signerName: field.reviewerName,
         value: null,
         required: true,
         fontSize: 12,
@@ -415,7 +436,7 @@ const DocumentSignerAssignment: React.FC = () => {
       // 모든 필드 합치기
       const updatedCoordinateFields = [
         ...existingFields,
-        ...reviewerSignatureFields,
+        ...signerSignatureFields,
         ...legacySignatureFields
       ];
 
@@ -423,16 +444,19 @@ const DocumentSignerAssignment: React.FC = () => {
       const updatedDocumentData = {
         ...currentDocument.data,
         coordinateFields: updatedCoordinateFields,
-        // 기존 signatureFields와 reviewerFieldMappings는 제거 (하위 호환성을 위해 유지하려면 주석 해제)
-        // signatureFields: currentDocument.data?.signatureFields || [],
-        // reviewerFieldMappings: Object.entries(reviewerFieldMappings).map(([fieldId, reviewer]) => ({
-        //   fieldId,
-        //   reviewerEmail: reviewer?.email,
-        //   reviewerName: reviewer?.name
-        // }))
       };
 
-      await axios.put(`${API_BASE_URL}/documents/${id}`, {
+      console.log('📝 서명자 필드 업데이트 전송:', {
+        documentId: id,
+        existingFieldsCount: existingFields.length,
+        signerSignatureFieldsCount: signerSignatureFields.length,
+        legacySignatureFieldsCount: legacySignatureFields.length,
+        totalFieldsCount: updatedCoordinateFields.length,
+        signerSignatureFields: signerSignatureFields,
+        updatedCoordinateFields: updatedCoordinateFields
+      });
+
+      const updateResponse = await axios.put(`${API_BASE_URL}/documents/${id}`, {
         data: updatedDocumentData
       }, {
         headers: {
@@ -441,7 +465,18 @@ const DocumentSignerAssignment: React.FC = () => {
         }
       });
 
+      console.log('✅ 문서 데이터 업데이트 응답:', {
+        status: updateResponse.status,
+        data: updateResponse.data,
+        coordinateFieldsCount: updateResponse.data?.data?.coordinateFields?.length || 0
+      });
+
       // 서명자 지정 완료 API 호출
+      // 백엔드에서 자동으로 처리되는 내용:
+      // 1. 템플릿 생성자를 검토자(REVIEWER)로 자동 지정
+      // 2. 템플릿 생성자에게 이메일 알림 발송
+      // 3. 템플릿 생성자에게 인앱 알림 생성
+      // 4. 문서 상태: READY_FOR_REVIEW → REVIEWING
       await axios.post(`${API_BASE_URL}/documents/${id}/complete-signer-assignment`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -449,18 +484,19 @@ const DocumentSignerAssignment: React.FC = () => {
         }
       });
 
+      console.log('✅ 서명자 지정 완료 - 템플릿 생성자가 자동으로 검토자로 지정되었습니다.');
+
       // 로컬 스토리지에서 서명 필드 및 매핑 정보 제거
       if (id) {
         localStorage.removeItem(`signatureFields_${id}`);
         localStorage.removeItem(`reviewerFieldMappings_${id}`);
       }
 
-      alert('서명자 지정이 완료되었습니다. 이제 검토 단계로 이동합니다.');
+      alert('서명자 지정이 완료되었습니다.\n담당 교직원에게 검토 알림이 발송되었습니다.');
 
       // 문서 목록으로 이동
-      setTimeout(() => {
-        navigate('/documents');
-      });
+      await refreshDocumentsAndUser();
+      navigate('/documents');
 
     } catch (error) {
       console.error('서명자 지정 완료 실패:', error);
@@ -484,44 +520,34 @@ const DocumentSignerAssignment: React.FC = () => {
     return '';
   };
 
-  if (loading) {
+  // 로딩 중이거나 문서가 아직 로드되지 않은 경우
+  if (loading || !currentDocument) {
+    console.log('⏳ 로딩 중 또는 문서 없음:', { loading, hasDocument: !!currentDocument });
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">로딩 중...</div>
+      <div className="flex flex-col justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <div className="text-gray-500">문서를 불러오는 중...</div>
+        <div className="text-xs text-gray-400 mt-2">
+          Loading: {loading ? 'true' : 'false'}, Document: {currentDocument ? 'loaded' : 'null'}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
-        <p className="text-red-800">{error}</p>
-      </div>
-    );
-  }
-
-  if (!currentDocument) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">문서를 찾을 수 없습니다.</div>
-      </div>
-    );
-  }
-
-  // 권한 확인
-  if (!canAssignReviewer()) {
-    return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <div className="flex items-center">
-            <div className="text-red-600 text-2xl mr-3">🚫</div>
+            <div className="text-red-600 text-2xl mr-3">❌</div>
             <div>
-              <h3 className="font-bold text-red-800 mb-2">접근 권한이 없습니다</h3>
-              <p className="text-red-700 mb-4">
-                서명자 지정 권한이 없습니다. 문서 작성자이거나 서명자 지정 권한이 있는 작성자만 접근할 수 있습니다.
-              </p>
+              <h3 className="font-bold text-red-800 mb-2">오류가 발생했습니다</h3>
+              <p className="text-red-700 mb-4">{error}</p>
               <button
-                onClick={() => navigate('/documents')}
+                onClick={async () => {
+                  await refreshDocumentsAndUser();
+                  navigate('/documents');
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 문서 목록으로 돌아가기
@@ -533,8 +559,36 @@ const DocumentSignerAssignment: React.FC = () => {
     );
   }
 
-  // 상태 확인 (READY_FOR_REVIEW 상태가 아니면 접근 불가)
-  if (currentDocument.status !== 'READY_FOR_REVIEW') {
+  // 권한 확인
+  if (!canAssignSigner()) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="text-red-600 text-2xl mr-3">🚫</div>
+            <div>
+              <h3 className="font-bold text-red-800 mb-2">접근 권한이 없습니다</h3>
+              <p className="text-red-700 mb-4">
+                서명자 지정 권한이 없습니다. 문서 작성자이거나 서명자 지정 권한이 있는 작성자만 접근할 수 있습니다.
+              </p>
+              <button
+                onClick={async () => {
+                  await refreshDocumentsAndUser();
+                  navigate('/documents');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                문서 목록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 상태 확인 (READY_FOR_REVIEW 상태에서 서명자 지정 가능)
+  if (currentDocument.status !== 'READY_FOR_REVIEW' && currentDocument.status !== 'REVIEWING') {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
@@ -546,7 +600,10 @@ const DocumentSignerAssignment: React.FC = () => {
                 현재 문서는 서명자 지정 단계가 아닙니다. (현재 상태: {currentDocument.status})
               </p>
               <button
-                onClick={() => navigate('/documents')}
+                onClick={async () => {
+                  await refreshDocumentsAndUser();
+                  navigate('/documents');
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 문서 목록으로 돌아가기
@@ -567,7 +624,7 @@ const DocumentSignerAssignment: React.FC = () => {
             <h1 className="text-xl font-semibold text-gray-900">
               {currentDocument.title || currentDocument.templateName} - 서명자 지정
             </h1>
-            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.READY_FOR_REVIEW} size="md" isRejected={currentDocument.isRejected} />
+            <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.REVIEWING} size="md" isRejected={currentDocument.isRejected} />
             {/* 현재 사용자에게 새로 할당된 작업이 있는지 확인하여 NEW 태그 표시 */}
             {currentDocument.tasks?.some(task => 
               task.assignedUserEmail === user?.email && task.isNew
@@ -592,7 +649,10 @@ const DocumentSignerAssignment: React.FC = () => {
             {isCompletingAssignment ? '처리 중...' : '서명자 지정 완료'}
           </button>
           <button
-            onClick={() => navigate('/documents')}
+            onClick={async () => {
+              await refreshDocumentsAndUser();
+              navigate('/documents');
+            }}
             className="px-4 py-2 text-gray-600 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
           >
             돌아가기
@@ -853,7 +913,7 @@ const DocumentSignerAssignment: React.FC = () => {
 
               {/* 템플릿의 서명자 서명 필드 렌더링 - 현재 페이지만 표시 */}
               {(() => {
-                const reviewerFields = getReviewerSignatureFieldsFromTemplate();
+                const reviewerFields = getSignerSignatureFieldsFromTemplate();
                 return reviewerFields
                   .filter((field: any) => field.page === currentPage)
                   .map((field: any) => {
@@ -938,8 +998,8 @@ const DocumentSignerAssignment: React.FC = () => {
                   placeholder="서명자 이메일을 입력하세요"
                 />
               </div>
-              <button
-                onClick={handleAssignReviewer}
+                <button
+                onClick={handleAssignSigner}
                 disabled={isAssigningReviewer || !selectedReviewer.trim()}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -953,12 +1013,12 @@ const DocumentSignerAssignment: React.FC = () => {
                 <h3 className="text-md font-medium text-gray-900 mb-3">
                   지정된 서명자
                   <span className="ml-2 text-xs text-gray-500">
-                    ({currentDocument.tasks.filter(task => task.role === 'REVIEWER').length}명)
+                    ({currentDocument.tasks.filter(task => task.role === 'SIGNER').length}명)
                   </span>
                 </h3>
                 <div className="space-y-2">
                   {currentDocument.tasks
-                    .filter(task => task.role === 'REVIEWER')
+                    .filter(task => task.role === 'SIGNER')
                     .map((task, index) => (
                       <div key={task.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-start justify-between">
@@ -972,7 +1032,7 @@ const DocumentSignerAssignment: React.FC = () => {
                             <div className="text-sm text-gray-500 ml-6">{task.assignedUserEmail}</div>
                           </div>
                           <button
-                            onClick={() => handleRemoveReviewer(task.assignedUserEmail)}
+                            onClick={() => handleRemoveSigner(task.assignedUserEmail)}
                             className="ml-2 px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
                             title="서명자 제거"
                           >
@@ -988,22 +1048,44 @@ const DocumentSignerAssignment: React.FC = () => {
 
             {/* 템플릿의 서명자 서명 필드와 서명자 매핑 */}
             {(() => {
-              const reviewerFields = getReviewerSignatureFieldsFromTemplate();
-              const availableReviewers = currentDocument.tasks?.filter(
-                task => task.role === 'REVIEWER'
+              const signerFields = getSignerSignatureFieldsFromTemplate();
+              const availableSigners = currentDocument.tasks?.filter(
+                task => task.role === 'SIGNER'
               ) || [];
               
-              return reviewerFields.length > 0 && (
+              const unassignedFieldsCount = signerFields.filter((field: any) => !reviewerFieldMappings[field.id]).length;
+              
+              return signerFields.length > 0 && (
                 <div className="mt-6">
                   <h3 className="text-md font-medium text-gray-900 mb-3">
                     서명자 서명 필드 매핑
                     <span className="ml-2 text-xs text-gray-500">
-                      ({reviewerFields.length}개 필드)
+                      ({signerFields.length}개 필드)
                     </span>
+                    {unassignedFieldsCount > 0 && (
+                      <span className="ml-2 px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded">
+                        {unassignedFieldsCount}개 미지정
+                      </span>
+                    )}
                   </h3>
+                  
+                  {availableSigners.length > 0 && unassignedFieldsCount > 0 && (
+                    <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-start space-x-2">
+                        <span className="text-amber-600 text-lg">⚠️</span>
+                        <div className="text-sm text-amber-800">
+                          <p className="font-medium">각 서명 필드에 서명자를 지정해주세요</p>
+                          <p className="text-xs mt-1 text-amber-700">
+                            모든 서명 필드에 서명자를 매핑해야 서명자 지정을 완료할 수 있습니다.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="space-y-3">
-                    {reviewerFields.map((field: any, index: number) => {
-                      const assignedReviewer = reviewerFieldMappings[field.id];
+                    {signerFields.map((field: any, index: number) => {
+                      const assignedSigner = reviewerFieldMappings[field.id];
                       
                       return (
                         <div key={field.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -1020,19 +1102,19 @@ const DocumentSignerAssignment: React.FC = () => {
                           </div>
                           
                           <select
-                            value={assignedReviewer?.email || ''}
+                            value={assignedSigner?.email || ''}
                             onChange={(e) => {
                               const selectedEmail = e.target.value;
                               if (selectedEmail) {
-                                const reviewer = availableReviewers.find(
+                                const signer = availableSigners.find(
                                   t => t.assignedUserEmail === selectedEmail
                                 );
-                                if (reviewer) {
+                                if (signer) {
                                   setReviewerFieldMappings(prev => ({
                                     ...prev,
                                     [field.id]: {
-                                      email: reviewer.assignedUserEmail,
-                                      name: reviewer.assignedUserName || reviewer.assignedUserEmail
+                                      email: signer.assignedUserEmail,
+                                      name: signer.assignedUserName || signer.assignedUserEmail
                                     }
                                   }));
                                 }
@@ -1046,7 +1128,7 @@ const DocumentSignerAssignment: React.FC = () => {
                             className="w-full text-sm px-2 py-1.5 border border-red-300 rounded focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           >
                             <option value="">서명자 선택...</option>
-                            {availableReviewers.map(task => (
+                            {availableSigners.map(task => (
                               <option key={task.id} value={task.assignedUserEmail}>
                                 {task.assignedUserName || task.assignedUserEmail}
                               </option>
@@ -1057,7 +1139,7 @@ const DocumentSignerAssignment: React.FC = () => {
                     })}
                   </div>
                   
-                  {reviewerFields.length > 0 && availableReviewers.length === 0 && (
+                  {signerFields.length > 0 && availableSigners.length === 0 && (
                     <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded">
                       ⚠️ 먼저 서명자를 지정해주세요
                     </div>
