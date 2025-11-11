@@ -358,7 +358,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
       );
     }
 
-    // 편집자 서명 필드인지 확인
+    // 작성자 서명 필드인지 확인
     const isEditorSignature = field.type === 'editor_signature';
     const isReviewerSignature = field.type === 'reviewer_signature';
     const isSignerSignature = field.type === 'signer_signature';

@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 const HisnetCallback: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { hisnetLogin } = useAuthStore();
+  const { hisnetLogin, refreshUser } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +25,9 @@ const HisnetCallback: React.FC = () => {
 
         // authStore의 hisnetLogin 함수 사용
         await hisnetLogin(hisnetToken);
+        
+        // 로그인 성공 후 최신 사용자 정보 가져오기
+        await refreshUser();
 
         // 성공 시 메인 페이지로 리다이렉트
         navigate('/tasks');
@@ -46,7 +49,7 @@ const HisnetCallback: React.FC = () => {
     };
 
     handleHisnetCallback();
-  }, [searchParams, navigate, hisnetLogin]);
+  }, [searchParams, navigate, hisnetLogin, refreshUser]);
 
   if (loading) {
     return (

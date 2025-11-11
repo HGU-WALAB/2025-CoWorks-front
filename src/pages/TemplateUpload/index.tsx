@@ -400,7 +400,7 @@ const TemplateUpload: React.FC = () => {
       page: newFieldSelection?.pageNumber || currentPageNumber || 1
     };
     
-    // 검토자 서명 필드인 경우 reviewerIndex 자동 계산 (라벨은 사용자가 입력한 값 유지)
+    // 서명자 서명 필드인 경우 reviewerIndex 자동 계산 (라벨은 사용자가 입력한 값 유지)
     if (field.type === 'reviewer_signature') {
       const existingReviewerFields = fields.filter(f => f.type === 'reviewer_signature');
       const nextIndex = existingReviewerFields.length + 1;

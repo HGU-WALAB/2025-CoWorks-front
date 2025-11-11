@@ -27,12 +27,20 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 function App() {
-  const { initialize } = useAuthStore();
+  const { initialize, refreshUser, isAuthenticated } = useAuthStore();
 
   // 앱 시작 시 저장된 토큰 복원 및 Authorization 헤더 설정
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // 앱 시작 시 인증된 상태라면 사용자 정보 새로고침 (한 번만)
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 빈 배열로 초기 마운트 시에만 실행
 
   return (
     <Router>

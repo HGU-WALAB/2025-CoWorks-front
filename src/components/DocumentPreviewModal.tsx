@@ -152,7 +152,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
             {isEditorSignature && field.value && field.value.startsWith('data:image') ? (
               <img
                 src={field.value}
-                alt="편집자 서명"
+                alt="작성자 서명"
                 className="w-full h-full object-contain"
                 style={{ background: 'transparent' }}
               />
@@ -417,12 +417,12 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 let tableInfo = null;
                 let tableData = null;
 
-                // 편집자 서명 필드 확인
+                // 작성자 서명 필드 확인
                 if (field.type === 'editor_signature') {
                   isEditorSignature = true;
                 }
 
-                // 검토자 서명 필드 확인
+                // 서명자 서명 필드 확인
                 if (field.type === 'reviewer_signature') {
                   isReviewerSignature = true;
                 }
@@ -491,12 +491,12 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                     }}
                   >
                     {isEditorSignature ? (
-                      // 편집자 서명 필드 렌더링 - 편집 페이지와 동일
+                      // 작성자 서명 필드 렌더링 - 편집 페이지와 동일
                       <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
                         {field.value && field.value.startsWith('data:image') ? (
                           <img
                             src={field.value}
-                            alt="편집자 서명"
+                            alt="작성자 서명"
                             className="max-w-full h-full object-contain bg-transparent"
                             style={{
                               maxWidth: '100%',
@@ -529,7 +529,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                         )}
                       </div>
                     ) : isReviewerSignature ? (
-                      // 검토자 서명 필드 렌더링
+                      // 서명자 서명 필드 렌더링
                       <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
                         {field.value && field.value.startsWith('data:image') ? (
                           <img
@@ -551,7 +551,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                               fontWeight: '500'
                             }}
                           >
-                            {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명 대기
+                            {(field as any).reviewerName || (field as any).reviewerEmail || '서명자'} 서명 대기
                           </div>
                         )}
                       </div>

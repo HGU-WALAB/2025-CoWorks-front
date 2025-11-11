@@ -76,7 +76,7 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
       <div className="absolute inset-0" style={{ width: '1240px', height: '1754px' }}>
         {coordinateFields
           .filter(field => {
-            // 편집자 서명 필드는 값이 있는 경우만 표시
+            // 작성자 서명 필드는 값이 있는 경우만 표시
             if (field.type === 'editor_signature') {
               return field.value && field.value.trim() !== '';
             }
@@ -90,7 +90,7 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
           let tableInfo = null;
           let tableData = null;
 
-          // 편집자 서명 필드 확인
+          // 작성자 서명 필드 확인
           if (field.type === 'editor_signature') {
             isEditorSignature = true;
           }
@@ -138,12 +138,12 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
               }}
             >
               {isEditorSignature ? (
-                // 편집자 서명 필드 렌더링
+                // 작성자 서명 필드 렌더링
                 <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
                   {field.value && field.value.startsWith('data:image') ? (
                     <img
                       src={field.value}
-                      alt="편집자 서명"
+                      alt="작성자 서명"
                       className="max-w-full h-full object-contain bg-transparent"
                       style={{
                         maxWidth: '100%',

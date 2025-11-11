@@ -87,6 +87,8 @@ export interface DocumentCreateRequest {
   editorEmail?: string;
   title?: string;
   deadline?: string;
+  folderId?: number;
+  data?: DocumentData;
 }
 
 export interface DocumentUpdateRequest {

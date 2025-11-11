@@ -19,7 +19,7 @@ const DocumentSignerAssignment: React.FC = () => {
   const [isAssigningReviewer, setIsAssigningReviewer] = useState(false);
   const [isCompletingAssignment, setIsCompletingAssignment] = useState(false);
 
-  // 검토자 필드 매핑 관련 상태 (템플릿의 reviewer_signature 필드와 검토자 매핑)
+  // 서명자 필드 매핑 관련 상태 (템플릿의 reviewer_signature 필드와 서명자 매핑)
   const [reviewerFieldMappings, setReviewerFieldMappings] = useState<{
     [fieldId: string]: { email: string; name: string } | null;
   }>({});
@@ -44,7 +44,7 @@ const DocumentSignerAssignment: React.FC = () => {
     hasPreviousPage
   } = usePdfPages(currentDocument?.template, []);
 
-  // 템플릿에서 검토자 서명 필드 가져오기
+  // 템플릿에서 서명자 서명 필드 가져오기
   const getReviewerSignatureFieldsFromTemplate = () => {
     if (!currentDocument?.template?.coordinateFields) return [];
     
@@ -72,13 +72,13 @@ const DocumentSignerAssignment: React.FC = () => {
         }
       }
       
-      // 검토자 필드 매핑도 로드
+      // 서명자 필드 매핑도 로드
       const savedMappings = localStorage.getItem(`reviewerFieldMappings_${id}`);
       if (savedMappings) {
         try {
           setReviewerFieldMappings(JSON.parse(savedMappings));
         } catch (error) {
-          console.error('검토자 매핑 로드 실패:', error);
+          console.error('서명자 매핑 로드 실패:', error);
         }
       }
     }
@@ -91,7 +91,7 @@ const DocumentSignerAssignment: React.FC = () => {
     }
   }, [id, signatureFields]);
 
-  // 검토자 필드 매핑 변경 시 로컬 스토리지에 저장
+  // 서명자 필드 매핑 변경 시 로컬 스토리지에 저장
   useEffect(() => {
     if (id && Object.keys(reviewerFieldMappings).length > 0) {
       localStorage.setItem(`reviewerFieldMappings_${id}`, JSON.stringify(reviewerFieldMappings));
@@ -361,16 +361,16 @@ const DocumentSignerAssignment: React.FC = () => {
       return;
     }
 
-    // 템플릿의 검토자 서명 필드에 모두 검토자가 지정되었는지 확인
+    // 템플릿의 서명자 서명 필드에 모두 서명자가 지정되었는지 확인
     const reviewerFields = getReviewerSignatureFieldsFromTemplate();
     if (reviewerFields.length > 0) {
       const unassignedFields = reviewerFields.filter((field: any) => !reviewerFieldMappings[field.id]);
       
       if (unassignedFields.length > 0) {
         const unassignedLabels = unassignedFields
-          .map((field: any) => field.label || `검토자 서명 ${field.reviewerIndex || ''}`)
+          .map((field: any) => field.label || `서명자 서명 ${field.reviewerIndex || ''}`)
           .join(', ');
-        alert(`모든 검토자 서명 필드에 검토자를 지정해주세요.\n미지정 필드: ${unassignedLabels}`);
+        alert(`모든 서명자 서명 필드에 서명자를 지정해주세요.\n미지정 필드: ${unassignedLabels}`);
         return;
       }
     }
@@ -518,7 +518,7 @@ const DocumentSignerAssignment: React.FC = () => {
             <div>
               <h3 className="font-bold text-red-800 mb-2">접근 권한이 없습니다</h3>
               <p className="text-red-700 mb-4">
-                서명자 지정 권한이 없습니다. 문서 작성자이거나 서명자 지정 권한이 있는 편집자만 접근할 수 있습니다.
+                서명자 지정 권한이 없습니다. 문서 작성자이거나 서명자 지정 권한이 있는 작성자만 접근할 수 있습니다.
               </p>
               <button
                 onClick={() => navigate('/documents')}
@@ -666,7 +666,7 @@ const DocumentSignerAssignment: React.FC = () => {
                 let isEditorSignature = false;
                 let tableInfo = null;
 
-                // 편집자 서명 필드 확인
+                // 작성자 서명 필드 확인
                 if (field.type === 'editor_signature') {
                   isEditorSignature = true;
                 }
@@ -716,7 +716,7 @@ const DocumentSignerAssignment: React.FC = () => {
                     title={`${field.label}: ${fieldValue}`}
                   >
                     {isEditorSignature ? (
-                      // 편집자 서명 필드 렌더링
+                      // 작성자 서명 필드 렌더링
                       <div className="w-full h-full p-2 flex flex-col items-center justify-center">
                         <div className="text-xs font-medium mb-1 text-green-700 truncate">
                           {field.label}
@@ -728,7 +728,7 @@ const DocumentSignerAssignment: React.FC = () => {
                               <div className="flex items-center justify-center">
                                 <img
                                   src={field.value}
-                                  alt="편집자 서명"
+                                  alt="작성자 서명"
                                   className="max-w-full h-8 border border-transparent rounded bg-transparent"
                                 />
                               </div>
@@ -851,7 +851,7 @@ const DocumentSignerAssignment: React.FC = () => {
                 );
               })}
 
-              {/* 템플릿의 검토자 서명 필드 렌더링 - 현재 페이지만 표시 */}
+              {/* 템플릿의 서명자 서명 필드 렌더링 - 현재 페이지만 표시 */}
               {(() => {
                 const reviewerFields = getReviewerSignatureFieldsFromTemplate();
                 return reviewerFields
@@ -872,7 +872,7 @@ const DocumentSignerAssignment: React.FC = () => {
                       >
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-red-700 font-medium p-1">
                           <div className="font-semibold">
-                            {field.label || `검토자 서명 ${field.reviewerIndex || ''}`}
+                            {field.label || `서명자 서명 ${field.reviewerIndex || ''}`}
                           </div>
                           {assignedReviewer ? (
                             <div className="text-red-800 mt-1">
@@ -986,7 +986,7 @@ const DocumentSignerAssignment: React.FC = () => {
               </div>
             )}
 
-            {/* 템플릿의 검토자 서명 필드와 검토자 매핑 */}
+            {/* 템플릿의 서명자 서명 필드와 서명자 매핑 */}
             {(() => {
               const reviewerFields = getReviewerSignatureFieldsFromTemplate();
               const availableReviewers = currentDocument.tasks?.filter(
@@ -1011,7 +1011,7 @@ const DocumentSignerAssignment: React.FC = () => {
                             <div className="flex items-center space-x-2">
                               <span className="w-2 h-2 bg-red-500 rounded-full"></span>
                               <span className="text-sm font-medium text-red-900">
-                                {field.label || `검토자 서명 ${field.reviewerIndex || index + 1}`}
+                                {field.label || `서명자 서명 ${field.reviewerIndex || index + 1}`}
                               </span>
                             </div>
                             <span className="text-xs text-red-600">

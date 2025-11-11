@@ -55,11 +55,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
     switch (user.position) {
       case '학생':
-        return '/CoWorks_Student.jpeg';
+        return '/CoWorks_student.jpeg';
       case '교수':
-        return '/CoWorks_Professor.jpeg';
+        return '/CoWorks_professor.jpeg';
       case '교직원':
-        return '/CoWorks_Staff.jpeg';
+        return '/CoWorks_staff.jpeg';
       default:
         return '/CoWorks_admin.jpeg';
     }

@@ -12,7 +12,7 @@ const getWorkflowSteps = () => {
   return [
     { 
       key: 'EDITING', 
-      label: '편집중', 
+      label: '작성중', 
       description: '문서 내용 편집 및 수정',
       roles: ['EDITOR'] // 이 단계에 해당하는 역할
     },
@@ -20,13 +20,13 @@ const getWorkflowSteps = () => {
       key: 'READY_FOR_REVIEW', 
       label: '서명자 지정', 
       description: '서명자 지정 및 설정',
-      roles: ['EDITOR'] // 편집자가 서명자를 지정
+      roles: ['EDITOR'] // 작성자가 서명자를 지정
     },
     { 
       key: 'REVIEWING', 
       label: '검토중',
       description: '서명자가 문서 검토',
-      roles: ['REVIEWER'] // 검토자/서명자
+      roles: ['REVIEWER'] // 서명자/서명자
     },
     { 
       key: 'COMPLETED', 
@@ -197,7 +197,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
             <div className="mt-8 border-t pt-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">문서 작업자</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 편집자 */}
+                {/* 작성자 */}
                 {document.tasks.filter(task => task.role === 'EDITOR').map((task, idx) => (
                   <div key={`editor-${idx}`} className="bg-blue-50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -206,7 +206,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                         <div className="text-sm text-gray-600">{task.assignedUserEmail}</div>
                       </div>
                       <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
-                        편집자
+                        작성자
                       </span>
                     </div>
                     {task.lastViewedAt && (
@@ -217,7 +217,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                   </div>
                 ))}
 
-                {/* 검토자/서명자 */}
+                {/* 서명자/서명자 */}
                 {document.tasks.filter(task => task.role === 'REVIEWER').map((task, idx) => (
                   <div key={`reviewer-${idx}`} className="bg-green-50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">

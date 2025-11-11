@@ -467,7 +467,7 @@ const DocumentNew: React.FC = () => {
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                편집자가 문서 편집을 완료해야 하는 마감일을 지정할 수 있습니다. 현재 시간 이후로만 선택 가능합니다.
+                작성자가 문서 편집을 완료해야 하는 마감일을 지정할 수 있습니다. 현재 시간 이후로만 선택 가능합니다.
               </p>
             </div>
 
@@ -492,7 +492,7 @@ const DocumentNew: React.FC = () => {
               <div className="mb-2">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-gray-700">
-                    편집자
+                    작성자
                   </label>
                   {/* URL 파라미터로 mode가 지정되지 않았거나, 권한이 있는 경우에만 모드 전환 버튼 표시 */}
                   {!urlMode && hasFolderAccess && (
@@ -560,7 +560,7 @@ const DocumentNew: React.FC = () => {
                     </div>
                   </div>
                   <p className="text-sm text-gray-500 mt-2">
-                    자동으로 편집자로 할당됩니다.
+                    자동으로 작성자로 할당됩니다.
                   </p>
                 </>
               )}
@@ -576,7 +576,7 @@ const DocumentNew: React.FC = () => {
                       <ul className="text-sm text-blue-700 space-y-1">
                         <li>• 엑셀 파일을 업로드하여 일괄적으로 문서를 한번에 생성할 수 있습니다</li>
                         <li>• 각 문서는 엑셀의 해당 행 정보를 바탕으로 생성됩니다</li>
-                        <li>• 편집자는 각 문서 생성 시 개별적으로 지정됩니다</li>
+                        <li>• 작성자는 각 문서 생성 시 개별적으로 지정됩니다</li>
                       </ul>
                     </div>
                   </div>

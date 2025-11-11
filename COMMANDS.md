@@ -90,12 +90,12 @@ src/
   submitForReview: (id: number) => Promise<Document>
   ```
 
-- **`assignEditor(id: number, editorEmail: string)`** - 편집자 할당
+- **`assignEditor(id: number, editorEmail: string)`** - 작성자 할당
   ```typescript
   assignEditor: (id: number, editorEmail: string) => Promise<Document>
   ```
 
-- **`assignReviewer(id: number, reviewerEmail: string)`** - 검토자 할당
+- **`assignReviewer(id: number, reviewerEmail: string)`** - 서명자 할당
   ```typescript
   assignReviewer: (id: number, reviewerEmail: string) => Promise<Document>
   ```

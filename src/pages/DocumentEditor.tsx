@@ -89,7 +89,7 @@ const DocumentEditor: React.FC = () => {
   const [previewCoordinateFields, setPreviewCoordinateFields] = useState<any[]>([]);
   const [previewSignatureFields, setPreviewSignatureFields] = useState<any[]>([]);
 
-  // 편집자 서명 모달 상태
+  // 작성자 서명 모달 상태
   const [showEditorSignatureModal, setShowEditorSignatureModal] = useState(false);
   const [currentSignatureFieldId, setCurrentSignatureFieldId] = useState<string | null>(null);
 
@@ -268,7 +268,7 @@ const DocumentEditor: React.FC = () => {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
-  // 편집자 권한 확인
+  // 작성자 권한 확인
   const isEditor = useMemo(() => {
     if (!currentDocument || !user) return false;
 
@@ -294,10 +294,10 @@ const DocumentEditor: React.FC = () => {
     if (Array.isArray(templateFields) && templateFields.length > 0) {
       
       // 템플릿 필드 기반으로 coordinateFields 초기화 (픽셀값 직접 사용)
-      // 검토자 서명 필드는 제외 (편집자는 검토자 필드를 볼 수 없음)
+      // 서명자 서명 필드는 제외 (작성자는 서명자 필드를 볼 수 없음)
       const initialFields = templateFields
         .filter(field => field.x !== undefined && field.y !== undefined)
-        .filter(field => field.fieldType !== 'reviewer_signature') // 검토자 서명 필드 제외
+        .filter(field => field.fieldType !== 'reviewer_signature') // 서명자 서명 필드 제외
         .map(field => {
           // 픽셀 좌표를 그대로 사용 (변환 없음)
           const pixelCoords = {
@@ -357,9 +357,9 @@ const DocumentEditor: React.FC = () => {
         currentDocument?.data?.coordinateFields && 
         Array.isArray(currentDocument.data.coordinateFields)) {
       // 기존 문서 데이터 기반으로 설정 (이 문서의 저장된 값 사용)
-      // 검토자 서명 필드는 제외
+      // 서명자 서명 필드는 제외
       const processedFields = currentDocument.data.coordinateFields
-        .filter((field: any) => field.type !== 'reviewer_signature') // 검토자 서명 필드 제외
+        .filter((field: any) => field.type !== 'reviewer_signature') // 서명자 서명 필드 제외
         .map((field: any) => ({
           id: field.id.toString(),
           label: field.label || `필드 ${field.id}`,
@@ -460,11 +460,11 @@ const DocumentEditor: React.FC = () => {
     }
   }, [id, currentDocument, templateFields, coordinateFields, saveDocumentFieldValue, updateDocumentSilently]);
 
-  // 편집자 서명 핸들러
+  // 작성자 서명 핸들러
   const handleEditorSignature = useCallback((fieldId: string) => {
-    // 편집자 권한 확인
+    // 작성자 권한 확인
     if (!isEditor) {
-      alert('편집자만 서명할 수 있습니다.');
+      alert('작성자만 서명할 수 있습니다.');
       return;
     }
 
@@ -549,7 +549,7 @@ const DocumentEditor: React.FC = () => {
       const response = await axios.post(`/api/documents/${id}/complete-editing`);
       
       if (response.status === 200) {
-        // 현재 사용자가 검토자 지정 권한이 있는지 확인
+        // 현재 사용자가 서명자 지정 권한이 있는지 확인
         const hasAssignReviewerPermission = currentDocument?.tasks?.some(task => 
           task.assignedUserEmail === user?.email && 
           (task.role === 'CREATOR' || (task.role === 'EDITOR'))
@@ -559,7 +559,7 @@ const DocumentEditor: React.FC = () => {
           alert('편집이 완료되었습니다. 서명자 지정 단계로 이동합니다.');
           navigate(`/documents/${id}/signer-assignment`);
         } else {
-          alert('편집이 완료되었습니다. 생성자 또는 권한이 있는 편집자가 서명자를 지정할 수 있습니다.');
+          alert('편집이 완료되었습니다. 생성자 또는 권한이 있는 작성자가 서명자를 지정할 수 있습니다.');
           navigate('/documents');
         }
       }
@@ -794,9 +794,9 @@ const DocumentEditor: React.FC = () => {
       }
       
       // coordinateFields를 템플릿 필드 형태로 변환
-      // 검토자 서명 필드는 제외 (편집자는 검토자 필드를 볼 수 없음)
+      // 서명자 서명 필드는 제외 (작성자는 서명자 필드를 볼 수 없음)
       const convertedFields = parsedFields
-        .filter(field => field.type !== 'reviewer_signature') // 검토자 서명 필드 제외
+        .filter(field => field.type !== 'reviewer_signature') // 서명자 서명 필드 제외
         .map((field, index) => {
           const converted = {
             id: parseInt(field.id?.replace(/\D/g, '') || index.toString()), // ID에서 숫자만 추출
@@ -982,7 +982,7 @@ const DocumentEditor: React.FC = () => {
           return;
         }
 
-        // 편집자인 경우, 문서가 DRAFT 상태라면 편집 시작
+        // 작성자인 경우, 문서가 DRAFT 상태라면 편집 시작
         if (currentDocument.status === 'DRAFT' && isEditor) {
           try {
             await axios.post(`/api/documents/${currentDocument.id}/start-editing`);
@@ -1265,7 +1265,7 @@ const DocumentEditor: React.FC = () => {
               let isEditorSignature = false;
               let tableInfo = null;
 
-              // 편집자 서명 필드 확인
+              // 작성자 서명 필드 확인
               if (field.type === 'editor_signature') {
                 isEditorSignature = true;
               }
@@ -1327,7 +1327,7 @@ const DocumentEditor: React.FC = () => {
                   }}
                 >
                   {isEditorSignature ? (
-                    // 편집자 서명 필드 렌더링
+                    // 작성자 서명 필드 렌더링
                     <div className="w-full h-full flex flex-col">
                       {!field.value && (
                         <div
@@ -1345,7 +1345,7 @@ const DocumentEditor: React.FC = () => {
                           {field.value.startsWith('data:image') ? (
                             <img
                               src={field.value}
-                              alt="편집자 서명"
+                              alt="작성자 서명"
                               className="w-full h-full object-contain"
                               style={{
                                 maxWidth: '100%',
@@ -1754,7 +1754,7 @@ const DocumentEditor: React.FC = () => {
                 let tableInfo = null;
                 let tableData = null;
 
-                // 편집자 서명 필드 확인
+                // 작성자 서명 필드 확인
                 if (field.type === 'editor_signature') {
                   isEditorSignature = true;
                 }
@@ -1793,7 +1793,7 @@ const DocumentEditor: React.FC = () => {
                     }}
                   >
                     {isEditorSignature ? (
-                      // 편집자 서명 필드 인쇄
+                      // 작성자 서명 필드 인쇄
                       <div style={{
                         width: '100%',
                         height: '100%',
@@ -1819,7 +1819,7 @@ const DocumentEditor: React.FC = () => {
                           field.value.startsWith('data:image') ? (
                             <img
                               src={field.value}
-                              alt="편집자 서명"
+                              alt="작성자 서명"
                               style={{
                                 width: '100%',
                                 height: '100%',
@@ -2003,7 +2003,7 @@ const DocumentEditor: React.FC = () => {
               let tableInfo = null;
               let tableData = null;
 
-              // 편집자 서명 필드 확인
+              // 작성자 서명 필드 확인
               if (field.type === 'editor_signature') {
                 isEditorSignature = true;
               }
@@ -2047,14 +2047,14 @@ const DocumentEditor: React.FC = () => {
                     {field.label}
                     {field.required && <span className="text-red-500 ml-1">*</span>}
                     {isTableField && <span className="text-purple-600 text-xs ml-1">(표)</span>}
-                    {isEditorSignature && <span className="text-green-600 text-xs ml-1">(편집자 서명)</span>}
+                    {isEditorSignature && <span className="text-green-600 text-xs ml-1">(작성자 서명)</span>}
                   </label>
 
                   {isEditorSignature ? (
-                    // 편집자 서명 필드 UI
+                    // 작성자 서명 필드 UI
                     <div className="space-y-3">
                       {isEditor ? (
-                        // 편집자인 경우 - 서명 가능
+                        // 작성자인 경우 - 서명 가능
                         <div>
                           {field.value ? (
                             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -2095,10 +2095,10 @@ const DocumentEditor: React.FC = () => {
                           )}
                         </div>
                       ) : (
-                        // 편집자가 아닌 경우 - 서명 불가
+                        // 작성자가 아닌 경우 - 서명 불가
                         <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                           <p className="text-sm text-gray-600">
-                            편집자만 서명할 수 있습니다
+                            작성자만 서명할 수 있습니다
                           </p>
                           {field.value && (
                             <div className="mt-2">
@@ -2243,7 +2243,7 @@ const DocumentEditor: React.FC = () => {
                 문서 편집을 완료하시겠습니까?
               </p>
               <p className="text-sm text-amber-600">
-                ⚠️ 편집 완료 후에는 문서를 수정할 수 없으며, 검토자 지정 단계로 이동합니다.
+                ⚠️ 편집 완료 후에는 문서를 수정할 수 없으며, 서명자 지정 단계로 이동합니다.
               </p>
             </div>
 
@@ -2288,12 +2288,12 @@ const DocumentEditor: React.FC = () => {
         </div>
       )}
 
-      {/* 편집자 서명 모달 */}
+      {/* 작성자 서명 모달 */}
       <SignatureModal
         isOpen={showEditorSignatureModal}
         onClose={handleSignatureModalClose}
         onSave={handleSignatureSave}
-        reviewerName={user?.name || '편집자'}
+        reviewerName={user?.name || '작성자'}
       />
 
       {/* 테이블 벌크 입력 모달 */}

@@ -340,7 +340,7 @@ const DocumentList: React.FC = () => {
             >
               <option value="all">전체</option>
               <option value="DRAFT">초안</option>
-              <option value="EDITING">편집중</option>
+              <option value="EDITING">작성중</option>
               <option value="READY_FOR_REVIEW">서명자 지정</option>
               <option value="REVIEWING">검토중</option>
               <option value="COMPLETED">완료</option>

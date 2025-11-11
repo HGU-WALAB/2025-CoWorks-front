@@ -35,7 +35,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
     }
   }, [isOpen]);
 
-  // 검토자 서명 필드의 인덱스 계산 (기존 검토자 필드 개수 + 1)
+  // 서명자 서명 필드의 인덱스 계산 (기존 서명자 필드 개수 + 1)
   const getReviewerIndex = (): number => {
     // 이 함수는 실제 구현 시 부모 컴포넌트에서 전달받은 fields를 확인해야 하지만,
     // 현재는 모달에서 직접 접근할 수 없으므로 저장 시점에 부모에서 처리하도록 함
@@ -78,7 +78,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
             columnWidths: Array(tableCols).fill(1 / tableCols)
           }
         }),
-        // 검토자 서명 필드인 경우 reviewerIndex 추가 (부모에서 재계산됨)
+        // 서명자 서명 필드인 경우 reviewerIndex 추가 (부모에서 재계산됨)
         ...(fieldTypeOption === 'reviewer_signature' && {
           reviewerIndex: getReviewerIndex()
         })
@@ -166,7 +166,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
               <label htmlFor="editorSignatureField" className="ml-2 text-sm text-gray-700">
-                편집자 서명
+                작성자 서명
               </label>
             </div>
 
@@ -180,7 +180,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
                 className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300"
               />
               <label htmlFor="reviewerSignatureField" className="ml-2 text-sm text-gray-700">
-                검토자 서명
+                서명자 서명
               </label>
             </div>
           </div>

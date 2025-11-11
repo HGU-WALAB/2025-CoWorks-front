@@ -69,7 +69,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     );
   };
 
-  // 현재 사용자가 검토자인지 확인하는 함수
+  // 현재 사용자가 서명자인지 확인하는 함수
   const isCurrentUserReviewer = () => {
     return document.tasks?.some(task => 
       task.role === 'REVIEWER' && task.assignedUserEmail === currentUser?.email
@@ -135,7 +135,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     }
 
     if (document.status === 'REJECTED') {
-      // 현재 사용자가 검토자인 경우 편집 버튼 비활성화
+      // 현재 사용자가 서명자인 경우 편집 버튼 비활성화
       if (isCurrentUserReviewer()) {
         return (
           <span className="px-3 py-1.5 text-sm text-gray-400 bg-gray-50 border border-gray-200 rounded-md flex items-center cursor-not-allowed">
@@ -146,7 +146,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
           </span>
         );
       }
-      // 검토자가 아닌 경우 편집 가능
+      // 서명자가 아닌 경우 편집 가능
       return (
         <Link
           to={`/documents/${document.id}/edit`}
@@ -268,7 +268,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                     const assignees = getTaskAssignees(document);
                     return (
                       <>
-                        {renderAssigneeInfo(assignees.editor, '편집자', 'bg-blue-500')}
+                        {renderAssigneeInfo(assignees.editor, '작성자', 'bg-blue-500')}
                         {renderAssigneeInfo(assignees.reviewer, '서명자', 'bg-blue-500')}
                       </>
                     );
