@@ -32,7 +32,7 @@ export const STATUS_CONFIG: Record<string, StatusConfig> = {
   },
   [DOCUMENT_STATUS.EDITING]: {
     color: 'bg-blue-100 text-blue-800',
-    text: '편집중',
+    text: '작성중',
     description: '현재 문서를 편집하고 있습니다'
   },
   [DOCUMENT_STATUS.READY_FOR_REVIEW]: {

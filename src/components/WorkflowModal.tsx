@@ -12,7 +12,7 @@ const getWorkflowSteps = () => {
   return [
     { 
       key: 'EDITING', 
-      label: '편집중', 
+      label: '작성중', 
       description: '문서 내용 편집 및 수정',
       roles: ['EDITOR'] // 이 단계에 해당하는 역할
     },

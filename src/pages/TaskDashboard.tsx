@@ -144,7 +144,7 @@ const TaskDashboard: React.FC = () => {
 
 
 
-  // 사용자별 작업 분류 (편집중, 검토중, 반려됨, 완료됨)
+  // 사용자별 작업 분류 (작성중, 검토중, 반려됨, 완료됨)
   const getUserTasks = () => {
     const myDocuments = documents.filter(doc =>
         doc.tasks?.some(task => task.assignedUserEmail === currentUserEmail) || false
@@ -247,7 +247,7 @@ const TaskDashboard: React.FC = () => {
                     bgColor: 'bg-blue-50',
                     textColor: 'text-blue-700',
                     borderColor: 'border-blue-200',
-                    label: '편집중'
+                    label: '작성중'
                   };
                   break;
                 case 'REVIEWING':
@@ -443,7 +443,7 @@ const TaskDashboard: React.FC = () => {
              <div className="relative">
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-2xl font-medium text-blue-600">
-                    편집중 :  
+                    작성중 :  
                     <span className="text-2xl font-medium"> </span>
                     <span className="text-2xl font-bold">{tasks.editingTasks.length}</span>
                   </p>
