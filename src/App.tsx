@@ -7,6 +7,7 @@ import DocumentList from './pages/DocumentList';
 import DocumentEditor from './pages/DocumentEditor.tsx';
 import DocumentReview from './pages/DocumentReview';
 import DocumentSignerAssignment from './pages/DocumentSignerAssignment';
+import DocumentSign from './pages/DocumentSign';
 import DocumentNew from './pages/DocumentNew';
 import TaskDashboard from './pages/TaskDashboard';
 import FolderPage from './pages/FolderPage';
@@ -133,6 +134,16 @@ function App() {
           }
         />
         <Route 
+          path="/documents/:id/review" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DocumentReview />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
           path="/documents/:id/signer-assignment" 
           element={
             <ProtectedRoute>
@@ -143,11 +154,11 @@ function App() {
           } 
         />
         <Route 
-          path="/documents/:id/review" 
+          path="/documents/:id/sign" 
           element={
             <ProtectedRoute>
               <Layout>
-                <DocumentReview />
+                <DocumentSign />
               </Layout>
             </ProtectedRoute>
           } 
