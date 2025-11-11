@@ -260,13 +260,17 @@ const TaskDashboard: React.FC = () => {
               let baseInfo;
               switch (status) {
                 case 'EDITING':
-                  baseInfo = {
-                    color: 'blue',
-                    bgColor: 'bg-blue-50',
-                    textColor: 'text-blue-700',
-                    borderColor: 'border-blue-200',
-                    label: '작성중'
-                  };
+                  if (isEditor) {
+                    baseInfo = {
+                      color: 'blue',
+                      bgColor: 'bg-blue-50',
+                      textColor: 'text-blue-700',
+                      borderColor: 'border-blue-200',
+                      label: '작성중'
+                    };
+                  } else {
+                    return null;
+                  }
                   break;
                 case 'READY_FOR_REVIEW':
                   baseInfo = {
@@ -318,6 +322,9 @@ const TaskDashboard: React.FC = () => {
             };
 
             const statusInfo = getStatusInfo(doc.status, doc.isRejected, isEditor);
+            if (!statusInfo) {
+              return null;
+            }
             const deadlineDate = doc.deadline ? new Date(doc.deadline) : null;
             const isOverdue = deadlineDate && deadlineDate < new Date();
             
@@ -408,7 +415,15 @@ const TaskDashboard: React.FC = () => {
 
                 {/* 카드 푸터 - 액션 버튼 (하단 고정) */}
                 <div className="px-4 pb-4 mt-auto">
-                  {doc.status === 'READY_FOR_REVIEW' ? (
+                  {doc.status === 'EDITING' && isEditor ? (
+                    <Link
+                    to={`/documents/${doc.id}`}
+                    className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all duration-200"
+                    >
+                      편집하기
+                    </Link>
+                  ) :
+                  doc.status === 'READY_FOR_REVIEW' ? (
                     <Link
                       to={`/documents/${doc.id}/signer-assignment`}
                       className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-md hover:shadow-lg transition-all duration-200"
@@ -437,14 +452,7 @@ const TaskDashboard: React.FC = () => {
                     >
                       수정하기
                     </Link>
-                  ) : (
-                    <Link
-                      to={`/documents/${doc.id}`}
-                      className="w-full inline-flex items-center justify-center px-4 py-2.5 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all duration-200"
-                    >
-                      편집하기
-                    </Link>
-                  )}
+                  ) : null}
                 </div>
               </div>
             );
