@@ -7,6 +7,7 @@ import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 import { API_BASE_URL } from '../config/api';
 import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
+import { refreshDocumentsAndUser } from '../utils/documentRefreshHelpers';
 
 const DocumentSignerAssignment: React.FC = () => {
   const { id } = useParams();
@@ -494,9 +495,8 @@ const DocumentSignerAssignment: React.FC = () => {
       alert('서명자 지정이 완료되었습니다.\n담당 교직원에게 검토 알림이 발송되었습니다.');
 
       // 문서 목록으로 이동
-      setTimeout(() => {
-        navigate('/documents');
-      }, 500);
+      await refreshDocumentsAndUser();
+      navigate('/documents');
 
     } catch (error) {
       console.error('서명자 지정 완료 실패:', error);
@@ -544,7 +544,10 @@ const DocumentSignerAssignment: React.FC = () => {
               <h3 className="font-bold text-red-800 mb-2">오류가 발생했습니다</h3>
               <p className="text-red-700 mb-4">{error}</p>
               <button
-                onClick={() => navigate('/documents')}
+                onClick={async () => {
+                  await refreshDocumentsAndUser();
+                  navigate('/documents');
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 문서 목록으로 돌아가기
@@ -569,7 +572,10 @@ const DocumentSignerAssignment: React.FC = () => {
                 서명자 지정 권한이 없습니다. 문서 작성자이거나 서명자 지정 권한이 있는 작성자만 접근할 수 있습니다.
               </p>
               <button
-                onClick={() => navigate('/documents')}
+                onClick={async () => {
+                  await refreshDocumentsAndUser();
+                  navigate('/documents');
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 문서 목록으로 돌아가기
@@ -594,7 +600,10 @@ const DocumentSignerAssignment: React.FC = () => {
                 현재 문서는 서명자 지정 단계가 아닙니다. (현재 상태: {currentDocument.status})
               </p>
               <button
-                onClick={() => navigate('/documents')}
+                onClick={async () => {
+                  await refreshDocumentsAndUser();
+                  navigate('/documents');
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 문서 목록으로 돌아가기
@@ -640,7 +649,10 @@ const DocumentSignerAssignment: React.FC = () => {
             {isCompletingAssignment ? '처리 중...' : '서명자 지정 완료'}
           </button>
           <button
-            onClick={() => navigate('/documents')}
+            onClick={async () => {
+              await refreshDocumentsAndUser();
+              navigate('/documents');
+            }}
             className="px-4 py-2 text-gray-600 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
           >
             돌아가기

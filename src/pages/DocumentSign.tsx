@@ -8,6 +8,7 @@ import { API_BASE_URL } from '../config/api';
 import { usePdfPages } from '../hooks/usePdfPages';
 import axios from 'axios';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
+import { refreshDocumentsAndUser } from '../utils/documentRefreshHelpers';
 
 interface RejectModalProps {
   isOpen: boolean;
@@ -302,14 +303,9 @@ const DocumentSign: React.FC = () => {
       });
 
       // 문서 상태에 따라 메시지 표시
-      if (response.data.status === 'COMPLETED') {
-        setIsRedirecting(true);
-        alert('✅ 모든 서명자가 서명을 완료하여 문서가 최종 승인되었습니다!');
-        navigate('/documents');
-      } else {
-        alert('✅ 서명이 완료되었습니다. 다른 서명자의 서명을 기다리고 있습니다.');
-        // SIGNING 상태 유지 - 페이지에 남아서 서명 확인 가능
-      }
+      setIsRedirecting(true);
+      await refreshDocumentsAndUser();
+      navigate('/documents');
 
     } catch (error) {
       console.error('❌ 서명 실패:', error);
@@ -391,21 +387,10 @@ const DocumentSign: React.FC = () => {
     return baseFontSize;
   };
 
-  if (isRedirecting) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
-        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-600 font-medium text-center">
-          문서 상태를 업데이트하고 있습니다. 잠시만 기다려주세요...
-        </p>
-      </div>
-    );
-  }
-
-  if (loading) {
+  if (loading || isRedirecting) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">로딩 중...</div>
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-500"></div>
       </div>
     );
   }
