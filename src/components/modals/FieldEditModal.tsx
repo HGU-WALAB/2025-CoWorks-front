@@ -72,11 +72,11 @@ const FieldEditModal: React.FC<FieldEditModalProps> = ({
               <div className="text-sm font-medium text-purple-900 mb-2">테이블 정보</div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-gray-600">행 개수:</span>
+                  <span className="text-gray-600">행 개수(가로):</span>
                   <span className="ml-2 font-medium">{editField.tableData.rows}</span>
                 </div>
                 <div>
-                  <span className="text-gray-600">열 개수:</span>
+                  <span className="text-gray-600">열 개수(세로):</span>
                   <span className="ml-2 font-medium">{editField.tableData.cols}</span>
                 </div>
               </div>
