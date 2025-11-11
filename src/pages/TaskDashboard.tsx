@@ -433,94 +433,91 @@ const TaskDashboard: React.FC = () => {
 
           {/* 통계 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-           {/* 1. 편집 중인 문서 - 파란색 */}
+           {/* 1. 편집 중인 문서 - 파란색 글씨 */}
            <Link to="/documents?status=EDITING" className="block group">
-             <div className="bg-gradient-to-br from-blue-500 via-blue-500 to-blue-500 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
+             <div className="bg-gray-50 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
                {/* 배경 패턴 */}
-               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
-               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
+               <div className="absolute top-0 right-0 w-32 h-32 bg-gray-100 opacity-50 rounded-full -mr-16 -mt-16"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -ml-12 -mb-12"></div>
                
              <div className="relative">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-2xl font-medium text-white">
+                  <p className="text-2xl font-medium text-blue-600">
                     편집중 :  
                     <span className="text-2xl font-medium"> </span>
                     <span className="text-2xl font-bold">{tasks.editingTasks.length}</span>
                   </p>
-                  <span className="text-white text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
+                  <span className="text-blue-600 text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
                 </div>
-                <div className="h-px bg-white opacity-20 my-3"></div>
-                <p className="text-blue-50 text-xs font-medium">작업이 필요한 문서</p>
+                <div className="h-px bg-gray-300 my-3"></div>
+                <p className="text-gray-600 text-xs font-medium">작업이 필요한 문서</p>
               </div>
              </div>
            </Link>
 
-           {/* 2. 검토 중인 문서 - 노란색 */}
+           {/* 2. 검토 중인 문서 - 주황색 글씨 */}
            <Link to="/documents?status=REVIEWING" className="block group">
-               <div className="bg-gradient-to-br from-blue-700 via-blue-700 to-blue-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
-             {/*<div className="bg-gradient-to-br from-yellow-500 via-orange-500 to-orange-600 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">*/}
+             <div className="bg-gray-50 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
                {/* 배경 패턴 */}
-               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
-               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
+               <div className="absolute top-0 right-0 w-32 h-32 bg-gray-100 opacity-50 rounded-full -mr-16 -mt-16"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -ml-12 -mb-12"></div>
                
               <div className="relative">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-2xl font-medium text-white">
+                  <p className="text-2xl font-medium text-orange-600">
                     검토중 : 
                     <span className="text-2xl font-medium"> </span>
                     <span className="text-2xl font-bold">{tasks.reviewingTasks.length}</span>
                   </p>
-                  <span className="text-white text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
+                  <span className="text-orange-600 text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
                 </div>
-                <div className="h-px bg-white opacity-20 my-3"></div>
-                <p className="text-yellow-50 text-xs font-medium">검토가 필요한 문서</p>
+                <div className="h-px bg-gray-300 my-3"></div>
+                <p className="text-gray-600 text-xs font-medium">검토가 필요한 문서</p>
               </div>
              </div>
            </Link>
 
-           {/* 3. 반려된 문서 - 빨간색 */}
+           {/* 3. 반려된 문서 - 빨간색 글씨 */}
            <Link to="/documents?status=REJECTED" className="block group">
-               <div className="bg-gradient-to-br from-blue-900 via-blu-900 to-blue-900 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
-             {/*<div className="bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">*/}
+             <div className="bg-gray-50 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
                {/* 배경 패턴 */}
-               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
-               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
+               <div className="absolute top-0 right-0 w-32 h-32 bg-gray-100 opacity-50 rounded-full -mr-16 -mt-16"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -ml-12 -mb-12"></div>
                
               <div className="relative">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-2xl font-medium text-white">
+                  <p className="text-2xl font-medium text-red-600">
                     반려됨 : 
                     <span className="text-2xl font-medium"> </span>
                     <span className="text-2xl font-bold">{tasks.rejectedTasks.length}</span>
                   </p>
-                  <span className="text-white text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
+                  <span className="text-red-600 text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
                 </div>
-                <div className="h-px bg-white opacity-20 my-3"></div>
-                <p className="text-red-50 text-xs font-medium">수정이 필요한 문서</p>
+                <div className="h-px bg-gray-300 my-3"></div>
+                <p className="text-gray-600 text-xs font-medium">수정이 필요한 문서</p>
               </div>
              </div>
            </Link>
 
-           {/* 4. 완료된 문서 - 초록색 */}
+           {/* 4. 완료된 문서 - 연두색 글씨 */}
            <Link to="/documents?status=COMPLETED" className="block group">
-               <div className="bg-gradient-to-br from-blue-900 via-blue-900 to-blue-900 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">
-             {/*<div className="bg-gradient-to-br from-green-500 via-green-600 to-green-700 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden">*/}
+             <div className="bg-gray-50 rounded-xl shadow-lg p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
                {/* 배경 패턴 */}
-               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
-               <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
+               <div className="absolute top-0 right-0 w-32 h-32 bg-gray-100 opacity-50 rounded-full -mr-16 -mt-16"></div>
+               <div className="absolute bottom-0 left-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -ml-12 -mb-12"></div>
 
               <div className="relative">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-2xl font-medium text-white">
+                  <p className="text-2xl font-medium text-lime-600">
                     완료됨 :
                     <span className="text-2xl font-medium"> </span>
                     <span className="text-2xl font-bold">{tasks.completedTasks.length}</span>
                   </p>
-                  <span className="text-white text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
+                  <span className="text-lime-600 text-3xl opacity-70 group-hover:opacity-100">&gt;</span>
                 </div>
+                <div className="h-px bg-gray-300 my-3"></div>
+                <p className="text-gray-600 text-xs font-medium">완료된 문서</p>
               </div>
-              <div className="h-px bg-white opacity-20 my-3"></div>
-              <p className="text-green-50 text-xs font-medium">완료된 문서</p>
              </div>
            </Link>
           </div>
