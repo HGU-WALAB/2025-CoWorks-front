@@ -1,9 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Document } from '../types/document';
+import { Document, TaskInfo, CoordinateField } from '../types/document';
 import { useAuthStore } from '../stores/authStore';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 import { getRoleAssignmentMessage, formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
+
+type ExtendedTaskInfo = TaskInfo & Partial<{
+  assignedUser: { name?: string; username?: string };
+  user: { name?: string; username?: string };
+  userName: string;
+  name: string;
+}>;
 
 interface DocumentListItemProps {
   document: Document;
@@ -31,6 +38,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     const assignees = {
       creator: doc.tasks?.find(task => task.role === 'CREATOR'),
       editor: doc.tasks?.find(task => task.role === 'EDITOR'),
+        signer: doc.tasks?.find(task => task.role === 'SIGNER'),
       reviewer: doc.tasks?.find(task => task.role === 'REVIEWER')
     };
 
@@ -38,7 +46,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
   };
 
   // 담당자 정보 렌더링 함수
-  const renderAssigneeInfo = (assignee: any, role: string, colorClass: string) => {
+  const renderAssigneeInfo = (assignee: TaskInfo | undefined | null, role: string, colorClass: string) => {
     // assignee가 없거나, assignedUserName과 assignedUserEmail이 모두 null인 경우
     if (!assignee || (!assignee.assignedUserName && !assignee.assignedUserEmail)) {
       return (
@@ -50,14 +58,15 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
     }
 
     // 다양한 경로에서 사용자 이름 찾기
+    const extendedAssignee = assignee as ExtendedTaskInfo;
     const userName = assignee.assignedUserName || 
                     assignee.assignedUserEmail || // 이메일이라도 표시
-                    assignee.assignedUser?.name || 
-                    assignee.assignedUser?.username ||
-                    assignee.user?.name ||
-                    assignee.user?.username ||
-                    assignee.userName ||
-                    assignee.name ||
+                    extendedAssignee.assignedUser?.name || 
+                    extendedAssignee.assignedUser?.username ||
+                    extendedAssignee.user?.name ||
+                    extendedAssignee.user?.username ||
+                    extendedAssignee.userName ||
+                    extendedAssignee.name ||
                     '이름 없음';
 
     return (
@@ -93,12 +102,25 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
       // 서명 진행 상황 계산
       const totalReviewers = document.tasks?.filter(task => task.role === 'REVIEWER').length || 0;
       const signedCount = document.data?.coordinateFields?.filter(
-        (field: any) => 
+        (field: CoordinateField) => 
           field.type === 'reviewer_signature' &&
           field.value && 
           field.value !== null && 
           field.value !== ''
       ).length || 0;
+
+      const isReviewer = isCurrentUserReviewer();
+
+      if (!isReviewer) {
+        return (
+          <span className="px-3 py-1.5 text-sm text-gray-400 bg-gray-50 border border-gray-200 rounded-md flex items-center cursor-not-allowed">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            검토 대기중
+          </span>
+        );
+      }
 
       return (
         <div className="flex items-center gap-2">
@@ -134,6 +156,53 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
       );
     }
 
+    if (document.status === 'SIGNING') {
+      // 서명 진행 상황 계산
+      const totalSigners = document.tasks?.filter(task => task.role === 'SIGNER').length || 0;
+      const signedCount = document.data?.coordinateFields?.filter(
+        (field: CoordinateField) => 
+          (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+          field.value && 
+          field.value !== null && 
+          field.value !== ''
+      ).length || 0;
+
+      // 현재 사용자가 서명자인지 확인
+      const isCurrentUserSigner = document.tasks?.some(task => 
+        task.role === 'SIGNER' && task.assignedUserEmail === currentUser?.email
+      );
+
+      if (!isCurrentUserSigner) {
+        return (
+          <span className="px-3 py-1.5 text-sm text-gray-400 bg-gray-50 border border-gray-200 rounded-md flex items-center cursor-not-allowed">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            서명 대기중
+          </span>
+        );
+      }
+
+      return (
+        <div className="flex items-center space-x-2">
+          <Link
+            to={`/documents/${document.id}/sign`}
+            className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors flex items-center"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            서명하기
+          </Link>
+          {totalSigners > 0 && (
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              {signedCount}/{totalSigners} 서명
+            </span>
+          )}
+        </div>
+      );
+    }
+
     if (document.status === 'REJECTED') {
       // 현재 사용자가 서명자인 경우 편집 버튼 비활성화
       if (isCurrentUserReviewer()) {
@@ -142,7 +211,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
-            편집 불가
+            작성 불가
           </span>
         );
       }
@@ -155,7 +224,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
-          편집
+          작성하기
         </Link>
       );
     }
@@ -169,7 +238,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
-        편집
+        작성
       </Link>
     );
   };
@@ -269,7 +338,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                     return (
                       <>
                         {renderAssigneeInfo(assignees.editor, '작성자', 'bg-blue-500')}
-                        {renderAssigneeInfo(assignees.reviewer, '서명자', 'bg-blue-500')}
+                        {renderAssigneeInfo(assignees.signer, '서명자', 'bg-blue-500')}
                       </>
                     );
                   })()}

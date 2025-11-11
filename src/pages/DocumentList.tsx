@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useDocumentStore, type Document } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
@@ -15,7 +15,8 @@ type StatusFilter = 'all' | 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWIN
 
 const DocumentList: React.FC = () => {
   const { documents, loading, fetchDocuments } = useDocumentStore();
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, refreshUser, isAuthenticated } = useAuthStore();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showPreview, setShowPreview] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
@@ -30,9 +31,56 @@ const DocumentList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortOption, setSortOption] = useState<SortOption>('updatedAt-desc');
 
-  useEffect(() => {
-    fetchDocuments();
+  const refreshDocuments = useCallback(async () => {
+    try {
+      await fetchDocuments();
+    } catch (error) {
+      console.error('DocumentList: Failed to refresh documents', error);
+    }
   }, [fetchDocuments]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshUser();
+    }
+    refreshDocuments();
+  }, [refreshDocuments, refreshUser, isAuthenticated]);
+
+  // 라우터 location 변경 시 최신 문서 목록 동기화
+  useEffect(() => {
+    if (location.pathname === '/documents' && isAuthenticated) {
+      refreshDocuments();
+    }
+  }, [location.pathname, refreshDocuments, isAuthenticated]);
+
+  // 브라우저 포커스/visibility 변경 시 자동 새로고침
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handleFocus = () => {
+      refreshDocuments();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshDocuments();
+      }
+    };
+
+    const handleForceRefresh = () => {
+      refreshDocuments();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('forceRefreshDocuments', handleForceRefresh);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('forceRefreshDocuments', handleForceRefresh);
+    };
+  }, [refreshDocuments, isAuthenticated]);
 
   // URL 파라미터에서 초기 필터 상태 설정
   useEffect(() => {

@@ -100,8 +100,12 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         if (field.type === 'editor_signature') {
           isEditorSignature = true;
         }
+        
+        // 서명자 서명 필드 확인
+        const isReviewerSignature = field.type === 'reviewer_signature' || field.type === 'signer_signature';
 
-        if (field.value) {
+        // 서명 필드가 아닌 경우에만 JSON 파싱 시도
+        if (field.value && !isEditorSignature && !isReviewerSignature) {
           try {
             const parsedValue = JSON.parse(field.value);
             if (parsedValue.rows && parsedValue.cols) {
@@ -113,7 +117,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               };
               tableData = parsedValue;
             }
-          } catch (error) {
+          } catch {
             // JSON 파싱 실패 시 일반 필드로 처리
           }
         }
@@ -153,6 +157,13 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               <img
                 src={field.value}
                 alt="작성자 서명"
+                className="w-full h-full object-contain"
+                style={{ background: 'transparent' }}
+              />
+            ) : isReviewerSignature && field.value && field.value.startsWith('data:image') ? (
+              <img
+                src={field.value}
+                alt="서명자 서명"
                 className="w-full h-full object-contain"
                 style={{ background: 'transparent' }}
               />
@@ -423,13 +434,14 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 }
 
                 // 서명자 서명 필드 확인
-                if (field.type === 'reviewer_signature') {
+                if (field.type === 'reviewer_signature' || field.type === 'signer_signature') {
                   isReviewerSignature = true;
                 }
                 
                 // 테이블 데이터 확인 - 편집 페이지와 동일한 우선순위
                 // 1. 서버에서 불러온 데이터 우선 확인 (field.value)
-                if (field.value) {
+                // 단, 서명 필드인 경우 JSON 파싱 시도하지 않음 (이미지 데이터이므로)
+                if (field.value && !isEditorSignature && !isReviewerSignature) {
                   try {
                     const parsedValue = JSON.parse(field.value);
                     if (parsedValue.rows && parsedValue.cols) {
@@ -441,8 +453,8 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                       };
                       tableData = parsedValue; // 서버에서 불러온 실제 데이터 (cells 포함)
                     }
-                  } catch (error) {
-                    console.error('서버 테이블 데이터 파싱 실패:', error);
+                  } catch {
+                    // JSON 파싱 실패 시 일반 텍스트 필드로 처리
                   }
                 }
                 
@@ -580,7 +592,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                                     Array.isArray(tableData.cells[rowIndex])) {
                                   cellText = tableData.cells[rowIndex][colIndex] || '';
                                 }
-                              } catch (error) {
+                              } catch {
                                 cellText = '';
                               }
 

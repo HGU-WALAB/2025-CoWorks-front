@@ -28,40 +28,40 @@ const FieldManagement: React.FC<FieldManagementProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow p-4">
-        <h3 className="text-lg font-semibold mb-4">기본 폰트 설정</h3>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              폰트 패밀리
-            </label>
-            <select
-              value={defaultFontFamily}
-              onChange={(e) => onFontFamilyChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            >
-              {availableFonts.map((font) => (
-                <option key={font} value={font} style={{ fontFamily: font }}>
-                  {font}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              폰트 크기 (px)
-            </label>
-            <input
-              type="number"
-              min="8"
-              max="72"
-              value={defaultFontSize}
-              onChange={(e) => onFontSizeChange(parseInt(e.target.value) || 16)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-      </div>
+      {/*<div className="bg-white rounded-lg shadow p-4">*/}
+      {/*  <h3 className="text-lg font-semibold mb-4">기본 폰트 설정</h3>*/}
+      {/*  <div className="space-y-3">*/}
+      {/*    <div>*/}
+      {/*      <label className="block text-sm font-medium text-gray-700 mb-1">*/}
+      {/*        폰트 패밀리*/}
+      {/*      </label>*/}
+      {/*      <select*/}
+      {/*        value={defaultFontFamily}*/}
+      {/*        onChange={(e) => onFontFamilyChange(e.target.value)}*/}
+      {/*        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"*/}
+      {/*      >*/}
+      {/*        {availableFonts.map((font) => (*/}
+      {/*          <option key={font} value={font} style={{ fontFamily: font }}>*/}
+      {/*            {font}*/}
+      {/*          </option>*/}
+      {/*        ))}*/}
+      {/*      </select>*/}
+      {/*    </div>*/}
+      {/*    <div>*/}
+      {/*      <label className="block text-sm font-medium text-gray-700 mb-1">*/}
+      {/*        폰트 크기 (px)*/}
+      {/*      </label>*/}
+      {/*      <input*/}
+      {/*        type="number"*/}
+      {/*        min="8"*/}
+      {/*        max="72"*/}
+      {/*        value={defaultFontSize}*/}
+      {/*        onChange={(e) => onFontSizeChange(parseInt(e.target.value) || 16)}*/}
+      {/*        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"*/}
+      {/*      />*/}
+      {/*    </div>*/}
+      {/*  </div>*/}
+      {/*</div>*/}
 
       <div className="bg-white rounded-lg shadow">
         <div className="p-4 border-b">
@@ -70,6 +70,45 @@ const FieldManagement: React.FC<FieldManagementProps> = ({
             총 {fields.length}개 필드
           </p>
         </div>
+
+        {/* 서명자 서명 필드 검증 경고 */}
+        {(() => {
+          const signerSignatureFields = fields.filter(field => 
+            field.type === 'signer_signature' || field.type === 'reviewer_signature'
+          );
+          
+          if (signerSignatureFields.length === 0) {
+            return (
+              <div className="p-4 bg-red-50 border-b border-red-200">
+                <div className="flex items-start space-x-2">
+                  <span className="text-red-600 text-lg mt-0.5">⚠️</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-800">
+                      서명자 서명 필드가 필요합니다
+                    </p>
+                    <p className="text-xs text-red-700 mt-1">
+                      템플릿을 저장하려면 최소 1개 이상의 서명자 서명 필드를 추가해주세요.
+                    </p>
+                    <p className="text-xs text-red-600 mt-2 font-medium">
+                      💡 PDF 영역을 드래그 → "서명자 서명"을 "필수 필드"로 선택
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          } else {
+            return (
+              <div className="p-3 bg-green-50 border-b border-green-200">
+                <div className="flex items-center space-x-2">
+                  <span className="text-green-600 text-base">✓</span>
+                  <p className="text-xs text-green-800 font-medium">
+                    서명자 서명 필드: {signerSignatureFields.length}개
+                  </p>
+                </div>
+              </div>
+            );
+          }
+        })()}
 
         <div className="max-h-96 overflow-y-auto">
           {fields.length === 0 ? (
@@ -177,9 +216,9 @@ const FieldManagement: React.FC<FieldManagementProps> = ({
       <div className="bg-blue-50 rounded-lg p-4">
         <h4 className="font-medium text-blue-900 mb-2">사용 방법</h4>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• PDF 위에서 클릭하여 새 필드 추가</li>
-          <li>• 필드를 드래그하여 위치 이동</li>
-          <li>• 필드 모서리를 드래그하여 크기 조절</li>
+          <li>1. PDF 위에서 클릭하여 필드 추가</li>
+          <li>2. 필드를 드래그하여 위치 이동</li>
+          <li>3. 필드 모서리를 드래그하여 크기 조절</li>
           <li>• 테이블 필드는 셀을 클릭하여 내용 편집</li>
         </ul>
       </div>
