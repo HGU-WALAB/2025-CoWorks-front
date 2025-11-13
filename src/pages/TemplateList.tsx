@@ -145,17 +145,12 @@ const TemplateList: React.FC = () => {
         </div>
 
         <div className="p-6">
-          {templates.length === 0 ? (
+          {
+            templates.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-gray-500 text-lg mb-4">
                 아직 생성된 템플릿이 없습니다.
               </div>
-              <Link
-                to="/templates/pdf/upload"
-                className="btn btn-primary"
-              >
-                첫 번째 템플릿 만들기
-              </Link>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

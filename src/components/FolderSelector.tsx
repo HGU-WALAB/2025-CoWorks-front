@@ -73,7 +73,7 @@ const FolderSelector: React.FC<FolderSelectorProps> = ({
       if (error.message?.includes('인증이 필요합니다')) {
         setError('로그인이 필요합니다. 페이지를 새로고침하고 다시 시도해주세요.');
       } else {
-        setError('폴더 목록을 불러오는데 실패했습니다.');
+        setError('폴더 접근 권한이 없습니다.');
       }
       setFolders([]);
     } finally {

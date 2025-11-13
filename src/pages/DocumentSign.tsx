@@ -88,6 +88,7 @@ const DocumentSign: React.FC = () => {
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const [pdfScale, setPdfScale] = useState(1);
 
+
   // PDF 페이지 관리 훅 사용
   const {
     currentPage,
@@ -143,14 +144,48 @@ const DocumentSign: React.FC = () => {
     if (id) {
       console.log('🔍 DocumentSign: 문서 로드 시작, ID:', id);
       getDocument(parseInt(id)).then((doc) => {
+        const coordinateFields = doc?.data?.coordinateFields || [];
+        const signerSignatureFields = coordinateFields.filter((field: any) =>
+          field.type === 'signer_signature' || field.type === 'reviewer_signature'
+        );
+
+        // 서명자 목록 확인
+        const signerTasks = doc?.tasks?.filter((task: any) => task.role === 'SIGNER') || [];
+        const signerEmails = signerTasks.map((task: any) => task.assignedUserEmail);
+
+        // 각 서명자에 대한 서명 필드 확인
+        const signerFieldMapping = signerEmails.map((email: string) => {
+          const hasField = signerSignatureFields.some((field: any) =>
+            field.signerEmail === email || field.reviewerEmail === email
+          );
+          return { email, hasField };
+        });
+
         console.log('🔍 DocumentSign: 문서 로드 완료:', {
           documentId: doc?.id,
           status: doc?.status,
-          coordinateFieldsCount: doc?.data?.coordinateFields?.length || 0,
-          signerSignatureFields: doc?.data?.coordinateFields?.filter(
-            (field: any) => field.type === 'signer_signature' || field.type === 'reviewer_signature'
-          ) || []
+          coordinateFieldsCount: coordinateFields.length,
+          signerSignatureFieldsCount: signerSignatureFields.length,
+          signerTasksCount: signerTasks.length,
+          signerEmails,
+          signerFieldMapping,
+          signerSignatureFields: signerSignatureFields.map((field: any) => ({
+            id: field.id,
+            type: field.type,
+            signerEmail: field.signerEmail,
+            reviewerEmail: field.reviewerEmail,
+            signerName: field.signerName,
+            reviewerName: field.reviewerName,
+            hasValue: !!field.value,
+            valueLength: field.value ? field.value.length : 0
+          }))
         });
+
+        // 서명 필드가 없는 서명자가 있는지 확인
+        const missingFields = signerFieldMapping.filter(m => !m.hasField);
+        if (missingFields.length > 0) {
+          console.warn('⚠️ 서명 필드가 없는 서명자:', missingFields);
+        }
       });
     }
   }, [id, getDocument]);
@@ -193,17 +228,14 @@ const DocumentSign: React.FC = () => {
   const hasCurrentUserSigned = () => {
     if (!currentDocument || !user) return false;
 
-    return currentDocument.data?.coordinateFields?.some(
-      (field) => {
-        const signerEmail = (field as any).signerEmail;
-        const reviewerEmail = (field as any).reviewerEmail;
-        return (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
-        (signerEmail === user.email || reviewerEmail === user.email) &&
-        field.value &&
-        field.value !== null &&
-        field.value !== '';
-      }
-    ) || false;
+    const coordinateFields = (currentDocument.data?.coordinateFields || []) as any[];
+    return coordinateFields.some((field) =>
+      (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+      (field.signerEmail === user.email || field.reviewerEmail === user.email) &&
+      field.value &&
+      field.value !== null &&
+      field.value !== ''
+    );
   };
 
   // 서명 가능한 상태인지 확인 (서명하지 않은 서명자만 가능)
@@ -258,22 +290,19 @@ const DocumentSign: React.FC = () => {
       console.log('✅ 응답 성공:', response.data);
 
       // 응답에서 직접 서명 데이터 확인
-      const responseHasSignature = response.data?.data?.coordinateFields?.some(
-        (field: any) => {
-          const signerEmail = field.signerEmail;
-          const reviewerEmail = field.reviewerEmail;
-          return (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
-          (signerEmail === user.email || reviewerEmail === user.email) &&
-          field.value;
-        }
+      const responseCoordinateFields = response.data?.data?.coordinateFields || [];
+      const responseHasSignature = responseCoordinateFields.some((field: any) =>
+        (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+        (field.signerEmail === user.email || field.reviewerEmail === user.email) &&
+        field.value
       );
 
       console.log('🔍 응답에서 서명 데이터 확인:', {
         documentId: response.data.id,
         documentStatus: response.data.status,
-        signerSignatureFields: response.data.data?.coordinateFields?.filter(
-          (field: any) => field.type === 'signer_signature' || field.type === 'reviewer_signature'
-        ) || [],
+        signerSignatureFields: responseCoordinateFields.filter((field: any) =>
+          field.type === 'signer_signature' || field.type === 'reviewer_signature'
+        ),
         hasSignatureData: responseHasSignature
       });
 
@@ -283,29 +312,52 @@ const DocumentSign: React.FC = () => {
       // 서명 저장 후 문서를 다시 로드하여 서명이 표시되도록 함
       const updatedDocument = await getDocument(Number(id));
 
-      const reloadedHasSignature = updatedDocument?.data?.coordinateFields?.some(
-        (field: any) => {
-          const signerEmail = field.signerEmail;
-          const reviewerEmail = field.reviewerEmail;
-          return (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
-          (signerEmail === user.email || reviewerEmail === user.email) &&
-          field.value;
-        }
+      const updatedCoordinateFields = updatedDocument?.data?.coordinateFields || [];
+      const reloadedHasSignature = updatedCoordinateFields.some((field: any) =>
+        (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+        (field.signerEmail === user.email || field.reviewerEmail === user.email) &&
+        field.value
       );
 
       console.log('🔄 문서 재로드 후 서명 데이터 확인 (직접):', {
         documentId: updatedDocument?.id,
         documentStatus: updatedDocument?.status,
-        signerSignatureFields: updatedDocument?.data?.coordinateFields?.filter(
-          (field: any) => field.type === 'signer_signature' || field.type === 'reviewer_signature'
-        ) || [],
-        hasSignatureData: reloadedHasSignature
+        signerSignatureFields: updatedCoordinateFields.filter((field: any) =>
+          field.type === 'signer_signature' || field.type === 'reviewer_signature'
+        ),
+        hasSignatureData: reloadedHasSignature,
+        allSigners: currentDocument.tasks?.filter(task => task.role === 'SIGNER').map(t => t.assignedUserEmail),
+        signedSigners: updatedCoordinateFields
+          .filter((field: any) => 
+            (field.type === 'signer_signature' || field.type === 'reviewer_signature') && 
+            field.value
+          )
+          .map((field: any) => field.signerEmail || field.reviewerEmail)
       });
 
-      // 문서 상태에 따라 메시지 표시
-      setIsRedirecting(true);
-      await refreshDocumentsAndUser();
-      navigate('/documents');
+      // 문서 상태 확인
+      const finalStatus = updatedDocument?.status;
+      console.log('📊 최종 문서 상태:', finalStatus);
+
+      // 문서 상태에 따라 처리
+      if (finalStatus === 'COMPLETED') {
+        // 모든 서명이 완료된 경우
+        setIsRedirecting(true);
+        await refreshDocumentsAndUser();
+        navigate('/documents');
+      } else if (finalStatus === 'SIGNING') {
+        // 아직 다른 서명자가 서명해야 하는 경우
+        setIsRedirecting(false);
+        setShowSignatureModal(false);
+        // 문서를 다시 로드하여 최신 상태 반영
+        await getDocument(Number(id));
+        alert('✅ 서명이 완료되었습니다. 다른 서명자의 서명을 기다리고 있습니다.');
+      } else {
+        // 기타 상태인 경우
+        setIsRedirecting(true);
+        await refreshDocumentsAndUser();
+        navigate('/documents');
+      }
 
     } catch (error) {
       console.error('❌ 서명 실패:', error);
@@ -452,6 +504,28 @@ const DocumentSign: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // 서명 필드 확인
+  const coordinateFields = currentDocument.data?.coordinateFields || [];
+  const signerSignatureFields = coordinateFields.filter((field: any) =>
+    field.type === 'signer_signature' || field.type === 'reviewer_signature'
+  );
+  const signerTasks = currentDocument.tasks?.filter((task: any) => task.role === 'SIGNER') || [];
+  const currentUserSignerField = signerSignatureFields.find((field: any) =>
+    (field.signerEmail === user?.email || field.reviewerEmail === user?.email)
+  );
+
+  // 현재 사용자에게 서명 필드가 없는 경우 경고
+  if (!currentUserSignerField && signerTasks.some((task: any) => task.assignedUserEmail === user?.email)) {
+    console.warn('⚠️ 현재 사용자에게 서명 필드가 없습니다:', {
+      userEmail: user?.email,
+      signerTasks: signerTasks.map((t: any) => t.assignedUserEmail),
+      signerSignatureFields: signerSignatureFields.map((f: any) => ({
+        signerEmail: f.signerEmail,
+        reviewerEmail: f.reviewerEmail
+      }))
+    });
   }
 
   return (
@@ -604,6 +678,20 @@ const DocumentSign: React.FC = () => {
                           height: field.height,
                         });
                         const displayFontSize = responsiveFontSize || field.fontSize || 14;
+                        console.log('🎯 서명 화면 - 필드 렌더링:', {
+                          id: field.id,
+                          label: field.label,
+                          x: field.x,
+                          y: field.y,
+                          width: field.width,
+                          height: field.height,
+                          value: field.value,
+                          hasTableData: !!field.tableData,
+                          tableData: field.tableData,
+                          fieldType: field.type,
+                          fontSize: field.fontSize,
+                          fontFamily: field.fontFamily
+                        });
 
                         // 픽셀값 직접 사용
                         const leftPercent = field.x;
@@ -623,8 +711,26 @@ const DocumentSign: React.FC = () => {
                         }
 
                         // 서명자 서명 필드 확인 (signer_signature 또는 reviewer_signature)
+                        // 모든 서명 필드를 표시 (현재 사용자에게 할당된 것만이 아님)
                         if (field.type === 'signer_signature' || field.type === 'reviewer_signature') {
                           isSignerSignature = true;
+                          const fieldSignerEmail = (field as any).signerEmail;
+                          const fieldReviewerEmail = (field as any).reviewerEmail;
+                          const isAssignedToCurrentUser = user && (
+                            fieldSignerEmail === user.email || 
+                            fieldReviewerEmail === user.email
+                          );
+                          
+                          console.log('✅ 서명 필드 발견:', {
+                            fieldId: field.id,
+                            fieldType: field.type,
+                            signerEmail: fieldSignerEmail,
+                            reviewerEmail: fieldReviewerEmail,
+                            currentUserEmail: user?.email,
+                            isAssignedToCurrentUser,
+                            hasValue: !!field.value,
+                            valuePreview: field.value ? (field.value.substring(0, 50) + '...') : 'null'
+                          });
                         }
 
                       // 1. tableData 속성으로 확인
@@ -645,7 +751,7 @@ const DocumentSign: React.FC = () => {
                               };
                             }
                           }
-                        } catch (e) {
+                        } catch {
                           // JSON 파싱 실패 시 일반 필드로 처리
                         }
                       }
@@ -706,7 +812,7 @@ const DocumentSign: React.FC = () => {
                               ) : (
                                 <div className="text-xs text-red-700 font-medium text-center">
                                   {(field as any).signerName || (field as any).reviewerName || (field as any).signerEmail || (field as any).reviewerEmail || '서명자'} 서명
-                                  {(((field as any).signerEmail || (field as any).reviewerEmail) === user?.email) && (
+                                  {(((field as any).signerEmail === user?.email || (field as any).reviewerEmail === user?.email)) && (
                                     <div className="text-red-500 mt-1">(본인)</div>
                                   )}
                                 </div>
@@ -832,17 +938,14 @@ const DocumentSign: React.FC = () => {
                     .filter(task => task.role === 'SIGNER')
                     .map((signer, index) => {
                       // 서명 완료 여부 확인
-                      const hasSigned = currentDocument.data?.coordinateFields?.some(
-                        (field) => {
-                          const signerEmail = (field as any).signerEmail;
-                          const reviewerEmail = (field as any).reviewerEmail;
-                          return (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
-                          (signerEmail === signer.assignedUserEmail || reviewerEmail === signer.assignedUserEmail) &&
-                          field.value && 
-                          field.value !== null && 
-                          field.value !== '';
-                        }
-                      ) || false;
+                      const coordinateFields = (currentDocument.data?.coordinateFields || []) as any[];
+                      const hasSigned = coordinateFields.some((field) =>
+                        (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+                        (field.signerEmail === signer.assignedUserEmail || field.reviewerEmail === signer.assignedUserEmail) &&
+                        field.value &&
+                        field.value !== null &&
+                        field.value !== ''
+                      );
 
                       return (
                         <div 
@@ -952,15 +1055,11 @@ const DocumentSign: React.FC = () => {
           signatureFields={(() => {
             const docSignatureFields = currentDocument.data?.signatureFields || [];
             const docSignatures = (currentDocument.data?.signatures || {}) as Record<string, string>;
-            return docSignatureFields.map((field) => {
-              const signerEmail = (field as any).signerEmail;
-              const reviewerEmail = (field as any).reviewerEmail;
-              return {
-                ...field,
-                reviewerName: (field as any).reviewerName || (field as any).signerName || '',
-                signatureData: docSignatures[signerEmail || reviewerEmail || '']
-              };
-            });
+            return docSignatureFields.map((field) => ({
+              ...field,
+              reviewerName: (field as any).reviewerName || '',
+              signatureData: docSignatures[(field as { reviewerEmail?: string }).reviewerEmail || '']
+            }));
           })()}
           documentTitle={currentDocument.title || currentDocument.templateName}
         />
