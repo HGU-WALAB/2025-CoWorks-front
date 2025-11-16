@@ -80,7 +80,7 @@ const PdfFieldOverlay: React.FC<PdfFieldOverlayProps> = ({
             top: field.y,
             width: field.width,
             height: field.height,
-            fontSize: field.fontSize || 12,
+            fontSize: field.fontSize || 18,
             fontFamily: field.fontFamily || 'Arial'
           }}
           onMouseDown={(e) => handleFieldMouseDown(e, field)}
@@ -133,7 +133,7 @@ const PdfFieldOverlay: React.FC<PdfFieldOverlayProps> = ({
           top: field.y,
           width: field.width,
           height: field.height,
-          fontSize: field.fontSize || 12,
+          fontSize: field.fontSize || 18,
           fontFamily: field.fontFamily || 'Arial'
         }}
         onMouseDown={(e) => handleFieldMouseDown(e, field)}

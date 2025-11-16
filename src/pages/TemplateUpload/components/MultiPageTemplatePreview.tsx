@@ -325,7 +325,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
             top: scaledPos.y,
             width: scaledSize.width,
             height: scaledSize.height,
-            fontSize: (field.fontSize || 16) * scale,
+            fontSize: (field.fontSize || 18) * scale,
             fontFamily: field.fontFamily || 'Arial'
           }}
           onMouseDown={isInteractive ? (e) => handleFieldMouseDown(field, e, 'move') : undefined}
@@ -444,7 +444,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
           top: scaledPos.y,
           width: scaledSize.width,
           height: scaledSize.height,
-          fontSize: (field.fontSize || 16) * scale,
+          fontSize: (field.fontSize || 18) * scale,
           fontFamily: field.fontFamily || 'Arial'
         }}
         onMouseDown={isInteractive ? (e) => handleFieldMouseDown(field, e, 'move') : undefined}
