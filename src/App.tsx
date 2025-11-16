@@ -8,6 +8,7 @@ import DocumentEditor from './pages/DocumentEditor.tsx';
 import DocumentReview from './pages/DocumentReview';
 import DocumentSignerAssignment from './pages/DocumentSignerAssignment';
 import DocumentSign from './pages/DocumentSign';
+import DocumentSignStandalone from './pages/DocumentSignStandalone';
 import DocumentNew from './pages/DocumentNew';
 import TaskDashboard from './pages/TaskDashboard';
 import FolderPage from './pages/FolderPage';
@@ -160,6 +161,15 @@ function App() {
               <Layout>
                 <DocumentSign />
               </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        {/* 이메일 링크 전용 서명 페이지 - Layout 없이 독립적으로 동작 */}
+        <Route 
+          path="/email-sign/:id" 
+          element={
+            <ProtectedRoute>
+              <DocumentSignStandalone />
             </ProtectedRoute>
           } 
         />
