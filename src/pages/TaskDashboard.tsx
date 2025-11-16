@@ -1,8 +1,11 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { getRoleAssignmentMessageShort, formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
+import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
+import { Document } from '../types/document';
 
 const TaskDashboard: React.FC = () => {
   const { documents, todoDocuments, fetchDocuments, fetchTodoDocuments, loading } = useDocumentStore();
@@ -12,6 +15,54 @@ const TaskDashboard: React.FC = () => {
   const currentUserEmail = user?.email || '';
   const userPosition = (user?.position || '').toLowerCase();
   const showReviewingCard = userPosition === '기타' || userPosition === '교직원';
+  const isStaff = user?.position === '교직원';
+
+  // 교직원용 월별 필터 상태
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  // 문서 미리보기 상태
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
+  const [coordinateFields, setCoordinateFields] = useState<any[]>([]);
+  const [signatureFields, setSignatureFields] = useState<any[]>([]);
+
+  // 교직원용 월별 필터링된 문서 (항상 계산)
+  const getMonthlyDocuments = useMemo(() => {
+    if (!isStaff) return { editing: [], reviewing: [], signing: [], completed: [], rejected: [] };
+
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const filteredDocs = documents.filter(doc => {
+      const docDate = new Date(doc.createdAt);
+      return docDate >= startDate && docDate <= endDate;
+    });
+
+    return {
+      editing: filteredDocs.filter(doc => ['DRAFT', 'EDITING'].includes(doc.status)),
+      reviewing: filteredDocs.filter(doc => doc.status === 'REVIEWING'),
+      signing: filteredDocs.filter(doc => doc.status === 'SIGNING'),
+      completed: filteredDocs.filter(doc => doc.status === 'COMPLETED'),
+      rejected: filteredDocs.filter(doc => doc.status === 'REJECTED' || (doc.isRejected && doc.status === 'EDITING'))
+    };
+  }, [documents, selectedMonth, isStaff]);
+
+  // 월별 옵션 생성 (최근 12개월) - 항상 계산
+  const monthOptions = useMemo(() => {
+    const options = [];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+      options.push({ value, label });
+    }
+    return options;
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && currentUserEmail) {
@@ -202,6 +253,74 @@ const TaskDashboard: React.FC = () => {
 
   const tasks = getUserTasks();
 
+  // PDF 이미지 URL 생성 함수 (DocumentList.tsx와 동일)
+  const getPdfImageUrl = (doc: Document) => {
+    if (!doc.template?.pdfImagePath) {
+      return '';
+    }
+
+    const filename = doc.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
+    const url = `/uploads/pdf-templates/${filename}`;
+
+    return url;
+  };
+
+  // PDF 이미지 URL 배열 생성 함수
+  const getPdfImageUrls = (doc: Document): string[] => {
+    if (!doc.template) return [];
+    return loadPdfPagesFromTemplate(doc.template);
+  };
+
+  // 문서 미리보기 핸들러
+  const handlePreview = async (documentId: number) => {
+    try {
+      const document = documents.find(d => d.id === documentId);
+      if (document) {
+        console.log('🔍 TaskDashboard - 미리보기 문서:', document);
+        setPreviewDocument(document);
+
+        // 미리보기는 저장된 문서 데이터만 사용 (템플릿 필드와 병합하지 않음)
+        const savedFields = document.data?.coordinateFields || [];
+
+        console.log('💾 TaskDashboard - 저장된 필드 (미리보기용):', {
+          count: savedFields.length,
+          fields: savedFields.map((f: any) => ({
+            id: f.id,
+            label: f.label,
+            page: f.page,
+            hasValue: !!f.value
+          }))
+        });
+
+        setCoordinateFields(savedFields);
+
+        // 서명 필드 처리
+        const docSignatureFields = document.data?.signatureFields || [];
+        const docSignatures = document.data?.signatures || {};
+
+        const processedSignatureFields = docSignatureFields.map((field: any) => ({
+          ...field,
+          signatureData: docSignatures[field.reviewerEmail]
+        }));
+
+        console.log('🖋️ TaskDashboard - 서명 필드 처리:', {
+          originalSignatureFields: docSignatureFields,
+          signatures: docSignatures,
+          processedSignatureFields,
+          signatureFieldsWithData: processedSignatureFields.filter(sf => sf.signatureData).length,
+          reviewerEmails: Object.keys(docSignatures),
+          hasSignatures: Object.keys(docSignatures).length > 0,
+          documentStatus: document.status
+        });
+
+        setSignatureFields(processedSignatureFields);
+        setShowPreview(true);
+      }
+    } catch (error) {
+      console.error('문서 미리보기 실패:', error);
+    }
+  };
+
   // TodoList 컴포넌트
   const TodoList = () => {
     if (filteredTodoDocuments.length === 0) {
@@ -226,9 +345,6 @@ const TaskDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <h2 className="text-3xl font-bold text-gray-900">To Do List</h2>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md">
-                {filteredTodoDocuments.length}
-              </span>
             </div>
           </div>
         </div>
@@ -462,6 +578,228 @@ const TaskDashboard: React.FC = () => {
     );
   };
 
+  // 교직원용 대시보드 UI
+  if (isStaff) {
+    return (
+      <div className="container mx-auto px-4 py-4">
+        <div className="space-y-6">
+          {/* 페이지 헤더 및 상태별 통계 카드 */}
+          <div className="bg-white rounded-lg shadow p-6">
+            {/* 헤더 */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">문서 관리 대시보드</h1>
+                <p className="text-gray-500 text-sm mt-1">월별 문서 현황을 확인하고 관리하세요</p>
+              </div>
+              
+              {/* 월별 필터 */}
+              <div className="flex items-center gap-3">
+                <label htmlFor="month-filter" className="text-sm font-medium text-gray-700">
+                  기간 선택:
+                </label>
+                <select
+                  id="month-filter"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  {monthOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 상태별 통계 카드 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* 작성중 */}
+              <Link to="/documents?status=EDITING" className="block">
+                <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-blue-500 cursor-pointer hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">작성중</h3>
+                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <p className="text-3xl font-bold text-blue-600">{getMonthlyDocuments.editing.length}</p>
+                </div>
+              </Link>
+
+              {/* 검토중 */}
+              <Link to="/documents?status=REVIEWING" className="block">
+                <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-yellow-500 cursor-pointer hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">검토중</h3>
+                    <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                    </svg>
+                  </div>
+                  <p className="text-3xl font-bold text-yellow-600">{getMonthlyDocuments.reviewing.length}</p>
+                </div>
+              </Link>
+
+              {/* 서명중 */}
+              <Link to="/documents?status=SIGNING" className="block">
+                <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-orange-500 cursor-pointer hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">서명중</h3>
+                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </div>
+                  <p className="text-3xl font-bold text-orange-600">{getMonthlyDocuments.signing.length}</p>
+                </div>
+              </Link>
+
+              {/* 완료 */}
+              <Link to="/documents?status=COMPLETED" className="block">
+                <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-green-500 cursor-pointer hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">완료</h3>
+                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <p className="text-3xl font-bold text-green-600">{getMonthlyDocuments.completed.length}</p>
+                </div>
+              </Link>
+
+              {/* 반려 */}
+              <Link to="/documents?status=REJECTED" className="block">
+                <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-red-500 cursor-pointer hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-gray-600">반려</h3>
+                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                  <p className="text-3xl font-bold text-red-600">{getMonthlyDocuments.rejected.length}</p>
+                </div>
+              </Link>
+            </div>
+          </div>
+
+          {/* 문서 목록 테이블 */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">
+                {monthOptions.find(opt => opt.value === selectedMonth)?.label} 문서 목록
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      문서명
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      상태
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      작성자
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      생성일
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      마감일
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      작업
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {[...getMonthlyDocuments.editing, ...getMonthlyDocuments.reviewing, ...getMonthlyDocuments.signing, ...getMonthlyDocuments.completed, ...getMonthlyDocuments.rejected]
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .map((doc) => {
+                      const editor = doc.tasks?.find(task => task.role === 'EDITOR');
+                      const getStatusBadge = () => {
+                        if (doc.status === 'REJECTED' || (doc.isRejected && doc.status === 'EDITING')) {
+                          return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded">반려</span>;
+                        }
+                        switch (doc.status) {
+                          case 'EDITING':
+                          case 'DRAFT':
+                            return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">작성중</span>;
+                          case 'REVIEWING':
+                            return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded">검토중</span>;
+                          case 'SIGNING':
+                            return <span className="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded">서명중</span>;
+                          case 'COMPLETED':
+                            return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded">완료</span>;
+                          default:
+                            return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">{doc.status}</span>;
+                        }
+                      };
+
+                      return (
+                        <tr key={doc.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{doc.title || doc.templateName}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getStatusBadge()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {editor?.assignedUserName || editor?.assignedUserEmail || '-'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-500">
+                              {formatKoreanFullDateTime(doc.createdAt)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className={`text-sm ${doc.deadline && new Date(doc.deadline) < new Date() && doc.status !== 'COMPLETED' ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
+                              {doc.deadline ? formatKoreanFullDateTime(doc.deadline) : '-'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handlePreview(doc.id)}
+                              className="text-blue-600 hover:text-blue-900 hover:underline"
+                            >
+                              상세보기
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  {[...getMonthlyDocuments.editing, ...getMonthlyDocuments.reviewing, ...getMonthlyDocuments.signing, ...getMonthlyDocuments.completed, ...getMonthlyDocuments.rejected].length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                        선택한 기간에 문서가 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* 문서 미리보기 모달 */}
+        {showPreview && previewDocument && previewDocument.template?.pdfImagePath && (
+          <DocumentPreviewModal
+            isOpen={showPreview}
+            onClose={() => setShowPreview(false)}
+            pdfImageUrl={getPdfImageUrl(previewDocument)}
+            pdfImageUrls={getPdfImageUrls(previewDocument)}
+            coordinateFields={coordinateFields}
+            signatureFields={signatureFields}
+            documentTitle={previewDocument.title || previewDocument.template?.name || '문서'}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // 일반 사용자용 대시보드 UI
   // 문서 현황 카드 UI
   return (
     <div className="container mx-auto px-4 py-4">
@@ -477,99 +815,69 @@ const TaskDashboard: React.FC = () => {
           {/* 통계 카드 */}
           <div className={`grid grid-cols-1 md:grid-cols-2 ${showReviewingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
            {/* 1. 작성 중인 문서 - 파란색 글씨 */}
-           <Link to="/documents?status=EDITING" className="block group">
-             <div className="bg-gray-50 rounded-xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
-               <div className="absolute top-0 right-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -mr-12 -mt-12"></div>
-               <div className="absolute bottom-0 left-0 w-20 h-20 bg-gray-100 opacity-50 rounded-full -ml-10 -mb-10"></div>
-               
-             <div className="relative">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xl font-medium text-blue-600">
-                    작성중
-                  </p>
-                  <span className="text-blue-600 text-2xl opacity-70 group-hover:opacity-100">&gt;</span>
-                </div>
-                <p className="text-3xl font-bold text-blue-600 mb-2">{tasks.editingTasks.length}</p>
-                <div className="h-px bg-gray-300 my-2"></div>
-              </div>
+           <Link to="/documents?status=EDITING" className="block">
+             <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-blue-500">
+               <div className="flex items-center justify-between mb-2">
+                 <h3 className="text-sm font-medium text-gray-600">작성중</h3>
+                 <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                 </svg>
+               </div>
+               <p className="text-3xl font-bold text-blue-600">{tasks.editingTasks.length}</p>
              </div>
            </Link>
 
            {/* 2. 검토 중인 문서 - 노란색 글씨 (관리자/교직원만 표시) */}
            {showReviewingCard && (
-             <Link to="/documents?status=REVIEWING" className="block group">
-               <div className="bg-gray-50 rounded-xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
-                 <div className="absolute top-0 right-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -mr-12 -mt-12"></div>
-                 <div className="absolute bottom-0 left-0 w-20 h-20 bg-gray-100 opacity-50 rounded-full -ml-10 -mb-10"></div>
-                 
-                <div className="relative">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-xl font-medium text-yellow-600">
-                      검토중
-                    </p>
-                    <span className="text-yellow-600 text-2xl opacity-70 group-hover:opacity-100">&gt;</span>
-                  </div>
-                  <p className="text-3xl font-bold text-yellow-600 mb-2">{tasks.reviewingTasks.length}</p>
-                  <div className="h-px bg-gray-300 my-2"></div>
-                </div>
+             <Link to="/documents?status=REVIEWING" className="block">
+               <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-yellow-500">
+                 <div className="flex items-center justify-between mb-2">
+                   <h3 className="text-sm font-medium text-gray-600">검토중</h3>
+                   <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                   </svg>
+                 </div>
+                 <p className="text-3xl font-bold text-yellow-600">{tasks.reviewingTasks.length}</p>
                </div>
              </Link>
            )}
 
            {/* 3. 서명 중인 문서 - 주황색 글씨 */}
-           <Link to="/documents?status=SIGNING" className="block group">
-             <div className="bg-gray-50 rounded-xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
-               <div className="absolute top-0 right-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -mr-12 -mt-12"></div>
-               <div className="absolute bottom-0 left-0 w-20 h-20 bg-gray-100 opacity-50 rounded-full -ml-10 -mb-10"></div>
-               
-              <div className="relative">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xl font-medium text-orange-600">
-                    서명중
-                  </p>
-                  <span className="text-orange-600 text-2xl opacity-70 group-hover:opacity-100">&gt;</span>
-                </div>
-                <p className="text-3xl font-bold text-orange-600 mb-2">{tasks.signingTasks.length}</p>
-                <div className="h-px bg-gray-300 my-2"></div>
-              </div>
+           <Link to="/documents?status=SIGNING" className="block">
+             <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-orange-500">
+               <div className="flex items-center justify-between mb-2">
+                 <h3 className="text-sm font-medium text-gray-600">서명중</h3>
+                 <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                 </svg>
+               </div>
+               <p className="text-3xl font-bold text-orange-600">{tasks.signingTasks.length}</p>
              </div>
            </Link>
 
            {/* 4. 반려된 문서 - 빨간색 글씨 */}
-           <Link to="/documents?status=REJECTED" className="block group">
-             <div className="bg-gray-50 rounded-xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
-               <div className="absolute top-0 right-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -mr-12 -mt-12"></div>
-               <div className="absolute bottom-0 left-0 w-20 h-20 bg-gray-100 opacity-50 rounded-full -ml-10 -mb-10"></div>
-               
-              <div className="relative">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xl font-medium text-red-600">
-                    반려됨
-                  </p>
-                  <span className="text-red-600 text-2xl opacity-70 group-hover:opacity-100">&gt;</span>
-                </div>
-                <p className="text-3xl font-bold text-red-600 mb-2">{tasks.rejectedTasks.length}</p>
-                <div className="h-px bg-gray-300 my-2"></div>
-              </div>
+           <Link to="/documents?status=REJECTED" className="block">
+             <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-red-500">
+               <div className="flex items-center justify-between mb-2">
+                 <h3 className="text-sm font-medium text-gray-600">반려</h3>
+                 <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                 </svg>
+               </div>
+               <p className="text-3xl font-bold text-red-600">{tasks.rejectedTasks.length}</p>
              </div>
            </Link>
 
            {/* 5. 완료된 문서 - 연두색 글씨 */}
-           <Link to="/documents?status=COMPLETED" className="block group">
-             <div className="bg-gray-50 rounded-xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-200 cursor-pointer relative overflow-hidden border border-gray-200">
-               <div className="absolute top-0 right-0 w-24 h-24 bg-gray-100 opacity-50 rounded-full -mr-12 -mt-12"></div>
-               <div className="absolute bottom-0 left-0 w-20 h-20 bg-gray-100 opacity-50 rounded-full -ml-10 -mb-10"></div>
-
-              <div className="relative">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xl font-medium text-lime-600">
-                    완료됨
-                  </p>
-                  <span className="text-lime-600 text-2xl opacity-70 group-hover:opacity-100">&gt;</span>
-                </div>
-                <p className="text-3xl font-bold text-lime-600 mb-2">{tasks.completedTasks.length}</p>
-                <div className="h-px bg-gray-300 my-2"></div>
-              </div>
+           <Link to="/documents?status=COMPLETED" className="block">
+             <div className="bg-gray-50 rounded-lg p-5 border-l-4 border-green-500">
+               <div className="flex items-center justify-between mb-2">
+                 <h3 className="text-sm font-medium text-gray-600">완료</h3>
+                 <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                 </svg>
+               </div>
+               <p className="text-3xl font-bold text-green-600">{tasks.completedTasks.length}</p>
              </div>
            </Link>
           </div>
