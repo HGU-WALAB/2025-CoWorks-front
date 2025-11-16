@@ -373,6 +373,31 @@ const DocumentReview: React.FC = () => {
     );
   }
 
+  // 문서 상태 확인 (REVIEWING 상태가 아니면 접근 불가)
+  if (currentDocument.status !== 'REVIEWING') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="text-yellow-600 text-2xl mr-3">⚠️</div>
+            <div>
+              <h3 className="font-bold text-yellow-800 mb-2">잘못된 문서 상태</h3>
+              <p className="text-yellow-700 mb-4">
+                현재 문서는 검토 단계가 아닙니다. (현재 상태: {currentDocument.status})
+              </p>
+              <button
+                onClick={() => navigate('/documents')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                문서 목록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isReviewer()) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -380,10 +405,10 @@ const DocumentReview: React.FC = () => {
           <div className="text-center">
             <div className="text-red-500 text-lg mb-4">이 문서의 검토 권한이 없습니다.</div>
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/documents')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              뒤로가기
+              문서 목록으로 돌아가기
             </button>
           </div>
         </div>

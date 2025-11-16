@@ -559,34 +559,6 @@ const DocumentSignerAssignment: React.FC = () => {
     );
   }
 
-  // 권한 확인
-  if (!canAssignSigner()) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center">
-            <div className="text-red-600 text-2xl mr-3">🚫</div>
-            <div>
-              <h3 className="font-bold text-red-800 mb-2">접근 권한이 없습니다</h3>
-              <p className="text-red-700 mb-4">
-                서명자 지정 권한이 없습니다. 문서 작성자이거나 서명자 지정 권한이 있는 작성자만 접근할 수 있습니다.
-              </p>
-              <button
-                onClick={async () => {
-                  await refreshDocumentsAndUser();
-                  navigate('/documents');
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                문서 목록으로 돌아가기
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // 상태 확인 (READY_FOR_REVIEW 상태에서 서명자 지정 가능)
   if (currentDocument.status !== 'READY_FOR_REVIEW' && currentDocument.status !== 'REVIEWING') {
     return (
@@ -604,6 +576,29 @@ const DocumentSignerAssignment: React.FC = () => {
                   await refreshDocumentsAndUser();
                   navigate('/documents');
                 }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                문서 목록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 작성자 권한 확인
+  if (!canAssignSigner()) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="text-red-600 text-2xl mr-3">🚫</div>
+            <div>
+              <h3 className="font-bold text-red-800 mb-2">접근 권한 없음</h3>
+              <p className="text-red-700 mb-4">이 문서의 서명자를 지정할 권한이 없습니다.</p>
+              <button
+                onClick={() => navigate('/documents')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 문서 목록으로 돌아가기

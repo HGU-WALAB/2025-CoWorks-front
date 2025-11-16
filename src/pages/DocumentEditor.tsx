@@ -971,11 +971,42 @@ const DocumentEditor: React.FC = () => {
     }
   }, [id, getDocument]);
 
-  // 권한 확인 - 생성자는 편집 불가
+  // 권한 확인 - 문서 상태에 따른 접근 제한
   useEffect(() => {
     const checkPermissionAndStartEditing = async () => {
       if (currentDocument && user) {
+        const status = currentDocument.status;
 
+        // 문서 상태별 접근 제한
+        if (status === 'REVIEWING') {
+          // 검토 중일 때는 작성자 접근 불가
+          alert('현재 문서는 검토 중입니다. 검토가 완료될 때까지 편집할 수 없습니다.');
+          navigate('/documents');
+          return;
+        }
+
+        if (status === 'SIGNING') {
+          // 서명 중일 때는 작성자 접근 불가
+          alert('현재 문서는 서명 중입니다. 서명이 완료될 때까지 편집할 수 없습니다.');
+          navigate('/documents');
+          return;
+        }
+
+        if (status === 'COMPLETED') {
+          // 완료된 문서는 편집 불가
+          alert('이미 완료된 문서입니다. 편집할 수 없습니다.');
+          navigate('/documents');
+          return;
+        }
+
+        if (status === 'READY_FOR_REVIEW') {
+          // 서명자 지정 단계에서는 편집 불가
+          alert('현재 문서는 서명자 지정 단계입니다. 편집할 수 없습니다.');
+          navigate('/documents');
+          return;
+        }
+
+        // 작성자 권한 확인
         if (!isEditor) {
           alert('이 문서를 편집할 권한이 없습니다.');
           navigate('/documents');
@@ -983,7 +1014,7 @@ const DocumentEditor: React.FC = () => {
         }
 
         // 작성자인 경우, 문서가 DRAFT 상태라면 편집 시작
-        if (currentDocument.status === 'DRAFT' && isEditor) {
+        if (status === 'DRAFT' && isEditor) {
           try {
             await axios.post(`/api/documents/${currentDocument.id}/start-editing`);
             // 문서 상태를 다시 로드
@@ -998,7 +1029,7 @@ const DocumentEditor: React.FC = () => {
     };
 
     checkPermissionAndStartEditing();
-  }, [currentDocument, user, navigate, id, getDocument]);
+  }, [currentDocument, user, navigate, id, getDocument, isEditor]);
 
   // 문서가 변경될 때마다 상태 완전 초기화
   useEffect(() => {
@@ -1507,6 +1538,58 @@ const DocumentEditor: React.FC = () => {
 
   if (!currentDocument) {
     return <div className="flex items-center justify-center h-64">문서를 찾을 수 없습니다.</div>;
+  }
+
+  // 문서 상태별 접근 제한 (렌더링 전 체크)
+  const status = currentDocument.status;
+  if (status === 'REVIEWING' || status === 'SIGNING' || status === 'COMPLETED' || status === 'READY_FOR_REVIEW') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="text-yellow-600 text-2xl mr-3">⚠️</div>
+            <div>
+              <h3 className="font-bold text-yellow-800 mb-2">편집 불가</h3>
+              <p className="text-yellow-700 mb-4">
+                {status === 'REVIEWING' && '현재 문서는 검토 중입니다. 검토가 완료될 때까지 편집할 수 없습니다.'}
+                {status === 'SIGNING' && '현재 문서는 서명 중입니다. 서명이 완료될 때까지 편집할 수 없습니다.'}
+                {status === 'COMPLETED' && '이미 완료된 문서입니다. 편집할 수 없습니다.'}
+                {status === 'READY_FOR_REVIEW' && '현재 문서는 서명자 지정 단계입니다. 편집할 수 없습니다.'}
+              </p>
+              <button
+                onClick={() => navigate('/documents')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                문서 목록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 작성자 권한 확인 (렌더링 전 체크)
+  if (!isEditor) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="text-red-600 text-2xl mr-3">🚫</div>
+            <div>
+              <h3 className="font-bold text-red-800 mb-2">접근 권한 없음</h3>
+              <p className="text-red-700 mb-4">이 문서를 편집할 권한이 없습니다.</p>
+              <button
+                onClick={() => navigate('/documents')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                문서 목록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

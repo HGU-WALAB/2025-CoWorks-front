@@ -463,24 +463,6 @@ const DocumentSign: React.FC = () => {
     );
   }
 
-  if (!isSigner()) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="text-red-500 text-lg mb-4">이 문서의 서명 권한이 없습니다.</div>
-            <button
-              onClick={() => navigate(-1)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              뒤로가기
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // 상태 확인 (SIGNING 상태가 아니면 접근 불가)
   if (currentDocument.status !== 'SIGNING') {
     return (
@@ -493,6 +475,29 @@ const DocumentSign: React.FC = () => {
               <p className="text-yellow-700 mb-4">
                    현재 문서는 서명 단계가 아닙니다. (현재 상태: {currentDocument.status})
               </p>
+              <button
+                onClick={() => navigate('/documents')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                문서 목록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 서명자 권한 확인
+  if (!isSigner()) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <div className="flex items-center">
+            <div className="text-red-600 text-2xl mr-3">🚫</div>
+            <div>
+              <h3 className="font-bold text-red-800 mb-2">접근 권한 없음</h3>
+              <p className="text-red-700 mb-4">이 문서의 서명 권한이 없습니다.</p>
               <button
                 onClick={() => navigate('/documents')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
