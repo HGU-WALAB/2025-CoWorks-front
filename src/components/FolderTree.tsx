@@ -30,7 +30,7 @@ const FolderTreeNode: React.FC<FolderTreeNodeProps> = ({
   expandedFolders
 }) => {
   const hasChildren = folder.children && folder.children.length > 0;
-  const paddingLeft = level * 16; // 각 레벨마다 16px씩 들여쓰기
+  const paddingLeft = level * 18; // 각 레벨마다 18px씩 들여쓰기
 
   return (
     <div>

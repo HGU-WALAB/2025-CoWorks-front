@@ -262,7 +262,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             top: scaledPos.y,
             width: scaledSize.width,
             height: scaledSize.height,
-            fontSize: (field.fontSize || 12) * scale,
+            fontSize: (field.fontSize || 18) * scale,
             fontFamily: field.fontFamily || 'Arial'
           }}
           onMouseDown={(e) => handleFieldMouseDown(field, e, 'move')}
@@ -382,7 +382,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           top: scaledPos.y,
           width: scaledSize.width,
           height: scaledSize.height,
-          fontSize: (field.fontSize || 12) * scale,
+          fontSize: (field.fontSize || 18) * scale,
           fontFamily: field.fontFamily || 'Arial'
         }}
         onMouseDown={(e) => handleFieldMouseDown(field, e, 'move')}

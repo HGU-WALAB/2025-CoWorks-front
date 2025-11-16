@@ -432,7 +432,7 @@ const DocumentSign: React.FC = () => {
 
   // 반응형 폰트 크기 계산 함수
   const getResponsiveFontSize = (baseFontSize: number | undefined, options: { height: number }) => {
-    if (baseFontSize === undefined) return 16; // 기본값
+    if (baseFontSize === undefined) return 18; // 기본값
     const { height } = options;
     if (height < 100) return baseFontSize * 0.8; // 높이가 작을 때 폰트 크기 조절
     if (height > 200) return baseFontSize * 1.2; // 높이가 클 때 폰트 크기 조절

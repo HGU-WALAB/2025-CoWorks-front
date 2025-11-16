@@ -32,6 +32,9 @@ const DocumentSignerAssignment: React.FC = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, fieldX: 0, fieldY: 0 });
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1); // 줌 레벨 상태 추가
+  const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
+  const [touchStartZoom, setTouchStartZoom] = useState<number>(1);
   const [focusedFieldId, setFocusedFieldId] = useState<string | null>(null);
 
   // PDF 페이지 관리 훅 사용
@@ -301,6 +304,36 @@ const DocumentSignerAssignment: React.FC = () => {
     }
   };
 
+  // 두 터치 포인트 사이의 거리 계산
+  const getTouchDistance = (touch1: React.Touch, touch2: React.Touch): number => {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // 터치 이벤트 핸들러 (핀치 줌)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const distance = getTouchDistance(e.touches[0], e.touches[1]);
+      setTouchStartDistance(distance);
+      setTouchStartZoom(zoomLevel);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartDistance !== null) {
+      e.preventDefault(); // 기본 스크롤 방지
+      const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+      const scale = currentDistance / touchStartDistance;
+      const newZoom = Math.max(0.25, Math.min(2, touchStartZoom * scale));
+      setZoomLevel(newZoom);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStartDistance(null);
+  };
+
   // 마우스 이동 (전역 이벤트)
   React.useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -430,7 +463,7 @@ const DocumentSignerAssignment: React.FC = () => {
         signerName: field.reviewerName,
         value: null,
         required: true,
-        fontSize: 12,
+        fontSize: 18,
         fontFamily: 'Arial'
       }));
 
@@ -665,40 +698,89 @@ const DocumentSignerAssignment: React.FC = () => {
       <div className="fixed top-[160px] left-0 right-0 bottom-0 flex w-full">
         {/* 문서 미리보기 영역 */}
         <div className="flex-1 bg-gray-100 overflow-auto flex flex-col items-center p-4">
-          {/* 페이지 네비게이션 (다중 페이지인 경우에만 표시) */}
-          {getTotalPages > 1 && (
-            <div className="mb-4 flex items-center gap-4 bg-white px-6 py-3 rounded-lg shadow">
+          {/* 페이지 네비게이션 및 줌 컨트롤 */}
+          <div className="mb-4 flex items-center gap-4 bg-white px-6 py-3 rounded-lg shadow">
+            {/* 페이지 네비게이션 (다중 페이지인 경우에만 표시) */}
+            {getTotalPages > 1 && (
+              <>
+                <button
+                  onClick={previousPage}
+                  disabled={!hasPreviousPage}
+                  className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+                >
+                  ← 이전
+                </button>
+                <span className="text-sm font-medium">
+                  페이지 {currentPage} / {getTotalPages}
+                </span>
+                <button
+                  onClick={nextPage}
+                  disabled={!hasNextPage}
+                  className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+                >
+                  다음 →
+                </button>
+                <div className="w-px h-6 bg-gray-300"></div>
+              </>
+            )}
+            {/* 줌 컨트롤 */}
+            <div className="flex items-center gap-2">
               <button
-                onClick={previousPage}
-                disabled={!hasPreviousPage}
-                className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+                onClick={() => setZoomLevel(prev => Math.max(0.25, prev - 0.25))}
+                disabled={zoomLevel <= 0.25}
+                className="p-2 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="축소"
               >
-                ← 이전
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                </svg>
               </button>
-              <span className="text-sm font-medium">
-                페이지 {currentPage} / {getTotalPages}
+              <span className="text-sm font-medium min-w-[50px] text-center">
+                {Math.round(zoomLevel * 100)}%
               </span>
               <button
-                onClick={nextPage}
-                disabled={!hasNextPage}
-                className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-300"
+                onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.25))}
+                disabled={zoomLevel >= 2}
+                className="p-2 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="확대"
               >
-                다음 →
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setZoomLevel(1)}
+                className="px-3 py-1 text-xs hover:bg-gray-100 rounded transition-colors"
+                title="100%로 리셋"
+              >
+                리셋
               </button>
             </div>
-          )}
+          </div>
 
-          {/* PDF 컨테이너 - 고정 크기 */}
+          {/* PDF 컨테이너 - 줌 적용 */}
           <div
-            className="relative bg-white shadow-sm border"
+            className="mx-auto origin-top-left touch-none"
             style={{
-              width: '1240px',
-              height: '1754px',
-              minWidth: '1240px',
-              minHeight: '1754px',
-              flexShrink: 0
+              width: 1240 * zoomLevel,
+              height: 1754 * zoomLevel,
             }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
+            <div
+              className="relative bg-white shadow-sm border origin-top-left"
+              style={{
+                width: '1240px',
+                height: '1754px',
+                minWidth: '1240px',
+                minHeight: '1754px',
+                flexShrink: 0,
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: 'top left'
+              }}
+            >
             {/* PDF 배경 이미지 */}
             <img
               src={getPdfImageUrl()}
@@ -863,7 +945,7 @@ const DocumentSignerAssignment: React.FC = () => {
                                   className="bg-white bg-opacity-70 border border-purple-200 flex items-center justify-center p-1"
                                   style={{ 
                                     minHeight: '20px',
-                                    fontSize: `${field.fontSize || 12}px`,
+                                    fontSize: `${field.fontSize || 18}px`,
                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                     color: '#6b21a8',
                                     fontWeight: '500'
@@ -875,7 +957,7 @@ const DocumentSignerAssignment: React.FC = () => {
                                     style={{
                                       display: 'block',
                                       width: '100%',
-                                      fontSize: `${field.fontSize || 12}px`,
+                                      fontSize: `${field.fontSize || 18}px`,
                                       fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                       fontWeight: '500',
                                       color: '#6b21a8'
@@ -988,6 +1070,7 @@ const DocumentSignerAssignment: React.FC = () => {
                   />
                 </div>
               ))}
+            </div>
             </div>
           </div>
         </div>

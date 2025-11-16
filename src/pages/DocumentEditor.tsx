@@ -329,7 +329,7 @@ const DocumentEditor: React.FC = () => {
                 }) 
               : '', // 테이블인 경우 기본 빈 셀 배열 생성, 아니면 빈 값
             required: field.required || false,
-            fontSize: field.fontSize || 16, // 기본 폰트 크기를 16px로 설정
+            fontSize: field.fontSize || 18, // 기본 폰트 크기를 18px로 설정
             fontFamily: field.fontFamily || 'Arial',
             page: 1, // page 속성 추가
             // 테이블 정보 추가
@@ -374,7 +374,7 @@ const DocumentEditor: React.FC = () => {
           ) as 'text' | 'date' | 'editor_signature',
           value: field.value || '', // 이 문서에 저장된 값 사용
           required: field.required || false,
-          fontSize: field.fontSize || 16, // 폰트 크기 추가
+          fontSize: field.fontSize || 18, // 폰트 크기 추가
           fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
           page: 1, // page 속성 추가
           // 테이블 정보도 보존
@@ -437,7 +437,7 @@ const DocumentEditor: React.FC = () => {
           type: field.type,
           value: field.value,
           required: field.required || false,
-          fontSize: field.fontSize || 16, // 폰트 크기 추가
+          fontSize: field.fontSize || 18, // 폰트 크기 추가
           fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
           page: field.page || 1, // 템플릿 필드의 실제 page 정보 사용
           // 테이블 정보도 보존
@@ -810,7 +810,7 @@ const DocumentEditor: React.FC = () => {
             required: field.required || false,
             page: field.page || 1, // 페이지 정보 추가
             type: field.type || 'field',
-        fontSize: field.fontSize || 16, // 기본 폰트 크기를 16px로 설정
+        fontSize: field.fontSize || 18, // 기본 폰트 크기를 18px로 설정
             fontFamily: field.fontFamily || 'Arial', // 폰트 패밀리 추가
             tableData: field.tableData
           };
@@ -893,7 +893,7 @@ const DocumentEditor: React.FC = () => {
           ) as 'text' | 'date' | 'editor_signature',
           value: value,
           required: templateField.required || false,
-        fontSize: templateField.fontSize || 16, // 기본 폰트 크기를 16px로 설정
+        fontSize: templateField.fontSize || 18, // 기본 폰트 크기를 18px로 설정
           fontFamily: templateField.fontFamily || 'Arial',
           page: templateField.page || 1, // 템플릿 필드의 실제 page 정보 사용
           // 테이블 정보 보존
@@ -946,7 +946,7 @@ const DocumentEditor: React.FC = () => {
           ) as 'text' | 'date' | 'editor_signature',
           value: defaultValue,
           required: templateField.required || false,
-        fontSize: templateField.fontSize || 16, // 기본 폰트 크기를 16px로 설정
+        fontSize: templateField.fontSize || 18, // 기본 폰트 크기를 18px로 설정
           fontFamily: templateField.fontFamily || 'Arial',
           page: 1, // page 속성 추가
           // 테이블 정보 보존

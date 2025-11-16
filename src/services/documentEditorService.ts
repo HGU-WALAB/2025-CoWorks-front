@@ -68,7 +68,7 @@ export const saveDocumentData = async (
         type: field.type,
         value: field.value,
         required: field.required || false,
-        fontSize: field.fontSize || 16,
+        fontSize: field.fontSize || 18,
         fontFamily: field.fontFamily || 'Arial',
         page: field.page || 1,
         ...(field.tableData && { tableData: field.tableData })

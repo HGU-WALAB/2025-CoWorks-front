@@ -25,7 +25,7 @@ export const getResponsiveFontSize = (
     max = MAX_FONT_SIZE,
   }: ResponsiveFontSizeOptions = {}
 ): number => {
-  const baseSize = fontSize ?? 16;
+  const baseSize = fontSize ?? 18;
   const heightFactor = height ? Math.max(height, 1) / BASE_FIELD_HEIGHT : 1;
   const computed = baseSize * heightFactor * scale;
 
@@ -54,4 +54,6 @@ export const getResponsiveFontSizeForTableCell = (
   const rowHeight = totalHeight && rowCount ? totalHeight / Math.max(rowCount, 1) : undefined;
   return getResponsiveFontSize(fontSize, { height: rowHeight, scale, min, max });
 };
+
+
 

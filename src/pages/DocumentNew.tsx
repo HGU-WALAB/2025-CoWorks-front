@@ -98,7 +98,7 @@ const DocumentNew: React.FC = () => {
             height: field.height || 30,
             required: field.required || false,
             page: field.page || 1,
-            fontSize: field.fontSize || 16,
+            fontSize: field.fontSize || 18,
             fontFamily: field.fontFamily || 'Arial',
             ...(field.tableData && { tableData: field.tableData })
           }));
