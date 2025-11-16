@@ -1,10 +1,13 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { error, clearError, isAuthenticated } = useAuthStore();
+  const { error, clearError, isAuthenticated, login, loading } = useAuthStore();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -22,6 +25,16 @@ const Login: React.FC = () => {
       window.location.href = hisnetLoginUrl;
     } else {
       alert('히즈넷 로그인 URL이 설정되지 않았습니다.');
+    }
+  };
+
+  const handleDevLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!login) return;
+    try {
+      await login({ email, password });
+    } catch (e) {
+      // store sets error; no local handling needed
     }
   };
 
@@ -49,6 +62,44 @@ const Login: React.FC = () => {
             <p className="text-sm text-gray-600 leading-6 text-center">
               아래 버튼을 눌러 히즈넷 인증을 진행해주세요. 인증이 완료되면 자동으로 CoWorks로 돌아옵니다.
             </p>
+
+            {import.meta.env.DEV && (
+              <form onSubmit={handleDevLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">이메일</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="dev@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">비밀번호</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    placeholder="password"
+                  />
+                </div>
+
+                <div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-gray-300 rounded-md shadow-sm bg-gray-50 text-base font-semibold text-gray-800 hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  >
+                    {loading ? '로딩...' : '개발 이메일 로그인'}
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-500">(개발 환경에서만 보입니다)</p>
+              </form>
+            )}
 
             <button
               onClick={handleHisnetLogin}
