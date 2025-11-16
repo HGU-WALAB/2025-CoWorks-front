@@ -387,7 +387,6 @@ const DocumentList: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="all">전체</option>
-              <option value="DRAFT">초안</option>
               <option value="EDITING">작성중</option>
               <option value="READY_FOR_REVIEW">서명자 지정</option>
               <option value="REVIEWING">검토중</option>

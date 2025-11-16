@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import NotificationDropdown from './NotificationDropdown';
+import Footer from './Footer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -72,13 +73,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header - 고정 위치 */}
       <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b">
         <div className="container mx-auto px-4">
           <div className="flex flex-wrap items-center gap-4 py-4 md:flex-nowrap md:justify-between">
             <div className="flex w-full items-center justify-between md:w-auto md:justify-start">
-              <Link to="/tasks" className="flex items-center">
+              <Link to={user?.position === '교직원' ? '/folders' : '/tasks'} className="flex items-center">
                 <img 
                   src={getLogoPath()} 
                   alt="CoWorks Logo" 
@@ -185,11 +186,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
       {/* Main content - 헤더 높이만큼 상단 여백 추가 */}
       <main
-        className="w-full py-8"
+        className="w-full py-8 flex-1"
         style={{ paddingTop: headerHeight }}
       >
         {children}
       </main>
+      <Footer />
     </div>
   );
 };
