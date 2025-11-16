@@ -21,6 +21,7 @@ import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
+type StatusFilterType = string | 'overdue';
 
 const FolderPage: React.FC<FolderPageProps> = () => {
   const { folderId } = useParams<{ folderId?: string }>();
@@ -53,7 +54,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [createLoading, setCreateLoading] = useState(false);
 
   // 문서 필터링 상태
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // 문서 정렬 상태
@@ -512,10 +513,22 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       readyForReview: 0,
       reviewing: 0,
       completed: 0,
-      rejected: 0
+      rejected: 0,
+      overdue: 0
     };
 
+    const now = new Date();
     documents.forEach(doc => {
+      // 마감일이 지났는지 확인 (완료/반려 상태가 아닌 경우만)
+      if (doc.deadline && 
+          doc.status !== DOCUMENT_STATUS.COMPLETED && 
+          doc.status !== DOCUMENT_STATUS.REJECTED) {
+        const deadline = new Date(doc.deadline);
+        if (deadline < now) {
+          stats.overdue++;
+        }
+      }
+
       switch (doc.status) {
         case DOCUMENT_STATUS.DRAFT:
           stats.draft++;
@@ -546,6 +559,15 @@ const FolderPage: React.FC<FolderPageProps> = () => {
     let filtered;
     if (statusFilter === 'all') {
       filtered = documents;
+    } else if (statusFilter === 'overdue') {
+      // 마감일이 지난 문서 필터링 (완료/반려 상태 제외)
+      const now = new Date();
+      filtered = documents.filter(doc => {
+        if (!doc.deadline) return false;
+        if (doc.status === DOCUMENT_STATUS.COMPLETED || doc.status === DOCUMENT_STATUS.REJECTED) return false;
+        const deadline = new Date(doc.deadline);
+        return deadline < now;
+      });
     } else {
       filtered = documents.filter(doc => doc.status === statusFilter);
     }
@@ -1032,6 +1054,21 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                       >
                                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                         <span>{getStatusText(DOCUMENT_STATUS.COMPLETED)} {stats.completed}</span>
+                                      </button>
+                                  )}
+
+                                  {/* 만료일 지난 문서 필터 버튼 */}
+                                  {stats.overdue > 0 && (
+                                      <button
+                                          onClick={() => handleStatusFilter('overdue')}
+                                          className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                              statusFilter === 'overdue'
+                                                  ? 'bg-red-100 text-red-700 border border-red-300'
+                                                  : 'bg-red-50 text-red-700 hover:bg-red-100'
+                                          }`}
+                                      >
+                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        <span>만료됨 {stats.overdue}</span>
                                       </button>
                                   )}
                                 </div>
