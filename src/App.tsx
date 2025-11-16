@@ -14,6 +14,8 @@ import FolderPage from './pages/FolderPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import HisnetCallback from './pages/HisnetCallback';
+import ServiceTerms from './pages/Policy/ServiceTerms';
+import PrivacyPolicy from './pages/Policy/PrivacyPolicy';
 import { useAuthStore } from './stores/authStore';
 
 // 인증이 필요한 페이지들을 감싸는 컴포넌트
@@ -25,6 +27,32 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
   
   return <>{children}</>;
+};
+
+// position에 따라 홈 경로를 결정하는 컴포넌트
+const HomeRedirect: React.FC = () => {
+  const { user, isAuthenticated } = useAuthStore();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (user?.position === '교직원') {
+    return <Navigate to="/folders" replace />;
+  }
+  
+  return <Navigate to="/tasks" replace />;
+};
+
+// position에 따라 /tasks 접근 시 리다이렉트하는 컴포넌트
+const TasksRedirect: React.FC = () => {
+  return (
+    <ProtectedRoute>
+      <Layout>
+        <TaskDashboard />
+      </Layout>
+    </ProtectedRoute>
+  );
 };
 
 function App() {
@@ -52,16 +80,10 @@ function App() {
         <Route path="/hiswork/callback" element={<HisnetCallback />} />
         
         {/* 보호된 라우트 */}
-        <Route path="/" element={<Navigate to="/tasks" replace />} />
+        <Route path="/" element={<HomeRedirect />} />
         <Route 
           path="/tasks" 
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <TaskDashboard />
-              </Layout>
-            </ProtectedRoute>
-          } 
+          element={<TasksRedirect />}
         />
         <Route 
           path="/templates" 
@@ -181,6 +203,22 @@ function App() {
                 <FolderPage />
               </Layout>
             </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/policy/service" 
+          element={
+            <Layout>
+              <ServiceTerms />
+            </Layout>
+          } 
+        />
+        <Route 
+          path="/policy/privacy" 
+          element={
+            <Layout>
+              <PrivacyPolicy />
+            </Layout>
           } 
         />
       </Routes>
