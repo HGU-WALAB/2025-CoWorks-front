@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useFolderStore } from '../stores/folderStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
@@ -10,6 +11,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import RenameModal from '../components/RenameModal';
 import MoveToFolderModal from '../components/MoveToFolderModal';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import DeadlineEditModal from '../components/DeadlineEditModal';
 import WorkflowModal from '../components/WorkflowModal';
 import FolderSidebar from '../components/FolderSidebar';
 import DocumentListItem from '../components/DocumentListItem';
@@ -18,9 +20,11 @@ import { Document } from '../types/document';
 import { DOCUMENT_STATUS, getStatusText } from '../utils/documentStatusUtils';
 import { useBulkDownload } from '../utils/bulkDownloadUtils';
 import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
+import { API_BASE_URL } from '../config/api';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
+type StatusFilterType = string | 'overdue';
 
 const FolderPage: React.FC<FolderPageProps> = () => {
   const { folderId } = useParams<{ folderId?: string }>();
@@ -53,7 +57,8 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [createLoading, setCreateLoading] = useState(false);
 
   // 문서 필터링 상태
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilterType>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // 문서 정렬 상태
   const [sortOption, setSortOption] = useState<SortOption>('updatedAt-desc');
@@ -93,12 +98,14 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showDeadlineEditModal, setShowDeadlineEditModal] = useState(false);
   const [showDownloadAlertModal, setShowDownloadAlertModal] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [showBulkDeleteAlertModal, setShowBulkDeleteAlertModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [renameLoading, setRenameLoading] = useState(false);
   const [moveLoading, setMoveLoading] = useState(false);
+  const [deadlineEditLoading, setDeadlineEditLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
   // 사이드바 토글 상태 (모바일용)
@@ -225,6 +232,39 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const handleMoveTo = () => {
     setShowMoveModal(true);
     closeContextMenu();
+  };
+
+  const handleEditDeadline = () => {
+    setShowDeadlineEditModal(true);
+    closeContextMenu();
+  };
+
+  const handleDeadlineEditSubmit = async (deadline: string | null) => {
+    if (!contextMenu.item || contextMenu.type !== 'document') return;
+
+    setDeadlineEditLoading(true);
+    try {
+      const document = contextMenu.item as Document;
+      
+      // 별도의 만료일 업데이트 API 호출
+      const response = await axios.put(
+        `${API_BASE_URL}/documents/${document.id}/deadline`,
+        { deadline: deadline }
+      );
+      
+      console.log('만료일 업데이트 성공:', response.data);
+      
+      // 업데이트 후 폴더 내용 다시 로드
+      await loadFolderContents(folderId || null);
+      setShowDeadlineEditModal(false);
+    } catch (error: any) {
+      console.error('만료일 수정 실패:', error);
+      const errorMessage = error.response?.data?.error || error.message;
+      alert(`만료일 수정 실패: ${errorMessage}`);
+      clearError();
+    } finally {
+      setDeadlineEditLoading(false);
+    }
   };
 
   const handleRenameSubmit = async (newName: string) => {
@@ -511,10 +551,22 @@ const FolderPage: React.FC<FolderPageProps> = () => {
       readyForReview: 0,
       reviewing: 0,
       completed: 0,
-      rejected: 0
+      rejected: 0,
+      overdue: 0
     };
 
+    const now = new Date();
     documents.forEach(doc => {
+      // 마감일이 지났는지 확인 (완료/반려 상태가 아닌 경우만)
+      if (doc.deadline && 
+          doc.status !== DOCUMENT_STATUS.COMPLETED && 
+          doc.status !== DOCUMENT_STATUS.REJECTED) {
+        const deadline = new Date(doc.deadline);
+        if (deadline < now) {
+          stats.overdue++;
+        }
+      }
+
       switch (doc.status) {
         case DOCUMENT_STATUS.DRAFT:
           stats.draft++;
@@ -545,8 +597,32 @@ const FolderPage: React.FC<FolderPageProps> = () => {
     let filtered;
     if (statusFilter === 'all') {
       filtered = documents;
+    } else if (statusFilter === 'overdue') {
+      // 마감일이 지난 문서 필터링 (완료/반려 상태 제외)
+      const now = new Date();
+      filtered = documents.filter(doc => {
+        if (!doc.deadline) return false;
+        if (doc.status === DOCUMENT_STATUS.COMPLETED || doc.status === DOCUMENT_STATUS.REJECTED) return false;
+        const deadline = new Date(doc.deadline);
+        return deadline < now;
+      });
     } else {
       filtered = documents.filter(doc => doc.status === statusFilter);
+    }
+    
+    // 검색어로 필터링 (제목만)
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().normalize('NFC').toLowerCase();
+      
+      filtered = filtered.filter(doc => {
+        if (!doc.title) {
+          return false;
+        }
+        
+        // 제목과 검색어 모두 NFC로 정규화하고 소문자로 변환하여 비교
+        const normalizedTitle = doc.title.normalize('NFC').toLowerCase();
+        return normalizedTitle.includes(query);
+      });
     }
     
     // 정렬 옵션에 따라 정렬
@@ -571,6 +647,16 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   // 필터 버튼 클릭 핸들러
   const handleStatusFilter = (status: string) => {
     setStatusFilter(status);
+  };
+
+  // 검색어 변경 핸들러
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  // 검색어 초기화 핸들러
+  const handleSearchClear = () => {
+    setSearchQuery('');
   };
 
   const getContextMenuOptions = (): ContextMenuOption[] => {
@@ -617,6 +703,16 @@ const FolderPage: React.FC<FolderPageProps> = () => {
         ),
         onClick: handleMoveTo,
       },
+      ...(!isFolder ? [{
+        id: 'editDeadline',
+        label: '만료일 수정',
+        icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+        ),
+        onClick: handleEditDeadline,
+      }] : []),
       {
         id: 'delete',
         label: '삭제',
@@ -784,7 +880,8 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
             {/* 액션 버튼 영역 */}
             <div className="px-4 pb-6 sm:px-0">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              {/* 첫 번째 줄: 액션 버튼들 */}
+              <div className="flex flex-wrap items-center gap-2 mb-4">
                 <div className="flex flex-wrap items-center gap-2">
                   {currentFolder && (
                       <button
@@ -806,8 +903,6 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                     </svg>
                     새 폴더
                   </button>
-
-
 
                   {/* 문서 다운로드 버튼 */}
                   {documents.length > 0 && (
@@ -876,6 +971,37 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                       </button>
                   )}
                 </div>
+              </div>
+
+              {/* 두 번째 줄: 검색과 문서 상태 필터 */}
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                {/* 검색 영역 */}
+                {documents.length > 0 && (
+                  <div className="relative w-full lg:w-80">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      placeholder="문서 제목 검색..."
+                      className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={handleSearchClear}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* 문서 상태 필터 */}
                 {documents.length > 0 && (
@@ -978,6 +1104,21 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                         <span>{getStatusText(DOCUMENT_STATUS.COMPLETED)} {stats.completed}</span>
                                       </button>
                                   )}
+
+                                  {/* 만료일 지난 문서 필터 버튼 */}
+                                  {stats.overdue > 0 && (
+                                      <button
+                                          onClick={() => handleStatusFilter('overdue')}
+                                          className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                              statusFilter === 'overdue'
+                                                  ? 'bg-red-100 text-red-700 border border-red-300'
+                                                  : 'bg-red-50 text-red-700 hover:bg-red-100'
+                                          }`}
+                                      >
+                                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                        <span>만료됨 {stats.overdue}</span>
+                                      </button>
+                                  )}
                                 </div>
                               </>
                           );
@@ -986,7 +1127,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
 
                       {/* 정렬 기준 드롭다운 */}
                       <div className="flex items-center space-x-2 ml-4">
-                        <span className="font-medium text-gray-700 text-sm">정렬:</span>
+                        <span className="font-medium text-gray-700 text-sm whitespace-nowrap">정렬:</span>
                         <select
                           value={sortOption}
                           onChange={(e) => setSortOption(e.target.value as SortOption)}
@@ -1043,7 +1184,7 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                         const filteredDocuments = getFilteredDocuments();
                         return (
                             <>
-                              <div className="flex items-center justify-between mb-4">
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
                                 <div className="flex items-center">
                                   <div className="flex items-center mr-3">
                                     <input
@@ -1066,14 +1207,27 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                                     문서 ({filteredDocuments.length}개)
                                   </h3>
                                 </div>
-                                {statusFilter !== 'all' && (
+                                <div className="flex items-center gap-2">
+                                  {searchQuery && (
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <span className="text-gray-600">검색: "{searchQuery}"</span>
+                                      <button
+                                        onClick={handleSearchClear}
+                                        className="text-indigo-600 hover:text-indigo-700 font-medium"
+                                      >
+                                        검색 해제
+                                      </button>
+                                    </div>
+                                  )}
+                                  {statusFilter !== 'all' && (
                                     <button
                                         onClick={() => handleStatusFilter('all')}
                                         className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
                                     >
                                       필터 해제
                                     </button>
-                                )}
+                                  )}
+                                </div>
                               </div>
                               <div className="bg-white rounded-lg shadow">
                                 <div className="divide-y divide-gray-200">
@@ -1189,6 +1343,16 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                     : (contextMenu.item as Document)?.title || ''
               }
               itemType={contextMenu.type || 'folder'}
+          />
+
+          {/* 만료일 수정 모달 */}
+          <DeadlineEditModal
+              isOpen={showDeadlineEditModal}
+              onClose={() => setShowDeadlineEditModal(false)}
+              onSubmit={handleDeadlineEditSubmit}
+              loading={deadlineEditLoading}
+              currentDeadline={(contextMenu.item as Document)?.deadline}
+              documentTitle={(contextMenu.item as Document)?.title || ''}
           />
 
           {/* 문서 미리보기 모달 */}

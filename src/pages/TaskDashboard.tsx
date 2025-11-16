@@ -367,7 +367,7 @@ const TaskDashboard: React.FC = () => {
                     <span className="truncate">{doc.templateName}</span>
                   </div>
 
-                  {/* 마감일 */}
+                  {/* 만료일 */}
                   {deadlineDate && (
                     <div className={`flex items-center text-sm font-medium ${
                       isOverdue 
@@ -378,7 +378,7 @@ const TaskDashboard: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span>
-                        마감일: {formatKoreanFullDateTime(deadlineDate)}
+                        만료일: {formatKoreanFullDateTime(deadlineDate)}
                       </span>
                       {isOverdue && <span className="ml-1">(지연)</span>}
                     </div>
