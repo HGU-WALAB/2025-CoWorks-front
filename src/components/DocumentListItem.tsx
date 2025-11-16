@@ -298,6 +298,17 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                 <span className="text-gray-500 w-14 shrink-0">수정일</span>
                 <span className="text-gray-900 font-medium truncate">{formatKoreanFullDateTime(document.updatedAt || document.createdAt)}</span>
               </div>
+              {document.status === 'COMPLETED' && document.statusLogs && (() => {
+                const completedLog = document.statusLogs
+                  .filter(log => log.status === 'COMPLETED')
+                  .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+                return completedLog ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 w-14 shrink-0">완료일</span>
+                    <span className="text-green-600 font-medium truncate">{formatKoreanFullDateTime(completedLog.timestamp)}</span>
+                  </div>
+                ) : null;
+              })()}
               {document.deadline && (
                 <div className="flex items-center gap-2">
                   <span className="text-gray-500 w-14 shrink-0">마감일</span>
