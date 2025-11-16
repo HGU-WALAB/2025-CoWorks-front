@@ -93,6 +93,7 @@ export interface DocumentCreateRequest {
 
 export interface DocumentUpdateRequest {
   data: DocumentData;
+  deadline?: string;
 }
 
 export interface TableData {

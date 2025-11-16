@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useFolderStore } from '../stores/folderStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
@@ -10,6 +11,7 @@ import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import RenameModal from '../components/RenameModal';
 import MoveToFolderModal from '../components/MoveToFolderModal';
 import DocumentPreviewModal from '../components/DocumentPreviewModal';
+import DeadlineEditModal from '../components/DeadlineEditModal';
 import WorkflowModal from '../components/WorkflowModal';
 import FolderSidebar from '../components/FolderSidebar';
 import DocumentListItem from '../components/DocumentListItem';
@@ -18,6 +20,7 @@ import { Document } from '../types/document';
 import { DOCUMENT_STATUS, getStatusText } from '../utils/documentStatusUtils';
 import { useBulkDownload } from '../utils/bulkDownloadUtils';
 import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
+import { API_BASE_URL } from '../config/api';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
@@ -95,12 +98,14 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showDeadlineEditModal, setShowDeadlineEditModal] = useState(false);
   const [showDownloadAlertModal, setShowDownloadAlertModal] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [showBulkDeleteAlertModal, setShowBulkDeleteAlertModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [renameLoading, setRenameLoading] = useState(false);
   const [moveLoading, setMoveLoading] = useState(false);
+  const [deadlineEditLoading, setDeadlineEditLoading] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
   // 사이드바 토글 상태 (모바일용)
@@ -227,6 +232,39 @@ const FolderPage: React.FC<FolderPageProps> = () => {
   const handleMoveTo = () => {
     setShowMoveModal(true);
     closeContextMenu();
+  };
+
+  const handleEditDeadline = () => {
+    setShowDeadlineEditModal(true);
+    closeContextMenu();
+  };
+
+  const handleDeadlineEditSubmit = async (deadline: string | null) => {
+    if (!contextMenu.item || contextMenu.type !== 'document') return;
+
+    setDeadlineEditLoading(true);
+    try {
+      const document = contextMenu.item as Document;
+      
+      // 별도의 만료일 업데이트 API 호출
+      const response = await axios.put(
+        `${API_BASE_URL}/documents/${document.id}/deadline`,
+        { deadline: deadline }
+      );
+      
+      console.log('만료일 업데이트 성공:', response.data);
+      
+      // 업데이트 후 폴더 내용 다시 로드
+      await loadFolderContents(folderId || null);
+      setShowDeadlineEditModal(false);
+    } catch (error: any) {
+      console.error('만료일 수정 실패:', error);
+      const errorMessage = error.response?.data?.error || error.message;
+      alert(`만료일 수정 실패: ${errorMessage}`);
+      clearError();
+    } finally {
+      setDeadlineEditLoading(false);
+    }
   };
 
   const handleRenameSubmit = async (newName: string) => {
@@ -665,6 +703,16 @@ const FolderPage: React.FC<FolderPageProps> = () => {
         ),
         onClick: handleMoveTo,
       },
+      ...(!isFolder ? [{
+        id: 'editDeadline',
+        label: '만료일 수정',
+        icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+        ),
+        onClick: handleEditDeadline,
+      }] : []),
       {
         id: 'delete',
         label: '삭제',
@@ -1295,6 +1343,16 @@ const FolderPage: React.FC<FolderPageProps> = () => {
                     : (contextMenu.item as Document)?.title || ''
               }
               itemType={contextMenu.type || 'folder'}
+          />
+
+          {/* 만료일 수정 모달 */}
+          <DeadlineEditModal
+              isOpen={showDeadlineEditModal}
+              onClose={() => setShowDeadlineEditModal(false)}
+              onSubmit={handleDeadlineEditSubmit}
+              loading={deadlineEditLoading}
+              currentDeadline={(contextMenu.item as Document)?.deadline}
+              documentTitle={(contextMenu.item as Document)?.title || ''}
           />
 
           {/* 문서 미리보기 모달 */}
