@@ -32,6 +32,7 @@ const DocumentSignerAssignment: React.FC = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, fieldX: 0, fieldY: 0 });
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [activeFieldId, setActiveFieldId] = useState<string | null>(null);
+  const [focusedFieldId, setFocusedFieldId] = useState<string | null>(null);
 
   // PDF 페이지 관리 훅 사용
   const {
@@ -918,16 +919,26 @@ const DocumentSignerAssignment: React.FC = () => {
                   .filter((field: any) => field.page === currentPage)
                   .map((field: any) => {
                     const assignedReviewer = reviewerFieldMappings[field.id];
+                    const isFocused = focusedFieldId === field.id;
                     
                     return (
                       <div
                         key={field.id}
-                        className="absolute border-2 border-red-500 bg-red-100 bg-opacity-50 select-none"
+                        id={`signature-field-${field.id}`}
+                        className={`absolute border-2 select-none cursor-pointer transition-all duration-200 ${
+                          isFocused 
+                            ? 'border-red-700 bg-red-200 bg-opacity-70 shadow-lg ring-4 ring-red-300 ring-opacity-50 z-50' 
+                            : 'border-red-500 bg-red-100 bg-opacity-50 hover:border-red-600 hover:bg-opacity-70'
+                        }`}
                         style={{
                           left: `${field.x}px`,
                           top: `${field.y}px`,
                           width: `${field.width}px`,
                           height: `${field.height}px`
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFocusedFieldId(field.id);
                         }}
                       >
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-xs text-red-700 font-medium p-1">
@@ -1046,6 +1057,9 @@ const DocumentSignerAssignment: React.FC = () => {
               </div>
             )}
 
+            {/* 구분선 */}
+            <div className="my-6 border-t-2 border-gray-200"></div>
+
             {/* 템플릿의 서명자 서명 필드와 서명자 매핑 */}
             {(() => {
               const signerFields = getSignerSignatureFieldsFromTemplate();
@@ -1086,13 +1100,47 @@ const DocumentSignerAssignment: React.FC = () => {
                   <div className="space-y-3">
                     {signerFields.map((field: any, index: number) => {
                       const assignedSigner = reviewerFieldMappings[field.id];
+                      const isFocused = focusedFieldId === field.id;
+                      
+                      const handleFieldClick = () => {
+                        setFocusedFieldId(field.id);
+                        
+                        // 해당 페이지로 이동
+                        if (field.page !== currentPage) {
+                          setCurrentPage(field.page);
+                        }
+                        
+                        // PDF의 서명 필드로 스크롤
+                        setTimeout(() => {
+                          const element = document.getElementById(`signature-field-${field.id}`);
+                          if (element) {
+                            element.scrollIntoView({ 
+                              behavior: 'smooth', 
+                              block: 'center',
+                              inline: 'center'
+                            });
+                          }
+                        }, 100);
+                      };
                       
                       return (
-                        <div key={field.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div 
+                          key={field.id} 
+                          className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                            isFocused 
+                              ? 'bg-red-100 border-2 border-red-500 shadow-md' 
+                              : 'bg-red-50 border border-red-200 hover:bg-red-100'
+                          }`}
+                          onClick={handleFieldClick}
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-2">
-                              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                              <span className="text-sm font-medium text-red-900">
+                              <span className={`w-2 h-2 rounded-full ${
+                                isFocused ? 'bg-red-700 ring-2 ring-red-400' : 'bg-red-500'
+                              }`}></span>
+                              <span className={`text-sm font-medium ${
+                                isFocused ? 'text-red-800' : 'text-red-900'
+                              }`}>
                                 {field.label || `서명자 서명 ${field.reviewerIndex || index + 1}`}
                               </span>
                             </div>
@@ -1104,6 +1152,7 @@ const DocumentSignerAssignment: React.FC = () => {
                           <select
                             value={assignedSigner?.email || ''}
                             onChange={(e) => {
+                              e.stopPropagation();
                               const selectedEmail = e.target.value;
                               if (selectedEmail) {
                                 const signer = availableSigners.find(
@@ -1125,6 +1174,7 @@ const DocumentSignerAssignment: React.FC = () => {
                                 }));
                               }
                             }}
+                            onClick={(e) => e.stopPropagation()}
                             className="w-full text-sm px-2 py-1.5 border border-red-300 rounded focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           >
                             <option value="">서명자 선택...</option>
