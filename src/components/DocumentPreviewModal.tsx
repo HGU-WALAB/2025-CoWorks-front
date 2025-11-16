@@ -35,9 +35,13 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   // Hook들을 항상 호출 (조건문 이전에)
   const [isPrinting, setIsPrinting] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [zoomLevel, setZoomLevel] = React.useState(1); // 줌 레벨 상태 추가
+  const [touchStartDistance, setTouchStartDistance] = React.useState<number | null>(null);
+  const [touchStartZoom, setTouchStartZoom] = React.useState<number>(1);
 
   // PDF 문서 영역에 대한 ref (단일 페이지용 - 하위 호환성)
   const documentRef = React.useRef<HTMLDivElement>(null);
+  const zoomContainerRef = React.useRef<HTMLDivElement>(null);
 
   // 모든 페이지에 대한 refs (멀티페이지 인쇄용)
   const pageRefs = React.useRef<(HTMLDivElement | null)[]>([]);
@@ -45,6 +49,36 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   // 페이지 URL 배열 (여러 페이지 또는 단일 페이지)
   const pageUrls = pdfImageUrls.length > 0 ? pdfImageUrls : [pdfImageUrl];
   const totalPages = pageUrls.length;
+
+  // 두 터치 포인트 사이의 거리 계산
+  const getTouchDistance = (touch1: React.Touch, touch2: React.Touch): number => {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // 터치 이벤트 핸들러 (핀치 줌)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const distance = getTouchDistance(e.touches[0], e.touches[1]);
+      setTouchStartDistance(distance);
+      setTouchStartZoom(zoomLevel);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartDistance !== null) {
+      e.preventDefault(); // 기본 스크롤 방지
+      const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+      const scale = currentDistance / touchStartDistance;
+      const newZoom = Math.max(0.25, Math.min(2, touchStartZoom * scale));
+      setZoomLevel(newZoom);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setTouchStartDistance(null);
+  };
 
   // ESC 키로 모달 닫기, 화살표 키로 페이지 이동
   React.useEffect(() => {
@@ -144,7 +178,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               top: `${field.y}px`,
               width: `${field.width}px`,
               height: `${field.height}px`,
-              fontSize: `${field.fontSize || 16}px`,
+              fontSize: `${field.fontSize || 18}px`,
               fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
               fontWeight: '500',
               overflow: 'visible',
@@ -181,7 +215,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                             className="border border-black text-center"
                             style={{
                               width: cellWidth,
-                              fontSize: `${Math.max((field.fontSize || 16) * 1.2, 10)}px`,
+                              fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
                               fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                               padding: '4px',
                               fontWeight: '500',
@@ -201,7 +235,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               <div
                 className="text-gray-900 flex items-center justify-center w-full h-full"
                 style={{
-                  fontSize: `${field.fontSize || 16}px`,
+                  fontSize: `${field.fontSize || 18}px`,
                   fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                   fontWeight: '500',
                   color: '#111827',
@@ -344,6 +378,39 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 </button>
               </div>
             )}
+            {/* 줌 컨트롤 */}
+            <div className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-lg">
+              <button
+                onClick={() => setZoomLevel(prev => Math.max(0.25, prev - 0.25))}
+                disabled={zoomLevel <= 0.25}
+                className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="축소"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                </svg>
+              </button>
+              <span className="text-sm font-medium text-gray-700 min-w-[50px] text-center">
+                {Math.round(zoomLevel * 100)}%
+              </span>
+              <button
+                onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.25))}
+                disabled={zoomLevel >= 2}
+                className="p-1 hover:bg-gray-200 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                title="확대"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setZoomLevel(1)}
+                className="px-2 py-1 text-xs hover:bg-gray-200 rounded transition-colors"
+                title="100%로 리셋"
+              >
+                리셋
+              </button>
+            </div>
             <button
               onClick={handlePrint}
               disabled={isPrinting}
@@ -387,16 +454,29 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         <div className="flex-1 overflow-auto bg-gray-100 p-4 flex justify-center items-start">
           {/* 보이는 영역 - 현재 페이지만 표시 */}
           <div
-            ref={documentRef}
-            className="relative bg-white shadow-lg select-none"
+            ref={zoomContainerRef}
+            className="mx-auto origin-top-left touch-none"
             style={{
-              width: '1240px',
-              height: '1754px',
-              minWidth: '1240px',
-              minHeight: '1754px',
-              flexShrink: 0
+              width: 1240 * zoomLevel,
+              height: 1754 * zoomLevel,
             }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           >
+            <div
+              ref={documentRef}
+              className="relative bg-white shadow-lg select-none origin-top-left"
+              style={{
+                width: '1240px',
+                height: '1754px',
+                minWidth: '1240px',
+                minHeight: '1754px',
+                flexShrink: 0,
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: 'top left'
+              }}
+            >
             {/* PDF 배경 이미지 - 현재 페이지 */}
             <img
               src={pageUrls[currentPage - 1]}
@@ -520,7 +600,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                           <div
                             className="text-center text-gray-800"
                             style={{
-                              fontSize: `${(field.fontSize || 16)}px !important`,
+                              fontSize: `${(field.fontSize || 18)}px !important`,
                               fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                               fontWeight: '500 !important',
                               color: '#1f2937 !important'
@@ -558,7 +638,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                           <div
                             className="text-center text-gray-600"
                             style={{
-                              fontSize: `${(field.fontSize || 16)}px`,
+                              fontSize: `${(field.fontSize || 18)}px`,
                               fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                               fontWeight: '500'
                             }}
@@ -602,7 +682,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                                   className="border border-gray-800 flex items-center justify-center"
                                   style={{ 
                                     minHeight: '20px',
-                                    fontSize: `${(field.fontSize || 16)}px !important`,
+                                    fontSize: `${(field.fontSize || 18)}px !important`,
                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                     color: '#1f2937', // 진한 회색 텍스트
                                     fontWeight: '500 !important',
@@ -625,7 +705,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                                     style={{
                                       display: 'block',
                                       width: '100%',
-                                      fontSize: `${(field.fontSize || 16)}px !important`,
+                                      fontSize: `${(field.fontSize || 18)}px !important`,
                                       fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
                                       fontWeight: '500 !important',
                                       color: '#1f2937 !important',
@@ -651,7 +731,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                       <div 
                         className="text-gray-900 flex items-center justify-center w-full h-full"
                         style={{
-                          fontSize: `${field.fontSize || 16}px`,
+                          fontSize: `${field.fontSize || 18}px`,
                           fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                           fontWeight: '500',
                           color: '#111827',
@@ -711,6 +791,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                     />
                   </div>
                 ))}
+            </div>
             </div>
           </div>
         </div>
