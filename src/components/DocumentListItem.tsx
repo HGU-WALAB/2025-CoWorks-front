@@ -311,7 +311,7 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
               })()}
               {document.deadline && (
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-500 w-14 shrink-0">마감일</span>
+                  <span className="text-gray-500 w-14 shrink-0">만료일</span>
                   <span
                     className={`truncate ${
                       new Date(document.deadline) < new Date() && document.status !== DOCUMENT_STATUS.COMPLETED
