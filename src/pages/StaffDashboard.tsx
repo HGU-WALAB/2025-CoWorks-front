@@ -165,23 +165,23 @@ const StaffDashboard: React.FC = () => {
         {/* 통계 카드 */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           <button
-            onClick={() => { setStatusFilter('ALL'); setSelectedFolder(null); }}
+            onClick={() => setStatusFilter('ALL')}
             className={`p-5 rounded-xl transition-all duration-200 ${
-              statusFilter === 'ALL' && selectedFolder === null
+              statusFilter === 'ALL'
                 ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105' 
                 : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
             }`}
           >
             <div className={`text-3xl font-bold mb-1 ${
-              statusFilter === 'ALL' && selectedFolder === null ? 'text-white' : 'text-gray-900'
+              statusFilter === 'ALL' ? 'text-white' : 'text-gray-900'
             }`}>{stats.total}</div>
             <div className={`text-xs font-medium ${
-              statusFilter === 'ALL' && selectedFolder === null ? 'text-primary-100' : 'text-gray-600'
+              statusFilter === 'ALL' ? 'text-primary-100' : 'text-gray-600'
             }`}>전체</div>
           </button>
 
           <button
-            onClick={() => { setStatusFilter('EDITING'); setSelectedFolder(null); }}
+            onClick={() => setStatusFilter('EDITING')}
             className={`p-5 rounded-xl transition-all duration-200 ${
               statusFilter === 'EDITING' 
                 ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105' 
@@ -197,7 +197,7 @@ const StaffDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => { setStatusFilter('REVIEWING'); setSelectedFolder(null); }}
+            onClick={() => setStatusFilter('REVIEWING')}
             className={`p-5 rounded-xl transition-all duration-200 ${
               statusFilter === 'REVIEWING' 
                 ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105' 
@@ -213,7 +213,7 @@ const StaffDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => { setStatusFilter('SIGNING'); setSelectedFolder(null); }}
+            onClick={() => setStatusFilter('SIGNING')}
             className={`p-5 rounded-xl transition-all duration-200 ${
               statusFilter === 'SIGNING' 
                 ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105' 
@@ -229,7 +229,7 @@ const StaffDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => { setStatusFilter('COMPLETED'); setSelectedFolder(null); }}
+            onClick={() => setStatusFilter('COMPLETED')}
             className={`p-5 rounded-xl transition-all duration-200 ${
               statusFilter === 'COMPLETED' 
                 ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105' 
@@ -245,7 +245,7 @@ const StaffDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => { setStatusFilter('REJECTED'); setSelectedFolder(null); }}
+            onClick={() => setStatusFilter('REJECTED')}
             className={`p-5 rounded-xl transition-all duration-200 ${
               statusFilter === 'REJECTED' 
                 ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30 scale-105' 
@@ -271,7 +271,7 @@ const StaffDashboard: React.FC = () => {
             {/* 미분류 문서 */}
             {folderStats['unclassified'] && (
               <button
-                onClick={() => { setSelectedFolder('unclassified'); setStatusFilter('ALL'); }}
+                onClick={() => setSelectedFolder(selectedFolder === 'unclassified' ? null : 'unclassified')}
                 className={`text-left p-5 rounded-xl transition-all duration-200 ${
                   selectedFolder === 'unclassified'
                     ? 'border-2 border-primary-600 bg-gradient-to-br from-primary-50 to-blue-50 shadow-md shadow-primary-200/50 scale-[1.02]'
@@ -328,7 +328,7 @@ const StaffDashboard: React.FC = () => {
               return (
                 <button
                   key={folder.id}
-                  onClick={() => { setSelectedFolder(folder.id); setStatusFilter('ALL'); }}
+                  onClick={() => setSelectedFolder(selectedFolder === folder.id ? null : folder.id)}
                   className={`text-left p-5 rounded-xl transition-all duration-200 ${
                     selectedFolder === folder.id
                       ? 'border-2 border-primary-600 bg-gradient-to-br from-primary-50 to-blue-50 shadow-md shadow-primary-200/50 scale-[1.02]'
