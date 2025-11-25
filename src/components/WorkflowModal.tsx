@@ -65,17 +65,44 @@ const getAssignedUsers = (tasks: TaskInfo[] | undefined, roles: string[]) => {
   return tasks.filter(task => roles.includes(task.role));
 };
 
-const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document }) => {
-  if (!isOpen || !document) return null;
+const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document: doc }) => {
+  if (!isOpen || !doc) return null;
+
+  // ESC 키로 닫기
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      window.document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      window.document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose]);
+
+  // 배경 클릭 시 닫기
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={handleBackdropClick}
+    >
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold text-gray-800">문서 현황</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {document.title}
+              {doc.title}
             </p>
           </div>
           <button
@@ -90,11 +117,11 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
           <div className="flex justify-center pt-4 pb-2">
             <div className="flex items-start max-w-4xl w-full px-4">
               {getWorkflowSteps().map((step, index) => {
-                const currentIndex = getCurrentStepIndex(document.status);
-                const isCompleted = document.status === 'COMPLETED' 
+                const currentIndex = getCurrentStepIndex(doc.status);
+                const isCompleted = doc.status === 'COMPLETED' 
                   ? index <= currentIndex  // COMPLETED 상태일 때는 해당 단계까지 모두 완료로 표시
                   : index < currentIndex;
-                const isActive = document.status !== 'COMPLETED' && index === currentIndex;
+                const isActive = doc.status !== 'COMPLETED' && index === currentIndex;
                 const isLastStep = index === getWorkflowSteps().length - 1;
 
                 return (
@@ -132,7 +159,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                               완료
                             </span>
                             {(() => {
-                              const completionTime = getStatusCompletionTime(document.statusLogs, step.key);
+                              const completionTime = getStatusCompletionTime(doc.statusLogs, step.key);
                               return completionTime && (
                                 <div className="text-xs text-gray-500">
                                   {completionTime}
@@ -145,7 +172,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                         {/* 담당자 표시 */}
                         {step.roles && step.roles.length > 0 && (
                           <div className="mt-2 flex flex-col items-center gap-1">
-                            {getAssignedUsers(document.tasks, step.roles).map((task, idx) => (
+                            {getAssignedUsers(doc.tasks, step.roles).map((task, idx) => (
                               <div 
                                 key={idx}
                                 className="bg-gray-100 px-2 py-1 rounded text-xs text-gray-700 font-medium"
@@ -178,12 +205,12 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
           </div>
 
           {/* 문서 작업자 상세 정보 섹션 */}
-          {document.tasks && document.tasks.length > 0 && (
+          {doc.tasks && doc.tasks.length > 0 && (
             <div className="mt-8 border-t pt-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">문서 작업자</h3>
               <div className="space-y-2">
                 {/* 작성자 */}
-                {document.tasks.filter(task => task.role === 'EDITOR').map((task, idx) => (
+                {doc.tasks.filter(task => task.role === 'EDITOR').map((task, idx) => (
                   <div key={`editor-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-3">
                       <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded font-medium">
@@ -208,7 +235,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                 ))}
 
                 {/* 검토자 */}
-                {document.tasks.filter(task => task.role === 'REVIEWER').map((task, idx) => (
+                {doc.tasks.filter(task => task.role === 'REVIEWER').map((task, idx) => (
                   <div key={`reviewer-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-3">
                       <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded font-medium">
@@ -233,7 +260,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                 ))}
 
                 {/* 서명자 */}
-                {document.tasks.filter(task => task.role === 'SIGNER').map((task, idx) => (
+                {doc.tasks.filter(task => task.role === 'SIGNER').map((task, idx) => (
                   <div key={`signer-${idx}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-3">
                       <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded font-medium">
