@@ -104,7 +104,12 @@ const DocumentList: React.FC = () => {
 
     // 상태 필터링
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(doc => doc.status === statusFilter);
+      if (statusFilter === 'EDITING') {
+        // EDITING 필터는 EDITING과 READY_FOR_REVIEW 모두 포함
+        filtered = filtered.filter(doc => ['EDITING', 'READY_FOR_REVIEW'].includes(doc.status));
+      } else {
+        filtered = filtered.filter(doc => doc.status === statusFilter);
+      }
     }
 
     // 정렬
@@ -388,7 +393,6 @@ const DocumentList: React.FC = () => {
             >
               <option value="all">전체</option>
               <option value="EDITING">작성중</option>
-              <option value="READY_FOR_REVIEW">서명자 지정</option>
               <option value="REVIEWING">검토중</option>
               <option value="COMPLETED">완료</option>
               <option value="REJECTED">반려</option>

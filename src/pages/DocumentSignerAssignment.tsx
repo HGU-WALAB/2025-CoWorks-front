@@ -20,6 +20,9 @@ const DocumentSignerAssignment: React.FC = () => {
   const [isAssigningReviewer, setIsAssigningReviewer] = useState(false);
   const [isCompletingAssignment, setIsCompletingAssignment] = useState(false);
 
+  // 대기 중인 서명자들 (로컬 상태로만 관리, 서버에는 완료 시 전송)
+  const [pendingSigners, setPendingSigners] = useState<Array<{ email: string; name: string }>>([]);
+
   // 서명자 필드 매핑 관련 상태 (템플릿의 reviewer_signature 필드와 서명자 매핑)
   const [reviewerFieldMappings, setReviewerFieldMappings] = useState<{
     [fieldId: string]: { email: string; name: string } | null;
@@ -77,15 +80,12 @@ const DocumentSignerAssignment: React.FC = () => {
         }
       }
       
-      // 서명자 필드 매핑도 로드
-      const savedMappings = localStorage.getItem(`reviewerFieldMappings_${id}`);
-      if (savedMappings) {
-        try {
-          setReviewerFieldMappings(JSON.parse(savedMappings));
-        } catch (error) {
-          console.error('서명자 매핑 로드 실패:', error);
-        }
-      }
+      // 페이지 리로드 시 서명자 필드 매핑과 대기 중인 서명자 목록 초기화
+      setReviewerFieldMappings({});
+      setPendingSigners([]);
+      localStorage.removeItem(`reviewerFieldMappings_${id}`);
+      localStorage.removeItem(`pendingSigners_${id}`);
+      console.log('🔄 페이지 리로드: 서명자 정보 초기화');
     }
   }, [id]);
 
@@ -102,6 +102,8 @@ const DocumentSignerAssignment: React.FC = () => {
       localStorage.setItem(`reviewerFieldMappings_${id}`, JSON.stringify(reviewerFieldMappings));
     }
   }, [id, reviewerFieldMappings]);
+
+  // 대기 중인 서명자 목록은 로컬 스토리지에 저장하지 않음 (페이지 리로드 시 초기화)
 
   // 인증 상태 확인
   if (!isAuthenticated || !token || !user) {
@@ -143,7 +145,7 @@ const DocumentSignerAssignment: React.FC = () => {
     );
   };
 
-  // 서명자 지정 핸들러
+  // 서명자 추가 핸들러 (로컬 상태에만 저장, 서버에는 완료 시 전송)
   const handleAssignSigner = async () => {
     if (!selectedReviewer.trim()) {
       alert('서명자 이메일을 입력해주세요.');
@@ -155,108 +157,92 @@ const DocumentSignerAssignment: React.FC = () => {
       return;
     }
 
-    setIsAssigningReviewer(true);
+    // 이미 추가된 서명자인지 확인
+    const alreadyAdded = pendingSigners.some(s => s.email === selectedReviewer);
+    if (alreadyAdded) {
+      alert('이미 추가된 서명자입니다.');
+      return;
+    }
 
+    // 사용자 정보 조회 (이메일로 이름 찾기)
+    setIsAssigningReviewer(true);
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/documents/${currentDocument.id}/assign-signer`,
-        { signerEmail: selectedReviewer },
+      // 사용자 검색 API를 통해 이름 가져오기
+      const response = await axios.get(
+        `${API_BASE_URL}/users/search?query=${encodeURIComponent(selectedReviewer)}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${token}`
           }
         }
       );
 
-      if (response.status === 200) {
-        console.log('✅ 서명자 지정 성공:', response.data);
-        
-        // 입력 필드 초기화
-        setSelectedReviewer('');
-        
-        // 문서 정보 다시 로드
-        await getDocument(parseInt(id!));
-        
-        // 자동 매핑 로직: 서명자가 1명이고 서명 필드가 1개인 경우 자동 매핑
-        const signerFields = getSignerSignatureFieldsFromTemplate();
-        const updatedTasks = [...(currentDocument.tasks || []), response.data];
-        const signers = updatedTasks.filter(task => task.role === 'SIGNER');
-        
-        if (signers.length === 1 && signerFields.length === 1) {
-          const signer = signers[0];
-          const field = signerFields[0];
-          setReviewerFieldMappings({
-            [field.id]: {
-              email: signer.assignedUserEmail,
-              name: signer.assignedUserName || signer.assignedUserEmail
-            }
-          });
-          console.log('🔄 자동 매핑 완료:', {
-            fieldId: field.id,
-            signerEmail: signer.assignedUserEmail
-          });
-        }
-        
-        alert('서명자가 성공적으로 지정되었습니다.\n\n아래에서 각 서명 필드에 서명자를 매핑해주세요.');
+      // 응답이 배열이므로 첫 번째 일치하는 사용자 찾기
+      const users = response.data || [];
+      const matchedUser = users.find((u: any) => u.email === selectedReviewer);
+      const userName = matchedUser?.name || selectedReviewer;
+
+      // 로컬 상태에 추가
+      const newSigner = { email: selectedReviewer, name: userName };
+      setPendingSigners(prev => [...prev, newSigner]);
+
+      console.log('✅ 서명자 로컬 추가:', newSigner);
+
+      // 입력 필드 초기화
+      setSelectedReviewer('');
+
+      // 자동 매핑 로직: 서명자가 1명이고 서명 필드가 1개인 경우 자동 매핑
+      const signerFields = getSignerSignatureFieldsFromTemplate();
+      const allSigners = [...pendingSigners, newSigner];
+      
+      if (allSigners.length === 1 && signerFields.length === 1) {
+        const field = signerFields[0];
+        setReviewerFieldMappings({
+          [field.id]: {
+            email: newSigner.email,
+            name: newSigner.name
+          }
+        });
+        console.log('🔄 자동 매핑 완료:', {
+          fieldId: field.id,
+          signerEmail: newSigner.email
+        });
       }
+
+      alert('서명자가 추가되었습니다.\n\n아래에서 각 서명 필드에 서명자를 매핑해주세요.');
     } catch (error: any) {
-      console.error('❌ 서명자 지정 실패:', error);
-      if (axios.isAxiosError(error)) {
-        const errorMessage = error.response?.data?.error || 
-                            error.response?.data?.message || 
-                            error.message;
-        alert(`서명자 지정에 실패했습니다: ${errorMessage}`);
-      } else {
-        alert('서명자 지정 중 오류가 발생했습니다.');
-      }
+      console.error('❌ 사용자 정보 조회 실패:', error);
+      // 사용자 정보를 찾지 못해도 이메일로 추가
+      const newSigner = { email: selectedReviewer, name: selectedReviewer };
+      setPendingSigners(prev => [...prev, newSigner]);
+      setSelectedReviewer('');
+      alert('서명자가 추가되었습니다.\n\n아래에서 각 서명 필드에 서명자를 매핑해주세요.');
     } finally {
       setIsAssigningReviewer(false);
     }
   };
 
-  // 서명자 제거 핸들러
+  // 서명자 제거 핸들러 (로컬 상태에서 제거)
   const handleRemoveSigner = async (signerEmail: string) => {
-    if (!currentDocument) {
-      alert('문서 정보를 찾을 수 없습니다.');
-      return;
-    }
-
     if (!confirm(`서명자 ${signerEmail}을(를) 제거하시겠습니까?`)) {
       return;
     }
 
-    try {
-      const response = await axios.delete(
-        `${API_BASE_URL}/documents/${currentDocument.id}/remove-signer`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          data: { signerEmail }
-        }
-      );
+    // 로컬 상태에서 제거
+    setPendingSigners(prev => prev.filter(s => s.email !== signerEmail));
 
-      if (response.status === 200) {
-        console.log('✅ 서명자 제거 성공:', response.data);
-        
-        // 문서 정보 다시 로드
-        await getDocument(parseInt(id!));
-        
-        alert('서명자가 성공적으로 제거되었습니다.');
-      }
-    } catch (error: any) {
-      console.error('❌ 서명자 제거 실패:', error);
-      if (axios.isAxiosError(error)) {
-        const errorMessage = error.response?.data?.error || 
-                            error.response?.data?.message || 
-                            error.message;
-        alert(`서명자 제거에 실패했습니다: ${errorMessage}`);
-      } else {
-        alert('서명자 제거 중 오류가 발생했습니다.');
-      }
-    }
+    // 매핑에서도 제거
+    setReviewerFieldMappings(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(fieldId => {
+        if (updated[fieldId]?.email === signerEmail) {
+          updated[fieldId] = null;
+        }
+      });
+      return updated;
+    });
+
+    console.log('✅ 서명자 로컬 제거:', signerEmail);
   };
 
   // 서명 필드 추가 함수 (기존 방식 - 더 이상 사용하지 않음, 하위 호환성을 위해 유지)
@@ -410,9 +396,8 @@ const DocumentSignerAssignment: React.FC = () => {
     if (!currentDocument) return;
 
     // 서명자가 지정되었는지 확인
-    const hasSigner = currentDocument.tasks?.some(task => task.role === 'SIGNER');
-    if (!hasSigner) {
-      alert('먼저 서명자를 지정해주세요.');
+    if (pendingSigners.length === 0) {
+      alert('먼저 서명자를 추가해주세요.');
       return;
     }
 
@@ -432,7 +417,25 @@ const DocumentSignerAssignment: React.FC = () => {
 
     setIsCompletingAssignment(true);
     try {
-      // 기존 coordinateFields 가져오기
+      // 1단계: 모든 서명자를 서버에 일괄 전송
+      console.log('📝 서명자 일괄 지정 시작:', pendingSigners);
+      
+      const signersToAssign = pendingSigners.map(signer => signer.email);
+      
+      const assignResponse = await axios.post(
+        `${API_BASE_URL}/documents/${id}/assign-signers-batch`,
+        { signerEmails: signersToAssign },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('✅ 서명자 일괄 지정 성공:', assignResponse.data);
+
+      // 2단계: 기존 coordinateFields 가져오기
       const existingFields = currentDocument.data?.coordinateFields || [];
       
       // signer_signature 타입 필드들을 매핑 정보와 함께 coordinateFields에 추가
@@ -505,7 +508,7 @@ const DocumentSignerAssignment: React.FC = () => {
         coordinateFieldsCount: updateResponse.data?.data?.coordinateFields?.length || 0
       });
 
-      // 서명자 지정 완료 API 호출
+      // 3단계: 서명자 지정 완료 API 호출
       // 백엔드에서 자동으로 처리되는 내용:
       // 1. 템플릿 생성자를 검토자(REVIEWER)로 자동 지정
       // 2. 템플릿 생성자에게 이메일 알림 발송
@@ -524,6 +527,7 @@ const DocumentSignerAssignment: React.FC = () => {
       if (id) {
         localStorage.removeItem(`signatureFields_${id}`);
         localStorage.removeItem(`reviewerFieldMappings_${id}`);
+        localStorage.removeItem(`pendingSigners_${id}`);
       }
 
       alert('서명자 지정이 완료되었습니다.\n담당 교직원에게 검토 알림이 발송되었습니다.');
@@ -1097,31 +1101,29 @@ const DocumentSignerAssignment: React.FC = () => {
             </div>
 
             {/* 지정된 서명자 목록 */}
-            {currentDocument.tasks && currentDocument.tasks.length > 0 && (
+            {pendingSigners.length > 0 && (
               <div className="mt-6">
                 <h3 className="text-md font-medium text-gray-900 mb-3">
-                  지정된 서명자
+                  추가된 서명자
                   <span className="ml-2 text-xs text-gray-500">
-                    ({currentDocument.tasks.filter(task => task.role === 'SIGNER').length}명)
+                    ({pendingSigners.length}명)
                   </span>
                 </h3>
                 <div className="space-y-2">
-                  {currentDocument.tasks
-                    .filter(task => task.role === 'SIGNER')
-                    .map((task, index) => (
-                      <div key={task.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  {pendingSigners.map((signer, index) => (
+                      <div key={`${signer.email}-${index}`} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
                             <div className="flex items-center space-x-2">
                               <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
                               <div className="font-medium text-sm text-gray-900">
-                                {task.assignedUserName || 'Unknown'}
+                                {signer.name}
                               </div>
                             </div>
-                            <div className="text-sm text-gray-500 ml-6">{task.assignedUserEmail}</div>
+                            <div className="text-sm text-gray-500 ml-6">{signer.email}</div>
                           </div>
                           <button
-                            onClick={() => handleRemoveSigner(task.assignedUserEmail)}
+                            onClick={() => handleRemoveSigner(signer.email)}
                             className="ml-2 px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
                             title="서명자 제거"
                           >
@@ -1141,9 +1143,7 @@ const DocumentSignerAssignment: React.FC = () => {
             {/* 템플릿의 서명자 서명 필드와 서명자 매핑 */}
             {(() => {
               const signerFields = getSignerSignatureFieldsFromTemplate();
-              const availableSigners = currentDocument.tasks?.filter(
-                task => task.role === 'SIGNER'
-              ) || [];
+              const availableSigners = pendingSigners;
               
               const unassignedFieldsCount = signerFields.filter((field: any) => !reviewerFieldMappings[field.id]).length;
               
@@ -1234,14 +1234,14 @@ const DocumentSignerAssignment: React.FC = () => {
                               const selectedEmail = e.target.value;
                               if (selectedEmail) {
                                 const signer = availableSigners.find(
-                                  t => t.assignedUserEmail === selectedEmail
+                                  s => s.email === selectedEmail
                                 );
                                 if (signer) {
                                   setReviewerFieldMappings(prev => ({
                                     ...prev,
                                     [field.id]: {
-                                      email: signer.assignedUserEmail,
-                                      name: signer.assignedUserName || signer.assignedUserEmail
+                                      email: signer.email,
+                                      name: signer.name
                                     }
                                   }));
                                 }
@@ -1256,9 +1256,9 @@ const DocumentSignerAssignment: React.FC = () => {
                             className="w-full text-sm px-2 py-1.5 border border-red-300 rounded focus:ring-2 focus:ring-red-500 focus:border-transparent"
                           >
                             <option value="">서명자 선택...</option>
-                            {availableSigners.map(task => (
-                              <option key={task.id} value={task.assignedUserEmail}>
-                                {task.assignedUserName || task.assignedUserEmail}
+                            {availableSigners.map((signer, idx) => (
+                              <option key={`${signer.email}-${idx}`} value={signer.email}>
+                                {signer.name}
                               </option>
                             ))}
                           </select>
