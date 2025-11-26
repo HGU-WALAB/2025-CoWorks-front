@@ -190,7 +190,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    행 개수(가로)
+                    행 개수(가로 ㅡ)
                   </label>
                   <input
                     type="number"
@@ -203,7 +203,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    열 개수(세로)
+                    열 개수(세로 |)
                   </label>
                   <input
                     type="number"
