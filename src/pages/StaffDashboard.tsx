@@ -48,12 +48,15 @@ const StaffDashboard: React.FC = () => {
 
   // 문서 상태별 통계
   const stats = useMemo(() => {
+    // 반려되지 않은 문서만 필터링
+    const nonRejectedDocs = documents.filter(doc => doc.status !== 'REJECTED' && !doc.isRejected);
+    
     return {
       total: documents.length,
-      editing: documents.filter(doc => ['DRAFT', 'EDITING'].includes(doc.status)).length,
-      reviewing: documents.filter(doc => doc.status === 'REVIEWING').length,
-      signing: documents.filter(doc => doc.status === 'SIGNING').length,
-      completed: documents.filter(doc => doc.status === 'COMPLETED').length,
+      editing: nonRejectedDocs.filter(doc => ['DRAFT', 'EDITING'].includes(doc.status)).length,
+      reviewing: nonRejectedDocs.filter(doc => doc.status === 'REVIEWING').length,
+      signing: nonRejectedDocs.filter(doc => doc.status === 'SIGNING').length,
+      completed: nonRejectedDocs.filter(doc => doc.status === 'COMPLETED').length,
       rejected: documents.filter(doc => doc.status === 'REJECTED' || doc.isRejected).length
     };
   }, [documents]);
@@ -80,13 +83,27 @@ const StaffDashboard: React.FC = () => {
     // 상태 필터
     if (statusFilter !== 'ALL') {
       if (statusFilter === 'REJECTED') {
+        // 반려 필터: 반려된 문서만 표시
         filtered = filtered.filter(doc => doc.status === 'REJECTED' || doc.isRejected);
       } else {
+        // 다른 상태 필터: 반려되지 않은 문서만 표시
         filtered = filtered.filter(doc => {
+          // 반려된 문서는 제외
+          if (doc.status === 'REJECTED' || doc.isRejected) {
+            return false;
+          }
+          
           if (statusFilter === 'EDITING') {
             return ['DRAFT', 'EDITING'].includes(doc.status);
+          } else if (statusFilter === 'COMPLETED') {
+            return doc.status === 'COMPLETED';
+          } else if (statusFilter === 'REVIEWING') {
+            return doc.status === 'REVIEWING';
+          } else if (statusFilter === 'SIGNING') {
+            return doc.status === 'SIGNING';
           }
-          return doc.status === statusFilter;
+          
+          return false;
         });
       }
     }
