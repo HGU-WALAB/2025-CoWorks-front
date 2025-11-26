@@ -1720,10 +1720,12 @@ const DocumentEditor: React.FC = () => {
               size="md"
               isRejected={currentDocument.isRejected}
               rejectComment={
-                currentDocument.isRejected &&
-                currentDocument.statusLogs
+                currentDocument.statusLogs && (currentDocument.status === 'REJECTED' || currentDocument.isRejected)
                   ? currentDocument.statusLogs
-                      .filter(log => log.status === 'REJECTED')
+                      .filter(log => 
+                        // rejectLog가 true인 로그를 우선적으로 찾고, 없으면 REJECTED 상태의 로그를 찾음
+                        log.rejectLog === true || log.status === 'REJECTED'
+                      )
                       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]?.comment
                   : undefined
               }

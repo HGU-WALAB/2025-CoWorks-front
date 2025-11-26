@@ -3,6 +3,26 @@ import { useLocation, Link } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { getRoleAssignmentMessageShort, formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
+import { DocumentStatusLog } from '../types/document';
+
+// 반려자 정보를 가져오는 헬퍼 함수
+const getRejectInfo = (statusLogs?: DocumentStatusLog[]): { name: string; timestamp: string } | null => {
+  if (!statusLogs || statusLogs.length === 0) return null;
+  
+  // rejectLog가 true인 로그 중 가장 최근 것을 찾음
+  const rejectLog = statusLogs
+    .filter(log => log.rejectLog === true)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+  
+  if (rejectLog && (rejectLog.changedByName || rejectLog.changedByEmail)) {
+    return {
+      name: rejectLog.changedByName || rejectLog.changedByEmail || '알 수 없음',
+      timestamp: rejectLog.timestamp
+    };
+  }
+  
+  return null;
+};
 
 const UserDashboard: React.FC = () => {
   const { documents, todoDocuments, fetchDocuments, fetchTodoDocuments, loading } = useDocumentStore();
@@ -386,6 +406,19 @@ const UserDashboard: React.FC = () => {
                       {assignmentInfo}
                     </div>
                   )}
+
+                  {/* 반려자 정보 표시 */}
+                  {(doc.status === 'REJECTED' || doc.isRejected) && (() => {
+                    const rejectInfo = getRejectInfo(doc.statusLogs);
+                    return rejectInfo ? (
+                      <div className="text-sm text-red-600 mb-2 flex items-center gap-1">
+                        {/*<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">*/}
+                        {/*  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />*/}
+                        {/*</svg>*/}
+                        <span>반려자: <span className="font-medium">{rejectInfo.name}</span></span>
+                      </div>
+                    ) : null;
+                  })()}
 
                   {/* 만료일 */}
                   {deadlineDate && (

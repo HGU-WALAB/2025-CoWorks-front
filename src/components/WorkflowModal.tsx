@@ -109,9 +109,16 @@ const isRejectedDocument = (doc: Document | null): boolean => {
 const getRejectionInfo = (statusLogs: DocumentStatusLog[] | undefined): { time: string; comment: string; rejectedBy: string } | null => {
   if (!statusLogs) return null;
   
+  // rejectLog가 true인 로그를 우선적으로 찾고, 없으면 REJECTED 상태의 로그를 찾음
   const rejectedLog = statusLogs
-    .filter(log => log.status === 'REJECTED')
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+    .filter(log => log.rejectLog === true || log.status === 'REJECTED')
+    .sort((a, b) => {
+      // rejectLog가 true인 로그를 우선순위로 정렬
+      if (a.rejectLog === true && b.rejectLog !== true) return -1;
+      if (a.rejectLog !== true && b.rejectLog === true) return 1;
+      // 같은 우선순위면 최신순으로 정렬
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    })[0];
   
   if (rejectedLog) {
     return {

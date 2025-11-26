@@ -32,6 +32,7 @@ export interface DocumentStatusLog {
   changedByEmail?: string;
   changedByName?: string;
   comment?: string;
+  rejectLog?: boolean; // 반려 여부 (true: 반려, false: 일반 상태 변경)
 }
 
 export interface TaskInfo {

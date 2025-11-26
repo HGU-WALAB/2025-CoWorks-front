@@ -3,9 +3,27 @@ import { useNavigate } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { useFolderStore } from '../stores/folderStore';
-import { Document } from '../types/document';
-import { Folder } from '../types/folder';
+import { Document, DocumentStatusLog } from '../types/document';
 import WorkflowModal from '../components/WorkflowModal';
+
+// 반려자 정보를 가져오는 헬퍼 함수
+const getRejectInfo = (statusLogs?: DocumentStatusLog[]): { name: string; timestamp: string } | null => {
+  if (!statusLogs || statusLogs.length === 0) return null;
+  
+  // rejectLog가 true인 로그 중 가장 최근 것을 찾음
+  const rejectLog = statusLogs
+    .filter(log => log.rejectLog === true)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+  
+  if (rejectLog && (rejectLog.changedByName || rejectLog.changedByEmail)) {
+    return {
+      name: rejectLog.changedByName || rejectLog.changedByEmail || '알 수 없음',
+      timestamp: rejectLog.timestamp
+    };
+  }
+  
+  return null;
+};
 
 const StaffDashboard: React.FC = () => {
   const { documents, fetchDocuments, loading } = useDocumentStore();
@@ -466,6 +484,9 @@ const StaffDashboard: React.FC = () => {
                       작성자
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      반려자
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       생성일
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -477,6 +498,7 @@ const StaffDashboard: React.FC = () => {
                   {filteredDocuments.map((doc) => {
                     const editor = doc.tasks?.find(task => task.role === 'EDITOR');
                     const status = getStatusDisplay(doc);
+                    const rejectInfo = getRejectInfo(doc.statusLogs);
 
                     return (
                       <tr
@@ -496,6 +518,13 @@ const StaffDashboard: React.FC = () => {
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {editor?.assignedUserName || editor?.assignedUserEmail || '-'}
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {rejectInfo ? (
+                            <span className="text-red-600 font-medium">{rejectInfo.name}</span>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {formatDate(doc.createdAt)}
