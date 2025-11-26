@@ -26,7 +26,7 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
 
   // 기존 데이터를 텍스트로 변환하는 함수
   const convertDataToText = useCallback((data: string[][]): string => {
-    return data.map(row => row.join(',')).join('\n');
+    return data.map(row => row.join('|')).join('\n');
   }, []);
 
   const parseAndPreview = useCallback((text: string) => {
@@ -164,7 +164,7 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
               <textarea
                 value={inputText}
                 onChange={(e) => handleInputChange(e.target.value)}
-                placeholder={`예시:\n사과,바나나,오렌지\n빨강,노랑,주황\n달콤,부드러움,상큼`}
+                placeholder={`예시:\n사과|바나나|오렌지\n빨강|노랑|주황\n달콤|부드러움|상큼`}
                 className="flex-1 w-full p-3 border
                 border-gray-300 rounded-lg focus:ring-2
                 focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm min-h-[200px]"
