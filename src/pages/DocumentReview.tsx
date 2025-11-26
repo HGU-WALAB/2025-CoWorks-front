@@ -264,9 +264,9 @@ const DocumentReview: React.FC = () => {
 
       alert('✅ 검토가 승인되었습니다. 지정된 서명자에게 서명 요청이 전송되었습니다.');
       
-      // 문서 목록으로 이동
+      // 대시보드로 이동
       setTimeout(() => {
-        navigate('/documents');
+        navigate('/tasks');
       }, 500);
 
   } catch (error) {
@@ -313,8 +313,8 @@ const DocumentReview: React.FC = () => {
       alert('❌ 문서가 반려되었습니다. 작성자가 문서를 수정해야 합니다.');
       setShowRejectModal(false);
       
-      // 반려 후 문서 목록 페이지로 이동
-      navigate('/documents');
+      // 반려 후 대시보드로 이동
+      navigate('/tasks');
     } catch (error) {
       console.error('반려 실패:', error);
       alert('반려 처리에 실패했습니다.');
@@ -378,10 +378,10 @@ const DocumentReview: React.FC = () => {
                 현재 문서는 검토 단계가 아닙니다. (현재 상태: {currentDocument.status})
               </p>
               <button
-                onClick={() => navigate('/documents')}
+                onClick={() => navigate('/tasks')}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                문서 목록으로 돌아가기
+                대시보드로 돌아가기
               </button>
             </div>
           </div>
@@ -397,10 +397,10 @@ const DocumentReview: React.FC = () => {
           <div className="text-center">
             <div className="text-red-500 text-lg mb-4">이 문서의 검토 권한이 없습니다.</div>
             <button
-              onClick={() => navigate('/documents')}
+              onClick={() => navigate('/tasks')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              문서 목록으로 돌아가기
+              대시보드로 돌아가기
             </button>
           </div>
         </div>
