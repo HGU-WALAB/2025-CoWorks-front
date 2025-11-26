@@ -84,6 +84,8 @@ const DocumentSignStandalone: React.FC = () => {
 
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const [pdfScale, setPdfScale] = useState(1);
+  const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
+  const [touchStartScale, setTouchStartScale] = useState<number>(1);
 
   // PDF 페이지 관리 훅 사용
   const {
@@ -96,35 +98,71 @@ const DocumentSignStandalone: React.FC = () => {
     hasPreviousPage
   } = usePdfPages(currentDocument?.template, []);
 
+  // 두 터치 포인트 간 거리 계산
+  const getTouchDistance = (touch1: React.Touch, touch2: React.Touch): number => {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // 터치 시작 핸들러
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const distance = getTouchDistance(e.touches[0], e.touches[1]);
+      setTouchStartDistance(distance);
+      setTouchStartScale(pdfScale);
+    }
+  };
+
+  // 터치 이동 핸들러
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartDistance !== null) {
+      e.preventDefault();
+      const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+      const scale = currentDistance / touchStartDistance;
+      const newScale = Math.max(0.5, Math.min(3, touchStartScale * scale));
+      setPdfScale(newScale);
+    }
+  };
+
+  // 터치 종료 핸들러
+  const handleTouchEnd = () => {
+    setTouchStartDistance(null);
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
 
-    const updateScale = () => {
-      const containerWidth = pdfContainerRef.current?.clientWidth ?? window.innerWidth;
-      const computedScale = Math.min(1, containerWidth / PDF_WIDTH);
-      setPdfScale(Number.isFinite(computedScale) && computedScale > 0 ? computedScale : 1);
-    };
+    // 터치 제스처가 없을 때만 자동 스케일 조정
+    if (touchStartDistance === null) {
+      const updateScale = () => {
+        const containerWidth = pdfContainerRef.current?.clientWidth ?? window.innerWidth;
+        const computedScale = Math.min(1, containerWidth / PDF_WIDTH);
+        setPdfScale(Number.isFinite(computedScale) && computedScale > 0 ? computedScale : 1);
+      };
 
-    updateScale();
+      updateScale();
 
-    let resizeObserver: ResizeObserver | null = null;
+      let resizeObserver: ResizeObserver | null = null;
 
-    if (typeof ResizeObserver !== 'undefined' && pdfContainerRef.current) {
-      resizeObserver = new ResizeObserver(() => updateScale());
-      resizeObserver.observe(pdfContainerRef.current);
-    }
-
-    window.addEventListener('resize', updateScale);
-
-    return () => {
-      window.removeEventListener('resize', updateScale);
-      if (resizeObserver) {
-        resizeObserver.disconnect();
+      if (typeof ResizeObserver !== 'undefined' && pdfContainerRef.current) {
+        resizeObserver = new ResizeObserver(() => updateScale());
+        resizeObserver.observe(pdfContainerRef.current);
       }
-    };
-  }, [currentDocument?.id]);
+
+      window.addEventListener('resize', updateScale);
+
+      return () => {
+        window.removeEventListener('resize', updateScale);
+        if (resizeObserver) {
+          resizeObserver.disconnect();
+        }
+      };
+    }
+  }, [currentDocument?.id, touchStartDistance]);
 
   useEffect(() => {
     if (id) {
@@ -296,14 +334,6 @@ const DocumentSignStandalone: React.FC = () => {
     return '';
   };
 
-  // 반응형 폰트 크기 계산 함수
-  const getResponsiveFontSize = (baseFontSize: number | undefined, options: { height: number }) => {
-    if (baseFontSize === undefined) return 18;
-    const { height } = options;
-    if (height < 100) return baseFontSize * 0.8;
-    if (height > 200) return baseFontSize * 1.2;
-    return baseFontSize;
-  };
 
   if (loading) {
     return (
@@ -371,17 +401,71 @@ const DocumentSignStandalone: React.FC = () => {
       {/* 헤더 - 독립적인 헤더 (Layout 없음) */}
       <div className="bg-white border-b shadow-sm px-4 sm:px-6 py-4">
         <div className="flex flex-col gap-4">
-          {/* 문서 정보 */}
-          <div className="flex-1">
+          {/* 문서 정보와 버튼을 같은 줄에 배치 */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* 문서 정보 */}
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-xl font-semibold text-gray-900">
                 {currentDocument.title || currentDocument.templateName}
               </h1>
               <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.SIGNING} size="md" isRejected={currentDocument.isRejected} />
+              <p className="text-sm text-gray-500">
+                생성일: {new Date(currentDocument.createdAt).toLocaleDateString()}
+              </p>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
-              생성일: {new Date(currentDocument.createdAt).toLocaleDateString()}
-            </p>
+
+            {/* 액션 버튼들 - 서명/반려 완료 전에만 표시 */}
+            {!submissionResult && canSign() && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleSign}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  서명하기
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  반려
+                </button>
+                <button
+                  onClick={handlePreview}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  미리보기
+                </button>
+              </div>
+            )}
+
+            {/* 이미 서명한 경우에도 미리보기 버튼 표시 */}
+            {!submissionResult && isSigner() && hasCurrentUserSigned() && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePreview}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2 text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  미리보기
+                </button>
+              </div>
+            )}
           </div>
 
           {/* 서명 완료/반려 메시지 */}
@@ -404,59 +488,6 @@ const DocumentSignStandalone: React.FC = () => {
               <span className="text-sm font-medium text-red-800">
                 문서가 반려되었습니다.
               </span>
-            </div>
-          )}
-
-          {/* 액션 버튼들 - 서명/반려 완료 전에만 표시 */}
-          {!submissionResult && canSign() && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <button
-                onClick={handleSign}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-                서명하기
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                반려
-              </button>
-              <button
-                onClick={handlePreview}
-                disabled={isSubmitting}
-                className="w-full sm:w-auto px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                미리보기
-              </button>
-            </div>
-          )}
-
-          {/* 이미 서명한 경우에도 미리보기 버튼 표시 */}
-          {!submissionResult && isSigner() && hasCurrentUserSigned() && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <button
-                onClick={handlePreview}
-                className="w-full sm:w-auto px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                미리보기
-              </button>
             </div>
           )}
 
@@ -503,7 +534,13 @@ const DocumentSignStandalone: React.FC = () => {
               )}
 
               {/* PDF 컨테이너 */}
-              <div ref={pdfContainerRef} className="w-full">
+              <div 
+                ref={pdfContainerRef} 
+                className="w-full touch-none"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div
                   className="mx-auto origin-top-left"
                   style={{
@@ -543,11 +580,6 @@ const DocumentSignStandalone: React.FC = () => {
                       {(currentDocument.data?.coordinateFields || [])
                         .filter((field) => !field.page || field.page === currentPage)
                         .map((field) => {
-                          const responsiveFontSize = getResponsiveFontSize(field.fontSize, {
-                            height: field.height,
-                          });
-                          const displayFontSize = responsiveFontSize || field.fontSize || 18;
-
                           const leftPercent = field.x;
                           const topPercent = field.y;
                           const widthPercent = field.width;
@@ -589,99 +621,124 @@ const DocumentSignStandalone: React.FC = () => {
                             }
                           }
 
+                          // 본인 서명 필드인지 확인
+                          const isCurrentUserSignature = isSignerSignature && user && (
+                            (field as any).signerEmail === user.email || 
+                            (field as any).reviewerEmail === user.email
+                          );
+
                           return (
                             <div
                               key={field.id}
-                              className={`absolute border-2 bg-opacity-30 flex flex-col justify-center ${
-                                isEditorSignature ? 'bg-green-100 border-green-500' :
-                                isSignerSignature ? 'bg-red-100 border-red-500' :
-                                isTableField ? 'bg-purple-100 border-purple-500' : 'bg-blue-100 border-blue-500'
+                              className={`absolute ${
+                                isCurrentUserSignature 
+                                  ? 'border-2 bg-red-100 border-red-500 bg-opacity-30' 
+                                  : ''
                               }`}
                               style={{
                                 left: `${leftPercent}px`,
                                 top: `${topPercent}px`,
                                 width: `${widthPercent}px`,
                                 height: `${heightPercent}px`,
+                                fontSize: `${field.fontSize || 18}px`,
+                                fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                fontWeight: '500',
+                                overflow: 'visible',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
                               }}
                             >
                               {isEditorSignature && field.value && field.value.startsWith('data:image') ? (
                                 <img
                                   src={field.value}
-                                  alt="편집자 서명"
-                                  className="max-w-full h-full object-contain bg-transparent"
+                                  alt="작성자 서명"
+                                  className="w-full h-full object-contain"
+                                  style={{ background: 'transparent' }}
                                 />
                               ) : isSignerSignature && field.value && field.value.startsWith('data:image') ? (
                                 <img
                                   src={field.value}
                                   alt="서명자 서명"
-                                  className="max-w-full h-full object-contain bg-transparent"
+                                  className="w-full h-full object-contain"
+                                  style={{ background: 'transparent' }}
                                 />
-                              ) : isTableField && tableInfo ? (
-                                <div className="w-full h-full p-1">
-                                  <div className="text-xs font-medium mb-1 text-purple-700 truncate">
-                                    {field.label} ({tableInfo.rows}×{tableInfo.cols})
-                                  </div>
-                                  <div
-                                    className="grid gap-px bg-purple-300"
-                                    style={{
-                                      gridTemplateColumns: tableInfo.columnWidths
-                                        ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
-                                        : `repeat(${tableInfo.cols}, 1fr)`,
-                                      height: 'calc(100% - 20px)'
-                                    }}
-                                  >
-                                    {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>
-                                      Array(tableInfo.cols).fill(null).map((_, colIndex) => {
-                                        let cellText = '';
-                                        try {
-                                          let tableValue: { cells?: string[][] } = {};
-                                          if (field.value) {
-                                            if (typeof field.value === 'string') {
-                                              tableValue = JSON.parse(field.value) as { cells?: string[][] };
-                                            } else if (typeof field.value === 'object') {
-                                              tableValue = field.value as { cells?: string[][] };
-                                            }
-                                          }
-                                          cellText = tableValue.cells?.[rowIndex]?.[colIndex] || '';
-                                        } catch {
-                                          cellText = '';
-                                        }
-
-                                        return (
-                                          <div
-                                            key={`${rowIndex}-${colIndex}`}
-                                            className="border border-purple-200 flex items-center justify-center p-1"
-                                            style={{
-                                              minHeight: '20px',
-                                              fontSize: `${displayFontSize}px !important`,
-                                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                              color: '#6b21a8',
-                                              fontWeight: '500 !important'
-                                            }}
-                                          >
-                                            {cellText}
-                                          </div>
-                                        );
-                                      })
-                                    )}
-                                  </div>
+                              ) : isCurrentUserSignature ? (
+                                <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
+                                  <span>
+                                    {(field as any).signerName || (field as any).reviewerName || (field as any).signerEmail || (field as any).reviewerEmail || '서명자'} 서명
+                                  </span>
+                                  <span className="text-red-500">(본인)</span>
                                 </div>
+                              ) : isTableField && tableInfo ? (
+                                (() => {
+                                  let tableData: { cells?: string[][] } = {};
+                                  try {
+                                    if (field.value) {
+                                      if (typeof field.value === 'string') {
+                                        tableData = JSON.parse(field.value) as { cells?: string[][] };
+                                      } else if (typeof field.value === 'object') {
+                                        tableData = field.value as { cells?: string[][] };
+                                      }
+                                    }
+                                  } catch (err) {
+                                    console.error('테이블 데이터 파싱 실패:', err);
+                                  }
+
+                                  return (
+                                    <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
+                                      <tbody>
+                                        {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
+                                          <tr key={rowIndex}>
+                                            {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                                              const cellValue = tableData.cells?.[rowIndex]?.[colIndex] || '';
+                                              const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                                              return (
+                                                <td
+                                                  key={colIndex}
+                                                  className="border border-black text-center"
+                                                  style={{
+                                                    width: cellWidth,
+                                                    fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
+                                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                                    padding: '4px',
+                                                    fontWeight: '500',
+                                                    lineHeight: '1.2',
+                                                    overflow: 'hidden',
+                                                  }}
+                                                >
+                                                  {cellValue}
+                                                </td>
+                                              );
+                                            })}
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  );
+                                })()
                               ) : field.value ? (
                                 <div
-                                  className="text-gray-900 p-1 truncate text-center"
+                                  className="text-gray-900 flex items-center justify-center w-full h-full"
                                   style={{
-                                    fontSize: `${displayFontSize}px !important`,
-                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                    fontWeight: '500 !important'
+                                    fontSize: `${field.fontSize || 18}px`,
+                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                    fontWeight: '500',
+                                    color: '#111827',
+                                    lineHeight: '1.4',
+                                    textAlign: 'center',
+                                    wordBreak: 'keep-all',
+                                    overflow: 'visible',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    whiteSpace: 'nowrap',
+                                    padding: '2px 4px'
                                   }}
                                 >
                                   {field.value}
                                 </div>
-                              ) : (
-                                <div className="text-xs text-blue-700 font-medium p-1 truncate text-center">
-                                  {field.label}
-                                </div>
-                              )}
+                              ) : null}
                             </div>
                           );
                         })}

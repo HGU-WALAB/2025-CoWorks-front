@@ -46,6 +46,10 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     startWidths: number[];
   } | null>(null);
 
+  // 길게 누르기 감지를 위한 상태
+  const [longPressTimers, setLongPressTimers] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const [isLongPressing, setIsLongPressing] = useState<Set<string>>(new Set());
+
   // PDF 원본 크기 (A4 기준)
   const PDF_WIDTH = 1240;
   const PDF_HEIGHT = 1754;
@@ -131,6 +135,17 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   const handleFieldMouseDown = (field: TemplateField, e: React.MouseEvent, action: 'move' | 'resize') => {
     e.stopPropagation();
     
+    // 길게 누르기 감지 시작 (300ms 후)
+    const timer = setTimeout(() => {
+      setIsLongPressing(prev => new Set([...prev, field.id]));
+    }, 200);
+    
+    setLongPressTimers(prev => {
+      const newMap = new Map(prev);
+      newMap.set(field.id, timer);
+      return newMap;
+    });
+    
     if (action === 'move') {
       const rect = canvasRef.current!.getBoundingClientRect();
       const scaledPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -145,6 +160,30 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     } else {
       setResizingField(field.id);
       setDragOffset({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleFieldMouseUp = (field: TemplateField) => {
+    // 타이머 정리
+    const timer = longPressTimers.get(field.id);
+    if (timer) {
+      clearTimeout(timer);
+      setLongPressTimers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(field.id);
+        return newMap;
+      });
+    }
+    
+    // 길게 누른 상태 해제 (약간의 지연을 두어 클릭 이벤트가 무시되도록)
+    if (isLongPressing.has(field.id)) {
+      setTimeout(() => {
+        setIsLongPressing(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(field.id);
+          return newSet;
+        });
+      }, 100);
     }
   };
 
@@ -266,8 +305,31 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
             fontFamily: field.fontFamily || 'Arial'
           }}
           onMouseDown={(e) => handleFieldMouseDown(field, e, 'move')}
+          onMouseUp={() => handleFieldMouseUp(field)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            const timer = setTimeout(() => {
+              setIsLongPressing(prev => new Set([...prev, field.id]));
+            }, 500);
+            
+            setLongPressTimers(prev => {
+              const newMap = new Map(prev);
+              newMap.set(field.id, timer);
+              return newMap;
+            });
+          }}
+          onTouchEnd={() => {
+            handleFieldMouseUp(field);
+          }}
           onClick={(e) => {
             e.stopPropagation();
+            if (isLongPressing.has(field.id)) {
+              e.preventDefault();
+              return;
+            }
           }}
         >
           <div className="w-full h-full overflow-hidden pointer-events-none">
@@ -386,8 +448,34 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           fontFamily: field.fontFamily || 'Arial'
         }}
         onMouseDown={(e) => handleFieldMouseDown(field, e, 'move')}
+        onMouseUp={() => handleFieldMouseUp(field)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onTouchStart={(e) => {
+          // 터치 시작 시 길게 누르기 감지 시작
+          const timer = setTimeout(() => {
+            setIsLongPressing(prev => new Set([...prev, field.id]));
+          }, 200);
+          
+          setLongPressTimers(prev => {
+            const newMap = new Map(prev);
+            newMap.set(field.id, timer);
+            return newMap;
+          });
+        }}
+        onTouchEnd={() => {
+          handleFieldMouseUp(field);
+        }}
         onClick={(e) => {
           e.stopPropagation();
+          // 길게 누른 경우 클릭 무시
+          if (isLongPressing.has(field.id)) {
+            e.preventDefault();
+            return;
+          }
+          onFieldClick(field);
         }}
       >
         <div className="text-center p-1">
