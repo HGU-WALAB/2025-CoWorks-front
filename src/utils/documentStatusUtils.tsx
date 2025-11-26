@@ -92,8 +92,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   const sizeClass = sizeClasses[size];
 
-  // isRejected가 true이고 현재 상태가 REJECTED가 아닌 경우 "<반려>" 접두사 추가
-  const showRejectPrefix = isRejected && status !== DOCUMENT_STATUS.REJECTED;
+  // isRejected가 true이고 현재 상태가 EDITING인 경우에만 "<반려>" 접두사 추가
+  const showRejectPrefix = isRejected && status === DOCUMENT_STATUS.EDITING;
 
   return (
     <div className="flex items-center gap-2">
@@ -121,8 +121,8 @@ export const getStatusConfig = (status: string): StatusConfig => {
 
 export const getStatusText = (status: string, isRejected?: boolean): string => {
   const text = getStatusConfig(status).text;
-  // isRejected가 true이고 현재 상태가 REJECTED가 아닌 경우 "<반려>" 접두사 추가
-  return (isRejected && status !== DOCUMENT_STATUS.REJECTED)
+  // isRejected가 true이고 현재 상태가 EDITING인 경우에만 "<반려>" 접두사 추가
+  return (isRejected && status === DOCUMENT_STATUS.EDITING)
     ? `<반려> ${text}`
     : text;
 };
