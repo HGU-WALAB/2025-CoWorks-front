@@ -11,6 +11,7 @@ import DocumentSign from './pages/DocumentSign';
 import DocumentSignStandalone from './pages/DocumentSignStandalone';
 import DocumentNew from './pages/DocumentNew';
 import TaskDashboard from './pages/TaskDashboard';
+import ReviewDashboard from './pages/ReviewDashboard';
 import FolderPage from './pages/FolderPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -85,6 +86,16 @@ function App() {
         <Route 
           path="/tasks" 
           element={<TasksRedirect />}
+        />
+        <Route 
+          path="/review" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <ReviewDashboard />
+              </Layout>
+            </ProtectedRoute>
+          } 
         />
         <Route 
           path="/templates" 

@@ -23,6 +23,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     ];
 
     if (user?.hasFolderAccess === true) {
+      base.push({ name: '검토', href: '/review' });
       base.push({ name: '폴더', href: '/folders' });
     }
 
