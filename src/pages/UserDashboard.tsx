@@ -12,6 +12,9 @@ const UserDashboard: React.FC = () => {
   const currentUserEmail = user?.email || '';
   const userPosition = (user?.position || '').toLowerCase();
   const showReviewingCard = userPosition === '기타' || userPosition === '교직원';
+  
+  // 필터 상태 추가
+  const [selectedFilter, setSelectedFilter] = React.useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated && currentUserEmail) {
@@ -119,7 +122,7 @@ const UserDashboard: React.FC = () => {
   }, [documents, currentUserEmail, isAuthenticated, loading]);
 
   const filteredTodoDocuments = useMemo(() => {
-    return todoDocuments.filter(doc => {
+    let filtered = todoDocuments.filter(doc => {
       if (doc.status === 'SIGNING') {
         return doc.tasks?.some(task =>
           task.role === 'SIGNER' && task.assignedUserEmail === currentUserEmail
@@ -127,7 +130,22 @@ const UserDashboard: React.FC = () => {
       }
       return true;
     });
-  }, [todoDocuments, currentUserEmail]);
+
+    // 필터 적용
+    if (selectedFilter && selectedFilter !== 'ALL') {
+      filtered = filtered.filter(doc => {
+        if (selectedFilter === 'EDITING') {
+          return ['DRAFT', 'EDITING', 'READY_FOR_REVIEW'].includes(doc.status) && !doc.isRejected;
+        } else if (selectedFilter === 'REJECTED') {
+          return doc.status === 'REJECTED' || doc.isRejected;
+        } else {
+          return doc.status === selectedFilter;
+        }
+      });
+    }
+
+    return filtered;
+  }, [todoDocuments, currentUserEmail, selectedFilter]);
 
   // 인증되지 않은 경우 처리
   if (!isAuthenticated) {
@@ -160,7 +178,9 @@ const UserDashboard: React.FC = () => {
     );
 
     const editingTasks = myDocuments.filter(doc => 
-      ['DRAFT', 'EDITING', 'READY_FOR_REVIEW'].includes(doc.status)
+      ['DRAFT', 'EDITING', 'READY_FOR_REVIEW'].includes(doc.status) && 
+      !doc.isRejected && 
+      doc.status !== 'REJECTED'
     );
 
     const reviewingTasks = myDocuments.filter(doc => 
@@ -209,8 +229,8 @@ const UserDashboard: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">모든 할 일을 완료했습니다!</h3>
-            <p className="text-gray-500">처리해야 할 문서가 없습니다.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">처리할 문서가 없습니다</h3>
+            <p className="text-gray-500">현재 대기 중인 작업이 없습니다.</p>
           </div>
         </div>
       );
@@ -234,6 +254,23 @@ const UserDashboard: React.FC = () => {
             const isEditor = doc.tasks?.some(task =>
               task.role === 'EDITOR' && task.assignedUserEmail === currentUserEmail
             ) || false;
+
+            // 작성자 지정 날짜, 반려 시간, 서명자 지정 날짜 계산
+            let assignmentInfo = '';
+            if (doc.status === 'EDITING' && isEditor && myTask?.createdAt) {
+              assignmentInfo = `작성자 지정: ${formatKoreanFullDateTime(new Date(myTask.createdAt))}`;
+            } else if (doc.status === 'READY_FOR_REVIEW' && myTask?.createdAt) {
+              assignmentInfo = `작성자 지정: ${formatKoreanFullDateTime(new Date(myTask.createdAt))}`;
+            } else if ((doc.status === 'REJECTED' || doc.isRejected) && doc.statusLogs) {
+              const rejectedLog = doc.statusLogs
+                .filter(log => log.status === 'REJECTED')
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+              if (rejectedLog) {
+                assignmentInfo = `반려: ${formatKoreanFullDateTime(new Date(rejectedLog.timestamp))}`;
+              }
+            } else if (doc.status === 'SIGNING' && myTask?.createdAt) {
+              assignmentInfo = `서명자 지정: ${formatKoreanFullDateTime(new Date(myTask.createdAt))}`;
+            }
 
             const getStatusInfo = (status: string, isRejected?: boolean, isEditor?: boolean) => {
               if (isRejected && status === 'EDITING' && isEditor) {
@@ -343,6 +380,13 @@ const UserDashboard: React.FC = () => {
                     {doc.title || doc.templateName}
                   </Link>
 
+                  {/* 지정/반려 날짜 */}
+                  {assignmentInfo && (
+                    <div className="text-sm text-gray-600 mb-2">
+                      {assignmentInfo}
+                    </div>
+                  )}
+
                   {/* 만료일 */}
                   {deadlineDate && (
                     <div className={`text-sm mb-3 ${isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
@@ -404,64 +448,165 @@ const UserDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="space-y-6">
-        {/* 대시보드 및 통계 카드 섹션 */}
-        <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm p-6">
-          {/* 페이지 헤더 */}
-          <div className="mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">대시보드</h1>
-            <p className="text-sm text-gray-600">나의 문서 현황을 한눈에 확인하세요</p>
-          </div>
-
-          {/* 통계 카드 */}
-          <div className={`grid grid-cols-2 md:grid-cols-3 ${showReviewingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
-            {/* 작성중 */}
-            <Link to="/documents?status=EDITING" className="block">
-              <button className="w-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5">
-                <div className="text-3xl font-bold mb-1 text-blue-600">{tasks.editingTasks.length}</div>
-                <div className="text-xs font-medium text-blue-500">작성중</div>
-              </button>
-            </Link>
-
-            {/* 검토중 (관리자/교직원만) */}
-            {showReviewingCard && (
-              <Link to="/documents?status=REVIEWING" className="block">
-                <button className="w-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-yellow-300 hover:shadow-md hover:-translate-y-0.5">
-                  <div className="text-3xl font-bold mb-1 text-yellow-600">{tasks.reviewingTasks.length}</div>
-                  <div className="text-xs font-medium text-yellow-500">검토중</div>
-                </button>
-              </Link>
-            )}
-
-            {/* 서명중 */}
-            <Link to="/documents?status=SIGNING" className="block">
-              <button className="w-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-orange-300 hover:shadow-md hover:-translate-y-0.5">
-                <div className="text-3xl font-bold mb-1 text-orange-600">{tasks.signingTasks.length}</div>
-                <div className="text-xs font-medium text-orange-500">서명중</div>
-              </button>
-            </Link>
-
-            {/* 반려 */}
-            <Link to="/documents?status=REJECTED" className="block">
-              <button className="w-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-red-300 hover:shadow-md hover:-translate-y-0.5">
-                <div className="text-3xl font-bold mb-1 text-red-600">{tasks.rejectedTasks.length}</div>
-                <div className="text-xs font-medium text-red-500">반려</div>
-              </button>
-            </Link>
-
-            {/* 완료 */}
-            <Link to="/documents?status=COMPLETED" className="block">
-              <button className="w-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-green-300 hover:shadow-md hover:-translate-y-0.5">
-                <div className="text-3xl font-bold mb-1 text-green-600">{tasks.completedTasks.length}</div>
-                <div className="text-xs font-medium text-green-500">완료</div>
-              </button>
-            </Link>
-          </div>
+        {/* 헤더 */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">내 작업 현황</h1>
+          <p className="text-sm text-gray-600">할당된 작업과 문서 상태를 확인하세요</p>
         </div>
+
+        {/* 통계 카드 */}
+        <div className={`grid grid-cols-2 md:grid-cols-3 ${showReviewingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4 mb-6`}>
+          {/* 전체 */}
+          {!showReviewingCard && (
+            <div 
+              onClick={() => setSelectedFilter('ALL')}
+              className="block cursor-pointer"
+            >
+              <div className={`p-6 rounded-xl transition-all duration-200 ${
+                !selectedFilter || selectedFilter === 'ALL'
+                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
+                  : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
+              }`}>
+                <div className={`text-4xl font-bold mb-2 ${
+                  !selectedFilter || selectedFilter === 'ALL' ? 'text-white' : 'text-gray-900'
+                }`}>{tasks.editingTasks.length + tasks.signingTasks.length + tasks.rejectedTasks.length + (showReviewingCard ? tasks.reviewingTasks.length : 0)}</div>
+                <div className={`text-sm font-semibold mb-3 ${
+                  !selectedFilter || selectedFilter === 'ALL' ? 'text-primary-100' : 'text-gray-600'
+                }`}>전체</div>
+                <div className={`w-full h-px ${
+                  !selectedFilter || selectedFilter === 'ALL' ? 'bg-white/30' : 'bg-gray-200'
+                }`}></div>
+              </div>
+            </div>
+          )}
+
+          {/* 작성중 */}
+          {showReviewingCard ? (
+            <Link to="/documents?status=EDITING" className="block">
+              <div className="p-6 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group">
+                <div className="text-4xl font-bold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">{tasks.editingTasks.length}</div>
+                <div className="text-sm font-semibold text-gray-600 group-hover:text-primary-600 transition-colors mb-3">작성중</div>
+                <div className="w-full h-px bg-gray-200 group-hover:bg-primary-500 transition-colors"></div>
+              </div>
+            </Link>
+          ) : (
+            <div 
+              onClick={() => setSelectedFilter(selectedFilter === 'EDITING' ? 'ALL' : 'EDITING')}
+              className="block cursor-pointer"
+            >
+              <div className={`p-6 rounded-xl transition-all duration-200 ${
+                selectedFilter === 'EDITING'
+                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
+                  : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
+              }`}>
+                <div className={`text-4xl font-bold mb-2 ${
+                  selectedFilter === 'EDITING' ? 'text-white' : 'text-gray-900'
+                }`}>{tasks.editingTasks.length}</div>
+                <div className={`text-sm font-semibold mb-3 ${
+                  selectedFilter === 'EDITING' ? 'text-primary-100' : 'text-gray-600'
+                }`}>작성중</div>
+                <div className={`w-full h-px ${
+                  selectedFilter === 'EDITING' ? 'bg-white/30' : 'bg-gray-200'
+                }`}></div>
+              </div>
+            </div>
+          )}
+
+          {/* 검토중 (관리자/교직원만) */}
+          {showReviewingCard && (
+            <Link to="/documents?status=REVIEWING" className="block">
+              <div className="p-6 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group">
+                <div className="text-4xl font-bold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">{tasks.reviewingTasks.length}</div>
+                <div className="text-sm font-semibold text-gray-600 group-hover:text-primary-600 transition-colors mb-3">검토중</div>
+                <div className="w-full h-px bg-gray-200 group-hover:bg-primary-500 transition-colors"></div>
+              </div>
+            </Link>
+          )}
+
+          {/* 서명중 */}
+          {showReviewingCard ? (
+            <Link to="/documents?status=SIGNING" className="block">
+              <div className="p-6 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group">
+                <div className="text-4xl font-bold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">{tasks.signingTasks.length}</div>
+                <div className="text-sm font-semibold text-gray-600 group-hover:text-primary-600 transition-colors mb-3">서명중</div>
+                <div className="w-full h-px bg-gray-200 group-hover:bg-primary-500 transition-colors"></div>
+              </div>
+            </Link>
+          ) : (
+            <div 
+              onClick={() => setSelectedFilter(selectedFilter === 'SIGNING' ? 'ALL' : 'SIGNING')}
+              className="block cursor-pointer"
+            >
+              <div className={`p-6 rounded-xl transition-all duration-200 ${
+                selectedFilter === 'SIGNING'
+                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
+                  : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
+              }`}>
+                <div className={`text-4xl font-bold mb-2 ${
+                  selectedFilter === 'SIGNING' ? 'text-white' : 'text-gray-900'
+                }`}>{tasks.signingTasks.length}</div>
+                <div className={`text-sm font-semibold mb-3 ${
+                  selectedFilter === 'SIGNING' ? 'text-primary-100' : 'text-gray-600'
+                }`}>서명중</div>
+                <div className={`w-full h-px ${
+                  selectedFilter === 'SIGNING' ? 'bg-white/30' : 'bg-gray-200'
+                }`}></div>
+              </div>
+            </div>
+          )}
+
+          {/* 반려 */}
+          {showReviewingCard ? (
+            <Link to="/documents?status=REJECTED" className="block">
+              <div className="p-6 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-red-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group">
+                <div className={`text-4xl font-bold mb-2 transition-colors ${tasks.rejectedTasks.length > 0 ? 'text-red-600 group-hover:text-red-700' : 'text-gray-900 group-hover:text-red-600'}`}>{tasks.rejectedTasks.length}</div>
+                <div className="text-sm font-semibold text-gray-600 group-hover:text-red-600 transition-colors mb-3">반려</div>
+                <div className="w-full h-px bg-gray-200 group-hover:bg-red-500 transition-colors"></div>
+              </div>
+            </Link>
+          ) : (
+            <div 
+              onClick={() => setSelectedFilter(selectedFilter === 'REJECTED' ? 'ALL' : 'REJECTED')}
+              className="block cursor-pointer"
+            >
+              <div className={`p-6 rounded-xl transition-all duration-200 ${
+                selectedFilter === 'REJECTED'
+                  ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30 scale-105'
+                  : 'bg-white border-2 border-gray-200 hover:border-red-300 hover:shadow-md hover:-translate-y-0.5'
+              }`}>
+                <div className={`text-4xl font-bold mb-2 ${
+                  selectedFilter === 'REJECTED' ? 'text-white' : tasks.rejectedTasks.length > 0 ? 'text-red-600' : 'text-gray-900'
+                }`}>{tasks.rejectedTasks.length}</div>
+                <div className={`text-sm font-semibold mb-3 ${
+                  selectedFilter === 'REJECTED' ? 'text-red-100' : 'text-gray-600'
+                }`}>반려</div>
+                <div className={`w-full h-px ${
+                  selectedFilter === 'REJECTED' ? 'bg-white/30' : 'bg-gray-200'
+                }`}></div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 선택된 필터 표시 */}
+        {!showReviewingCard && selectedFilter && selectedFilter !== 'ALL' && (
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-gray-700">필터:</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg text-sm font-medium shadow-sm">
+              {selectedFilter === 'EDITING' ? '작성중' :
+               selectedFilter === 'SIGNING' ? '서명중' :
+               selectedFilter === 'REJECTED' ? '반려' : selectedFilter}
+              <button onClick={() => setSelectedFilter('ALL')} className="hover:bg-white/20 rounded-full p-0.5 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          </div>
+        )}
 
         {/* TodoList 섹션 */}
         <TodoList />
-      </div>
       </div>
     </div>
   );
