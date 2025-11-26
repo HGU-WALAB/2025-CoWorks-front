@@ -15,6 +15,7 @@ const Footer: React.FC<FooterProps> = ({ light = false }) => {
           {/* Copyright */}
           <div className={`text-sm ${light ? 'text-white' : 'text-gray-600'}`}>
             &copy; {new Date().getFullYear()} HGU · CoWorks
+            <span className="ml-2 text-xs opacity-75">김도현, 전수민, 안준용</span>
           </div>
 
           {/* Links */}
