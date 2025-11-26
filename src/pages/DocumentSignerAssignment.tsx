@@ -882,18 +882,48 @@ const DocumentSignerAssignment: React.FC = () => {
                       </div>
                     ) : isTableField && tableInfo ? (
                       // 테이블 렌더링
-                      <div className="w-full h-full p-1">
+                      <div className="w-full h-full p-1 flex flex-col">
                         <div className="text-xs font-medium mb-1 text-purple-700 truncate">
                           {field.label} ({tableInfo.rows}×{tableInfo.cols})
                           {field.required && <span className="text-red-500">*</span>}
                         </div>
+                        
+                        {/* 열 헤더 행 */}
+                        {tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h) && (
+                          <div
+                            className="flex bg-purple-200 border-b border-purple-400"
+                            style={{
+                              minHeight: '20px'
+                            }}
+                          >
+                            {Array(tableInfo.cols).fill(null).map((_: null, colIndex: number) => {
+                              const headerText = tableInfo.columnHeaders?.[colIndex] || '';
+                              return (
+                                <div
+                                  key={`header-${colIndex}`}
+                                  className="flex items-center justify-center text-purple-800 font-semibold border-r border-purple-300 last:border-r-0 px-1"
+                                  style={{
+                                    width: tableInfo.columnWidths
+                                      ? `${tableInfo.columnWidths[colIndex] * 100}%`
+                                      : `${100 / tableInfo.cols}%`,
+                                    fontSize: `${(field.fontSize || 14) * 0.85}px`,
+                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`
+                                  }}
+                                  title={headerText}
+                                >
+                                  <span className="truncate">{headerText || (colIndex + 1)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        
                         <div 
-                          className="grid gap-px bg-purple-300" 
+                          className="grid gap-px bg-purple-300 flex-1" 
                           style={{
                             gridTemplateColumns: tableInfo.columnWidths 
                               ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
-                              : `repeat(${tableInfo.cols}, 1fr)`,
-                            height: 'calc(100% - 20px)'
+                              : `repeat(${tableInfo.cols}, 1fr)`
                           }}
                         >
                           {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>

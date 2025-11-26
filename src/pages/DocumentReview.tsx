@@ -677,8 +677,40 @@ const DocumentReview: React.FC = () => {
                                 console.error('테이블 데이터 파싱 실패:', err);
                               }
 
+                              const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
+
                               return (
                                 <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
+                                  {/* 열 헤더가 있는 경우 표시 */}
+                                  {hasColumnHeaders && (
+                                    <thead>
+                                      <tr className="bg-purple-100">
+                                        {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                                          const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
+                                          const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                                          return (
+                                            <th
+                                              key={`header-${colIndex}`}
+                                              className="border border-purple-400 text-center"
+                                              style={{
+                                                width: cellWidth,
+                                                fontSize: `${Math.max((field.fontSize || 16) * 1.0, 10)}px`,
+                                                fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                                padding: '4px',
+                                                fontWeight: '600',
+                                                lineHeight: '1.2',
+                                                overflow: 'hidden',
+                                                backgroundColor: '#e9d5ff',
+                                                color: '#6b21a8'
+                                              }}
+                                            >
+                                              {headerText || (colIndex + 1)}
+                                            </th>
+                                          );
+                                        })}
+                                      </tr>
+                                    </thead>
+                                  )}
                                   <tbody>
                                     {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
                                       <tr key={rowIndex}>

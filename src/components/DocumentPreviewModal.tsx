@@ -147,7 +147,8 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               tableInfo = {
                 rows: parsedValue.rows,
                 cols: parsedValue.cols,
-                columnWidths: parsedValue.columnWidths
+                columnWidths: parsedValue.columnWidths,
+                columnHeaders: parsedValue.columnHeaders || field.tableData?.columnHeaders
               };
               tableData = parsedValue;
             }
@@ -165,7 +166,8 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
             cells: Array(field.tableData.rows).fill(null).map(() =>
               Array(field.tableData!.cols).fill('')
             ),
-            columnWidths: field.tableData.columnWidths
+            columnWidths: field.tableData.columnWidths,
+            columnHeaders: field.tableData.columnHeaders
           };
         }
 
@@ -203,6 +205,36 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               />
             ) : isTableField && tableInfo && tableData ? (
               <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
+                {/* 열 헤더가 있는 경우 표시 */}
+                {tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h) && (
+                  <thead>
+                    <tr className="bg-purple-100">
+                      {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                        const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
+                        const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                        return (
+                          <th
+                            key={`header-${colIndex}`}
+                            className="border border-purple-400 text-center"
+                            style={{
+                              width: cellWidth,
+                              fontSize: `${Math.max((field.fontSize || 16) * 1.0, 10)}px`,
+                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                              padding: '4px',
+                              fontWeight: '600',
+                              lineHeight: '1.2',
+                              overflow: 'hidden',
+                              backgroundColor: '#e9d5ff',
+                              color: '#6b21a8'
+                            }}
+                          >
+                            {headerText || (colIndex + 1)}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                )}
                 <tbody>
                   {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
                     <tr key={rowIndex}>
@@ -529,7 +561,8 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                       tableInfo = {
                         rows: parsedValue.rows,
                         cols: parsedValue.cols,
-                        columnWidths: parsedValue.columnWidths
+                        columnWidths: parsedValue.columnWidths,
+                        columnHeaders: parsedValue.columnHeaders || field.tableData?.columnHeaders
                       };
                       tableData = parsedValue; // 서버에서 불러온 실제 데이터 (cells 포함)
                     }
@@ -549,7 +582,8 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                     cells: Array(field.tableData.rows).fill(null).map(() => 
                       Array(field.tableData!.cols).fill('')
                     ),
-                    columnWidths: field.tableData.columnWidths
+                    columnWidths: field.tableData.columnWidths,
+                    columnHeaders: field.tableData.columnHeaders
                   };
                 }
 
@@ -649,14 +683,42 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                       </div>
                     ) : isTableField && tableInfo && tableData ? (
                       // 테이블 렌더링 - 배경색 제거, 테두리만 유지
-                      <div className="w-full h-full p-1">
+                      <div className="w-full h-full p-1 flex flex-col">
+                        {/* 열 헤더가 있는 경우 표시 */}
+                        {tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h) && (
+                          <div
+                            className="flex bg-purple-200 border-b border-purple-400"
+                            style={{
+                              minHeight: '20px'
+                            }}
+                          >
+                            {Array(tableInfo.cols).fill(null).map((_, colIndex) => {
+                              const headerText = tableInfo.columnHeaders?.[colIndex] || '';
+                              return (
+                                <div
+                                  key={`header-${colIndex}`}
+                                  className="flex items-center justify-center text-purple-800 font-semibold border-r border-purple-300 last:border-r-0 px-1"
+                                  style={{
+                                    width: tableInfo.columnWidths
+                                      ? `${tableInfo.columnWidths[colIndex] * 100}%`
+                                      : `${100 / tableInfo.cols}%`,
+                                    fontSize: `${(field.fontSize || 14) * 0.85}px`,
+                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`
+                                  }}
+                                  title={headerText}
+                                >
+                                  <span className="truncate">{headerText || (colIndex + 1)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                         <div 
-                          className="grid"
+                          className="grid flex-1"
                           style={{
                             gridTemplateColumns: tableInfo.columnWidths 
                               ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
                               : `repeat(${tableInfo.cols}, 1fr)`,
-                            height: '100%',
                             gap: '0px' // 셀 간격 완전 제거
                           }}
                         >
