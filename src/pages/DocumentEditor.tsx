@@ -1690,10 +1690,9 @@ const DocumentEditor: React.FC = () => {
               isRejected={currentDocument.isRejected}
               rejectComment={
                 currentDocument.isRejected &&
-                currentDocument.status === 'EDITING' &&
                 currentDocument.statusLogs
                   ? currentDocument.statusLogs
-                      .filter(log => log.status === 'EDITING')
+                      .filter(log => log.status === 'REJECTED')
                       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]?.comment
                   : undefined
               }
