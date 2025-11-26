@@ -18,6 +18,7 @@ export const API_ENDPOINTS = {
     ASSIGN_REVIEWER: (id: number | string) => `/documents/${id}/assign-reviewer`,
     DOWNLOAD_PDF: (id: number | string) => `/documents/${id}/download-pdf`,
     MARK_AS_VIEWED: (id: number | string) => `/documents/${id}/view`,
+    SEND_MESSAGE: (id: number | string) => `/documents/${id}/send-message`,
     BULK_PREVIEW: '/documents/bulk/preview',
     BULK_COMMIT: '/documents/bulk/commit',
     BULK_CANCEL: '/documents/bulk/cancel',

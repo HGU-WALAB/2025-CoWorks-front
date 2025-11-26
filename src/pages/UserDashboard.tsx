@@ -423,7 +423,7 @@ const UserDashboard: React.FC = () => {
                     ) : doc.status === 'SIGNING' ? (
                       <Link
                         to={`/documents/${doc.id}/sign`}
-                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-orange-600 hover:bg-orange-700 transition-colors"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                       >
                         서명하기
                       </Link>
