@@ -19,9 +19,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const base = [
       { name: '대시보드', href: '/tasks' },
       { name: '템플릿', href: '/templates' },
-      { name: '문서', href: '/documents' },
     ];
 
+    // 관리자가 아닌 경우에만 문서 메뉴 표시
+    if (user?.hasFolderAccess !== true) {
+      base.push({ name: '문서', href: '/documents' });
+    }
+
+    // 관리자인 경우 검토, 폴더 메뉴 추가
     if (user?.hasFolderAccess === true) {
       base.push({ name: '검토', href: '/review' });
       base.push({ name: '폴더', href: '/folders' });
