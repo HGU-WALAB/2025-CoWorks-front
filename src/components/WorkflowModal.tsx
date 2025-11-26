@@ -40,6 +40,38 @@ const getCurrentStepIndex = (status: string) => {
   return currentIndex >= 0 ? currentIndex : 0;
 };
 
+// 반려된 문서인지 확인하는 함수 (EDITING 상태이면서 반려된 경우만)
+const isRejectedDocument = (doc: Document | null): boolean => {
+  if (!doc) return false;
+  return doc.status === 'EDITING' && doc.isRejected === true;
+};
+
+// 반려 정보를 가져오는 함수
+const getRejectionInfo = (statusLogs: DocumentStatusLog[] | undefined): { time: string; comment: string; rejectedBy: string } | null => {
+  if (!statusLogs) return null;
+  
+  const rejectedLog = statusLogs
+    .filter(log => log.status === 'REJECTED')
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+  
+  if (rejectedLog) {
+    return {
+      time: new Date(rejectedLog.timestamp).toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      }),
+      comment: rejectedLog.comment || '사유 없음',
+      rejectedBy: rejectedLog.changedByName || rejectedLog.changedByEmail || '알 수 없음'
+    };
+  }
+  
+  return null;
+};
+
 // 특정 상태의 완료 시간을 가져오는 함수
 const getStatusCompletionTime = (statusLogs: DocumentStatusLog[] | undefined, status: string): string | null => {
   if (!statusLogs) return null;
@@ -113,10 +145,40 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
           </button>
         </div>
         <div className="p-6">
+          {/* 반려 상태 알림 */}
+          {isRejectedDocument(doc) && doc.status === 'EDITING' && getRejectionInfo(doc.statusLogs) && (
+            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className="text-sm font-semibold text-red-800 mb-2">
+                    반려된 문서
+                  </h3>
+                  <div className="text-sm text-red-700 space-y-1">
+                    <p>
+                      <span className="font-medium">반려자:</span> {getRejectionInfo(doc.statusLogs)?.rejectedBy}
+                    </p>
+                    <p>
+                      <span className="font-medium">반려 시간:</span> {getRejectionInfo(doc.statusLogs)?.time}
+                    </p>
+                    <p>
+                      <span className="font-medium">반려 사유:</span> {getRejectionInfo(doc.statusLogs)?.comment}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Horizontal Stepper */}
           <div className="flex justify-center pt-4 pb-2">
             <div className="flex items-start max-w-4xl w-full px-4">
               {getWorkflowSteps().map((step, index) => {
+                // 실제 문서 상태를 사용하여 표시
                 const currentIndex = getCurrentStepIndex(doc.status);
                 const isCompleted = doc.status === 'COMPLETED' 
                   ? index <= currentIndex  // COMPLETED 상태일 때는 해당 단계까지 모두 완료로 표시
@@ -222,13 +284,16 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                       </div>
                     </div>
                     {task.lastViewedAt && (
-                      <div className="text-xs text-gray-500">
-                        {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                      <div className="text-xs text-gray-500 text-right">
+                        <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
+                        <div>
+                          {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -247,13 +312,16 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                       </div>
                     </div>
                     {task.lastViewedAt && (
-                      <div className="text-xs text-gray-500">
-                        {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                      <div className="text-xs text-gray-500 text-right">
+                        <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
+                        <div>
+                          {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -272,13 +340,16 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                       </div>
                     </div>
                     {task.lastViewedAt && (
-                      <div className="text-xs text-gray-500">
-                        {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                      <div className="text-xs text-gray-500 text-right">
+                        <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
+                        <div>
+                          {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
