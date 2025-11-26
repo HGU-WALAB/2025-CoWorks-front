@@ -40,9 +40,9 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
       // '\n'으로 행 분리
       const rows = text.split('\n').filter(row => row.trim() !== '');
 
-      // 각 행을 ','로 열 분리
+      // 각 행을 '|'로 열 분리
       const parsedData: string[][] = rows.map(row =>
-        row.split(',').map(cell => cell.trim())
+        row.split('|').map(cell => cell.trim())
       );
 
       // 오류 검증
@@ -157,7 +157,7 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">입력 형식</h4>
                 <ul className="text-xs text-blue-700 space-y-1">
-                  <li>• 각 열은 쉼표(,)로 구분</li>
+                  <li>• 각 열은 막대기(|)로 구분</li>
                   <li>• 각 행은 줄바꿈(Enter)으로 구분</li>
                 </ul>
               </div>
