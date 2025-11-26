@@ -340,14 +340,6 @@ const DocumentReview: React.FC = () => {
     return '';
   };
 
-  // 반응형 폰트 크기 계산 함수
-  const getResponsiveFontSize = (baseFontSize: number | undefined, options: { height: number }) => {
-    if (baseFontSize === undefined) return 18; // 기본값
-    const { height } = options;
-    if (height < 100) return baseFontSize * 0.8; // 높이가 작을 때 폰트 크기 조절
-    if (height > 200) return baseFontSize * 1.2; // 높이가 클 때 폰트 크기 조절
-    return baseFontSize;
-  };
 
   if (loading) {
     return (
@@ -551,10 +543,6 @@ const DocumentReview: React.FC = () => {
                     {(currentDocument.data?.coordinateFields || [])
                       .filter((field) => !field.page || field.page === currentPage)
                       .map((field) => {
-                        const responsiveFontSize = getResponsiveFontSize(field.fontSize, {
-                          height: field.height,
-                        });
-                        const displayFontSize = responsiveFontSize || field.fontSize || 14;
                         console.log('🎯 검토 화면 - 필드 렌더링:', {
                           id: field.id,
                           label: field.label,
@@ -618,156 +606,131 @@ const DocumentReview: React.FC = () => {
                       return (
                         <div
                           key={field.id}
-                          className={`absolute border-2 bg-opacity-30 flex flex-col justify-center ${
-                            isEditorSignature ? 'bg-green-100 border-green-500' :
-                            isReviewerSignature ? 'bg-red-100 border-red-500' :
-                            isTableField ? 'bg-purple-100 border-purple-500' : 'bg-blue-100 border-blue-500'
+                          className={`absolute ${
+                            isEditorSignature || isReviewerSignature 
+                              ? 'border-2 bg-red-100 border-red-500 bg-opacity-30' 
+                              : ''
                           }`}
                           style={{
                             left: `${leftPercent}px`,
                             top: `${topPercent}px`,
                             width: `${widthPercent}px`,
                             height: `${heightPercent}px`,
+                            fontSize: `${field.fontSize || 18}px`,
+                            fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                            fontWeight: '500',
+                            overflow: 'visible',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                           }}
                         >
                           {isEditorSignature ? (
-                            // 편집자 서명 필드 렌더링
-                            <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
-                              {field.value && field.value.startsWith('data:image') ? (
-                                <img
-                                  src={field.value}
-                                  alt="편집자 서명"
-                                  className="max-w-full h-full object-contain bg-transparent"
-                                  style={{
-                                    maxWidth: '100%',
-                                    maxHeight: '100%',
-                                    background: 'transparent'
-                                  }}
-                                />
-                              ) : field.value ? (
-                                <div className="text-xs text-gray-600 text-center">
-                                  서명됨
-                                </div>
-                              ) : (
-                                <div className="text-xs text-gray-500 text-center">
-                                  미서명
-                                </div>
-                              )}
-                            </div>
-                          ) : isReviewerSignature ? (
-                            // 검토자 서명 필드 렌더링
-                            <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
-                              {field.value && field.value.startsWith('data:image') ? (
-                                <img
-                                  src={field.value}
-                                  alt={`${(field as any).reviewerName || '검토자'} 서명`}
-                                  className="max-w-full h-full object-contain bg-transparent"
-                                  style={{
-                                    maxWidth: '100%',
-                                    maxHeight: '100%',
-                                    background: 'transparent'
-                                  }}
-                                />
-                              ) : (
-                                <div className="text-xs text-red-700 font-medium text-center">
-                                  {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명
-                                  {(field as any).reviewerEmail === user?.email && (
-                                    <div className="text-red-500 mt-1">(본인)</div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ) : isTableField && tableInfo ? (
-                            // 테이블 렌더링
-                            <div className="w-full h-full p-1">
-                              <div className="text-xs font-medium mb-1 text-purple-700 truncate">
-                                {field.label} ({tableInfo.rows}×{tableInfo.cols})
-                                {field.required && <span className="text-red-500">*</span>}
-                              </div>
-                              <div
-                                className="grid gap-px bg-purple-300"
-                                style={{
-                                  gridTemplateColumns: tableInfo.columnWidths
-                                    ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
-                                    : `repeat(${tableInfo.cols}, 1fr)`,
-                                  height: 'calc(100% - 20px)'
-                                }}
-                              >
-                                {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>
-                                  Array(tableInfo.cols).fill(null).map((_, colIndex) => {
-                                    let cellText = '';
-                                    try {
-                                      let tableValue: { cells?: string[][] } = {};
-                                      if (field.value) {
-                                        if (typeof field.value === 'string') {
-                                          tableValue = JSON.parse(field.value) as { cells?: string[][] };
-                                        } else if (typeof field.value === 'object') {
-                                          tableValue = field.value as { cells?: string[][] };
-                                        }
-                                      }
-
-                                      cellText = tableValue.cells?.[rowIndex]?.[colIndex] || '';
-
-                                    } catch (err) {
-                                      console.error(`테이블 값 파싱 실패 [${rowIndex}][${colIndex}]:`, {
-                                        fieldId: field.id,
-                                        rawValue: field.value,
-                                        error: err
-                                      });
-                                      cellText = '';
-                                    }
-
-                                    return (
-                                      <div
-                                        key={`${rowIndex}-${colIndex}`}
-                                        className="border border-purple-200 flex items-center justify-center p-1"
-                                        style={{
-                                          minHeight: '20px',
-                                          fontSize: `${displayFontSize}px !important`,
-                                          fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                          color: '#6b21a8',
-                                          fontWeight: '500'
-                                        }}
-                                        title={cellText || ''}
-                                      >
-                                        <span
-                                          className="text-center truncate leading-tight"
-                                          style={{
-                                            display: 'block',
-                                            width: '100%',
-                                            fontSize: `${displayFontSize}px !important`,
-                                            fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                            fontWeight: '500 !important',
-                                            color: '#6b21a8 !important'
-                                          }}
-                                        >
-                                          {cellText}
-                                        </span>
-                                      </div>
-                                    );
-                                  })
+                            field.value && field.value.startsWith('data:image') ? (
+                              <img
+                                src={field.value}
+                                alt="작성자 서명"
+                                className="w-full h-full object-contain"
+                                style={{ background: 'transparent' }}
+                              />
+                            ) : (
+                              <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
+                                <span>작성자 서명</span>
+                                {(field as any).editorName && (
+                                  <span>({(field as any).editorName})</span>
+                                )}
+                                {(field as any).editorEmail === user?.email && (
+                                  <span className="text-red-500">(본인)</span>
                                 )}
                               </div>
-                            </div>
+                            )
+                          ) : isReviewerSignature ? (
+                            field.value && field.value.startsWith('data:image') ? (
+                              <img
+                                src={field.value}
+                                alt="서명자 서명"
+                                className="w-full h-full object-contain"
+                                style={{ background: 'transparent' }}
+                              />
+                            ) : (
+                              <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
+                                <span>
+                                  {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명
+                                </span>
+                                {(field as any).reviewerEmail === user?.email && (
+                                  <span className="text-red-500">(본인)</span>
+                                )}
+                              </div>
+                            )
+                          ) : isTableField && tableInfo ? (
+                            (() => {
+                              let tableData: { cells?: string[][] } = {};
+                              try {
+                                if (field.value) {
+                                  if (typeof field.value === 'string') {
+                                    tableData = JSON.parse(field.value) as { cells?: string[][] };
+                                  } else if (typeof field.value === 'object') {
+                                    tableData = field.value as { cells?: string[][] };
+                                  }
+                                }
+                              } catch (err) {
+                                console.error('테이블 데이터 파싱 실패:', err);
+                              }
+
+                              return (
+                                <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
+                                  <tbody>
+                                    {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
+                                      <tr key={rowIndex}>
+                                        {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                                          const cellValue = tableData.cells?.[rowIndex]?.[colIndex] || '';
+                                          const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                                          return (
+                                            <td
+                                              key={colIndex}
+                                              className="border border-black text-center"
+                                              style={{
+                                                width: cellWidth,
+                                                fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
+                                                fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                                padding: '4px',
+                                                fontWeight: '500',
+                                                lineHeight: '1.2',
+                                                overflow: 'hidden',
+                                              }}
+                                            >
+                                              {cellValue}
+                                            </td>
+                                          );
+                                        })}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              );
+                            })()
                           ) : field.value ? (
-                            // 일반 필드 - 값이 있는 경우
                             <div
-                              className="text-gray-900 p-1 truncate text-center"
+                              className="text-gray-900 flex items-center justify-center w-full h-full"
                               style={{
-                                fontSize: `${displayFontSize}px !important`,
-                                fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                fontWeight: '500 !important'
+                                fontSize: `${field.fontSize || 18}px`,
+                                fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                fontWeight: '500',
+                                color: '#111827',
+                                lineHeight: '1.4',
+                                textAlign: 'center',
+                                wordBreak: 'keep-all',
+                                overflow: 'visible',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                whiteSpace: 'nowrap',
+                                padding: '2px 4px'
                               }}
                             >
                               {field.value}
                             </div>
-                          ) : (
-                            // 일반 필드 - 값이 없는 경우
-                            <div className="text-xs text-blue-700 font-medium p-1 truncate text-center">
-                              {field.label}
-                              {field.required && <span className="text-red-500">*</span>}
-                            </div>
-                          )}
+                          ) : null}
                         </div>
                       );
                     })}
