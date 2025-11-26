@@ -11,7 +11,7 @@ import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
 
 // 필터링 및 정렬 타입 정의
 type SortOption = 'createdAt-desc' | 'createdAt-asc' | 'updatedAt-desc' | 'updatedAt-asc';
-type StatusFilter = 'all' | 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'REJECTED';
+type StatusFilter = 'all' | 'DRAFT' | 'EDITING' | 'READY_FOR_REVIEW' | 'REVIEWING' | 'COMPLETED' | 'rejected';
 
 const DocumentList: React.FC = () => {
   const { documents, loading, fetchDocuments } = useDocumentStore();
@@ -85,7 +85,7 @@ const DocumentList: React.FC = () => {
   // URL 파라미터에서 초기 필터 상태 설정
   useEffect(() => {
     const statusParam = searchParams.get('status');
-    if (statusParam && ['DRAFT', 'EDITING', 'READY_FOR_REVIEW', 'REVIEWING', 'COMPLETED', 'REJECTED'].includes(statusParam)) {
+    if (statusParam && ['DRAFT', 'EDITING', 'READY_FOR_REVIEW', 'REVIEWING', 'COMPLETED', 'rejected'].includes(statusParam)) {
       setStatusFilter(statusParam as StatusFilter);
     }
   }, [searchParams]);
@@ -107,6 +107,8 @@ const DocumentList: React.FC = () => {
       if (statusFilter === 'EDITING') {
         // EDITING 필터는 EDITING과 READY_FOR_REVIEW 모두 포함
         filtered = filtered.filter(doc => ['EDITING', 'READY_FOR_REVIEW'].includes(doc.status));
+      } else if (statusFilter === 'rejected') {
+        filtered = filtered.filter(doc => doc.isRejected === true);
       } else {
         filtered = filtered.filter(doc => doc.status === statusFilter);
       }
@@ -395,7 +397,7 @@ const DocumentList: React.FC = () => {
               <option value="EDITING">작성중</option>
               <option value="REVIEWING">검토중</option>
               <option value="COMPLETED">완료</option>
-              <option value="REJECTED">반려</option>
+              <option value="rejected">반려</option>
             </select>
           </div>
 
@@ -430,7 +432,9 @@ const DocumentList: React.FC = () => {
               )}
               {statusFilter !== 'all' && (
                 <span className="ml-2">
-                  상태: <span className="font-medium text-gray-900">{getStatusText(statusFilter)}</span>
+                  상태: <span className="font-medium text-gray-900">
+                    {statusFilter === 'rejected' ? '반려' : getStatusText(statusFilter)}
+                  </span>
                 </span>
               )}
             </div>
