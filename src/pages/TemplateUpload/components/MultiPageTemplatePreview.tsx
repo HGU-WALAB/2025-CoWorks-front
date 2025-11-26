@@ -57,6 +57,10 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
     startWidths: number[];
   } | null>(null);
 
+  // 길게 누르기 감지를 위한 상태
+  const [longPressTimers, setLongPressTimers] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const [isLongPressing, setIsLongPressing] = useState<Set<string>>(new Set());
+
   // 이미지 로딩 상태 추가
   const [imageLoadErrors, setImageLoadErrors] = useState<Set<number>>(new Set());
 
@@ -193,7 +197,18 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   const handleFieldMouseDown = (field: TemplateField, e: React.MouseEvent, action: 'move' | 'resize') => {
     if (!isInteractive) return;
     e.stopPropagation();
-
+    
+    // 길게 누르기 감지 시작 (300ms 후)
+    const timer = setTimeout(() => {
+      setIsLongPressing(prev => new Set([...prev, field.id]));
+    }, 200);
+    
+    setLongPressTimers(prev => {
+      const newMap = new Map(prev);
+      newMap.set(field.id, timer);
+      return newMap;
+    });
+    
     if (action === 'move') {
       const rect = canvasRef.current!.getBoundingClientRect();
       const scaledPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -208,6 +223,30 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
     } else {
       setResizingField(field.id);
       setDragOffset({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleFieldMouseUp = (field: TemplateField) => {
+    // 타이머 정리
+    const timer = longPressTimers.get(field.id);
+    if (timer) {
+      clearTimeout(timer);
+      setLongPressTimers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(field.id);
+        return newMap;
+      });
+    }
+    
+    // 길게 누른 상태 해제 (약간의 지연을 두어 클릭 이벤트가 무시되도록)
+    if (isLongPressing.has(field.id)) {
+      setTimeout(() => {
+        setIsLongPressing(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(field.id);
+          return newSet;
+        });
+      }, 100);
     }
   };
 
@@ -329,11 +368,37 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
             fontFamily: field.fontFamily || 'Arial'
           }}
           onMouseDown={isInteractive ? (e) => handleFieldMouseDown(field, e, 'move') : undefined}
+          onMouseUp={() => isInteractive && handleFieldMouseUp(field)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            if (!isInteractive) return;
+            const timer = setTimeout(() => {
+              setIsLongPressing(prev => new Set([...prev, field.id]));
+            }, 200);
+            
+            setLongPressTimers(prev => {
+              const newMap = new Map(prev);
+              newMap.set(field.id, timer);
+              return newMap;
+            });
+          }}
+          onTouchEnd={() => {
+            if (isInteractive) {
+              handleFieldMouseUp(field);
+            }
+          }}
           onClick={(e) => {
             e.stopPropagation();
-            if (isInteractive) {
-              onFieldClick(field);
+            if (!isInteractive) return;
+            // 길게 누른 경우 클릭 무시
+            if (isLongPressing.has(field.id)) {
+              e.preventDefault();
+              return;
             }
+            onFieldClick(field);
           }}
         >
           <div className="w-full h-full overflow-hidden pointer-events-none">
@@ -448,11 +513,38 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
           fontFamily: field.fontFamily || 'Arial'
         }}
         onMouseDown={isInteractive ? (e) => handleFieldMouseDown(field, e, 'move') : undefined}
+        onMouseUp={() => isInteractive && handleFieldMouseUp(field)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onTouchStart={(e) => {
+          if (!isInteractive) return;
+          // 터치 시작 시 길게 누르기 감지 시작
+          const timer = setTimeout(() => {
+            setIsLongPressing(prev => new Set([...prev, field.id]));
+          }, 500);
+          
+          setLongPressTimers(prev => {
+            const newMap = new Map(prev);
+            newMap.set(field.id, timer);
+            return newMap;
+          });
+        }}
+        onTouchEnd={() => {
+          if (isInteractive) {
+            handleFieldMouseUp(field);
+          }
+        }}
         onClick={(e) => {
           e.stopPropagation();
-          if (isInteractive) {
-            onFieldClick(field);
+          if (!isInteractive) return;
+          // 길게 누른 경우 클릭 무시
+          if (isLongPressing.has(field.id)) {
+            e.preventDefault();
+            return;
           }
+          onFieldClick(field);
         }}
       >
         <div className="text-center p-1">
