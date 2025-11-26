@@ -1398,7 +1398,7 @@ const DocumentEditor: React.FC = () => {
                     </div>
                   ) : isTableField && tableInfo ? (
                     // 테이블 렌더링
-                    <div className="w-full h-full p-1">
+                    <div className="w-full h-full p-1 flex flex-col">
                       <div
                         className="font-medium mb-1 text-purple-700 truncate"
                         style={{
@@ -1407,13 +1407,44 @@ const DocumentEditor: React.FC = () => {
                       >
                         {field.label} ({tableInfo.rows}×{tableInfo.cols})
                       </div>
+                      
+                      {/* 열 헤더 행 */}
+                      {tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h) && (
+                        <div
+                          className="flex bg-purple-200 border-b border-purple-400"
+                          style={{
+                            minHeight: `${20 * scale}px`
+                          }}
+                        >
+                          {Array(tableInfo.cols).fill(null).map((_, colIndex) => {
+                            const headerText = tableInfo.columnHeaders?.[colIndex] || '';
+                            return (
+                              <div
+                                key={`header-${colIndex}`}
+                                className="flex items-center justify-center text-purple-800 font-semibold border-r border-purple-300 last:border-r-0 px-1"
+                                style={{
+                                  width: tableInfo.columnWidths
+                                    ? `${tableInfo.columnWidths[colIndex] * 100}%`
+                                    : `${100 / tableInfo.cols}%`,
+                                  fontSize: `${(field.fontSize || 14) * scale * 0.85}px`,
+                                  fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`
+                                }}
+                                title={headerText}
+                              >
+                                <span className="truncate">{headerText || (colIndex + 1)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* 데이터 셀 */}
                       <div
-                        className="grid gap-px bg-purple-300"
+                        className="grid gap-px bg-purple-300 flex-1"
                         style={{
                           gridTemplateColumns: tableInfo.columnWidths
                             ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
-                            : `repeat(${tableInfo.cols}, 1fr)`,
-                          height: 'calc(100% - 20px)'
+                            : `repeat(${tableInfo.cols}, 1fr)`
                         }}
                       >
                         {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>
@@ -1689,10 +1720,12 @@ const DocumentEditor: React.FC = () => {
               size="md"
               isRejected={currentDocument.isRejected}
               rejectComment={
-                currentDocument.isRejected &&
-                currentDocument.statusLogs
+                currentDocument.statusLogs && (currentDocument.status === 'REJECTED' || currentDocument.isRejected)
                   ? currentDocument.statusLogs
-                      .filter(log => log.status === 'REJECTED')
+                      .filter(log => 
+                        // rejectLog가 true인 로그를 우선적으로 찾고, 없으면 REJECTED 상태의 로그를 찾음
+                        log.rejectLog === true || log.status === 'REJECTED'
+                      )
                       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]?.comment
                   : undefined
               }

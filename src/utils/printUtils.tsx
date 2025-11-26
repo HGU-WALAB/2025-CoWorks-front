@@ -17,6 +17,7 @@ export interface PrintField {
     cols: number;
     cells: any[][];
     columnWidths?: number[];
+    columnHeaders?: string[];
   };
 }
 
@@ -73,7 +74,8 @@ export const generatePrintHTML = (
           tableInfo = {
             rows: parsedValue.rows,
             cols: parsedValue.cols,
-            columnWidths: parsedValue.columnWidths
+            columnWidths: parsedValue.columnWidths,
+            columnHeaders: parsedValue.columnHeaders || field.tableData?.columnHeaders
           };
           tableData = parsedValue;
         }
@@ -164,6 +166,34 @@ export const generatePrintHTML = (
         return `<tr style="height: ${Math.max(Math.floor((field.height * 0.64) / tableInfo!.rows), 12)}px;">${cells}</tr>`;
       }).join('');
       
+      // 열 헤더 행 생성
+      const hasColumnHeaders = tableInfo!.columnHeaders && tableInfo!.columnHeaders.some((h: string) => h);
+      const headerRow = hasColumnHeaders ? `<thead><tr style="background-color: #e9d5ff;">
+        ${Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+          const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
+          const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+          const escapedHeader = (headerText || String(colIndex + 1)).replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;');
+          return `<th style="
+            width: ${cellWidth};
+            font-size: ${Math.max((field.fontSize || 16) * 0.64 * 0.85, 8)}px;
+            font-family: '${field.fontFamily || 'Arial'}', sans-serif;
+            border: 1px solid #6b21a8;
+            text-align: center;
+            vertical-align: middle;
+            padding: 2px;
+            background-color: #e9d5ff;
+            color: #6b21a8;
+            font-weight: 600;
+            line-height: 1.2;
+            box-sizing: border-box;
+          ">${escapedHeader}</th>`;
+        }).join('')}
+      </tr></thead>` : '';
+      
       return `<div class="table-overlay" style="
         left: ${field.x * 0.64}px; 
         top: ${field.y * 0.64}px; 
@@ -180,6 +210,7 @@ export const generatePrintHTML = (
           table-layout: fixed;
           background: transparent;
         ">
+          ${headerRow}
           <tbody>${tableRows}</tbody>
         </table>
       </div>`;

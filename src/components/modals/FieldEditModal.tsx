@@ -91,22 +91,29 @@ const FieldEditModal: React.FC<FieldEditModalProps> = ({
               <span className="text-gray-600">페이지:</span>
               <span className="ml-2 font-medium">{editField.page}</span>
             </div>
-            <div>
-              <span className="text-gray-600">위치:</span>
-              <span className="ml-2 font-medium">({editField.x}, {editField.y})</span>
-            </div>
+            {/*<div>*/}
+            {/*  <span className="text-gray-600">위치:</span>*/}
+            {/*  <span className="ml-2 font-medium">({editField.x}, {editField.y})</span>*/}
+            {/*</div>*/}
             <div>
               <span className="text-gray-600">타입:</span>
               <span className="ml-2 font-medium">{editField.type === 'table' ? '테이블' : '입력 필드'}</span>
             </div>
-            <div>
-              <span className="text-gray-600">크기:</span>
-              <span className="ml-2 font-medium">{editField.width} × {editField.height}</span>
-            </div>
+            {/*<div>*/}
+            {/*  <span className="text-gray-600">크기:</span>*/}
+            {/*  <span className="ml-2 font-medium">{editField.width} × {editField.height}</span>*/}
+            {/*</div>*/}
           </div>
         </div>
 
         <div className="flex space-x-3 mt-6">
+          <button
+            onClick={handleSave}
+            disabled={!editField.label.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300"
+          >
+            저장
+          </button>
           <button
             onClick={onDelete}
             className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
@@ -118,13 +125,6 @@ const FieldEditModal: React.FC<FieldEditModalProps> = ({
             className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
           >
             취소
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!editField.label.trim()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300"
-          >
-            저장
           </button>
         </div>
       </div>

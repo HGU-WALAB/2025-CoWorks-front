@@ -104,7 +104,8 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
                 tableInfo = {
                   rows: parsedValue.rows,
                   cols: parsedValue.cols,
-                  columnWidths: parsedValue.columnWidths
+                  columnWidths: parsedValue.columnWidths,
+                  columnHeaders: parsedValue.columnHeaders || field.tableData?.columnHeaders
                 };
                 tableData = parsedValue;
               }
@@ -122,7 +123,8 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
               cells: Array(field.tableData.rows).fill(null).map(() => 
                 Array(field.tableData!.cols).fill('')
               ),
-              columnWidths: field.tableData.columnWidths
+              columnWidths: field.tableData.columnWidths,
+              columnHeaders: field.tableData.columnHeaders
             };
           }
 
@@ -167,14 +169,42 @@ const DocumentRenderComponent: React.FC<DocumentRenderProps> = ({
                 </div>
               ) : isTableField && tableInfo && tableData ? (
                 // 테이블 렌더링
-                <div className="w-full h-full p-1">
+                <div className="w-full h-full p-1 flex flex-col">
+                  {/* 열 헤더가 있는 경우 표시 */}
+                  {tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h) && (
+                    <div
+                      className="flex bg-purple-200 border-b border-purple-400"
+                      style={{
+                        minHeight: '20px'
+                      }}
+                    >
+                      {Array(tableInfo.cols).fill(null).map((_, colIndex) => {
+                        const headerText = tableInfo.columnHeaders?.[colIndex] || '';
+                        return (
+                          <div
+                            key={`header-${colIndex}`}
+                            className="flex items-center justify-center text-purple-800 font-semibold border-r border-purple-300 last:border-r-0 px-1"
+                            style={{
+                              width: tableInfo.columnWidths
+                                ? `${tableInfo.columnWidths[colIndex] * 100}%`
+                                : `${100 / tableInfo.cols}%`,
+                              fontSize: `${(field.fontSize || 14) * 0.85}px`,
+                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`
+                            }}
+                            title={headerText}
+                          >
+                            <span className="truncate">{headerText || (colIndex + 1)}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div 
-                    className="grid"
+                    className="grid flex-1"
                     style={{
                       gridTemplateColumns: tableInfo.columnWidths 
                         ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
                         : `repeat(${tableInfo.cols}, 1fr)`,
-                      height: '100%',
                       gap: '0px'
                     }}
                   >

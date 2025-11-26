@@ -4,16 +4,19 @@ import { useAuthStore } from '../stores/authStore';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { error, clearError, isAuthenticated, login, loading } = useAuthStore();
+  const { error, clearError, isAuthenticated, login, loading, refreshUser } = useAuthStore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/tasks');
+      // 로그인 성공 후 최신 사용자 정보 가져오기
+      refreshUser().then(() => {
+        navigate('/tasks');
+      });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, refreshUser]);
 
   useEffect(() => {
     clearError();

@@ -15,6 +15,7 @@ export interface TemplateField {
     cols: number;
     cells: string[][];
     columnWidths?: number[];
+    columnHeaders?: string[]; // 열 이름 배열
   };
   reviewerIndex?: number; // 여러 서명자 필드 구분용
 }

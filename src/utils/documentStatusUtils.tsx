@@ -94,6 +94,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
 
   // isRejected가 true이고 현재 상태가 EDITING인 경우에만 "<반려>" 접두사 추가
   const showRejectPrefix = isRejected && status === DOCUMENT_STATUS.EDITING;
+  // status가 REJECTED인 경우에도 반려 사유 표시
+  const showRejectComment = rejectComment && (status === DOCUMENT_STATUS.REJECTED || showRejectPrefix);
 
   return (
     <div className="flex items-center gap-2">
@@ -101,7 +103,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
         {showRejectPrefix && <span>&lt;반려&gt; </span>}
         {config.text}
       </span>
-      {showRejectPrefix && rejectComment && (
+      {showRejectComment && (
         <span className="text-sm text-red-400 font-bold">
           반려 사유: {rejectComment}
         </span>

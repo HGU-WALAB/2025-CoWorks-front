@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { TemplateField } from '../../../types/field';
 import { Position } from '../../../types/common';
+import ColumnHeaderModal from '../../../components/modals/ColumnHeaderModal';
 
 interface PdfPage {
   pageNumber: number;
@@ -63,6 +64,19 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
 
   // 이미지 로딩 상태 추가
   const [imageLoadErrors, setImageLoadErrors] = useState<Set<number>>(new Set());
+
+  // 열 이름 입력 모달 상태
+  const [columnHeaderModal, setColumnHeaderModal] = useState<{
+    isOpen: boolean;
+    fieldId: string;
+    columnIndex: number;
+    currentName: string;
+  }>({
+    isOpen: false,
+    fieldId: '',
+    columnIndex: 0,
+    currentName: ''
+  });
 
   // PDF 원본 크기 (A4 기준)
   const PDF_WIDTH = 1240;
@@ -266,6 +280,46 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
     });
   };
 
+  // 열 헤더 클릭 핸들러 (열 이름 편집)
+  const handleColumnHeaderClick = (field: TemplateField, columnIndex: number, e: React.MouseEvent) => {
+    if (!isInteractive) return;
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const currentName = field.tableData?.columnHeaders?.[columnIndex] || '';
+    
+    setColumnHeaderModal({
+      isOpen: true,
+      fieldId: field.id,
+      columnIndex,
+      currentName
+    });
+  };
+
+  // 열 이름 저장 핸들러
+  const handleColumnHeaderSave = (headerName: string) => {
+    const field = fields.find(f => f.id === columnHeaderModal.fieldId);
+    if (!field?.tableData) return;
+
+    const columnHeaders = field.tableData.columnHeaders 
+      ? [...field.tableData.columnHeaders]
+      : Array(field.tableData.cols).fill('');
+    
+    // 배열 크기 조정 (필요한 경우)
+    while (columnHeaders.length < field.tableData.cols) {
+      columnHeaders.push('');
+    }
+    
+    columnHeaders[columnHeaderModal.columnIndex] = headerName;
+
+    onFieldResize(field.id, {
+      tableData: {
+        ...field.tableData,
+        columnHeaders
+      }
+    });
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isInteractive) return;
     if (!canvasRef.current) return;
@@ -411,26 +465,34 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
                     : `repeat(${field.tableData.cols}, 1fr)`,
                 }}
               >
-                {Array(field.tableData.cols).fill(null).map((_, colIndex) => (
-                  <div
-                    key={`header-${colIndex}`}
-                    className="relative flex items-center justify-center text-xs font-medium text-purple-800 bg-purple-200 border-r border-purple-300 last:border-r-0"
-                    style={{
-                      width: field.tableData?.columnWidths
-                        ? `${field.tableData.columnWidths[colIndex] * 100}%`
-                        : `${100 / field.tableData!.cols}%`
-                    }}
-                  >
-                    {colIndex + 1}
-                    {colIndex < field.tableData!.cols - 1 && (
-                      <div
-                        className={`absolute right-0 top-0 w-2 h-full ${isInteractive ? 'cursor-col-resize pointer-events-auto' : 'pointer-events-none'} bg-purple-500 bg-opacity-0 hover:bg-opacity-30 transition-colors z-10`}
-                        onMouseDown={isInteractive ? (e) => handleColumnResizeMouseDown(field, colIndex, e) : undefined}
-                        title={isInteractive ? '드래그하여 컬럼 너비 조절' : undefined}
-                      />
-                    )}
-                  </div>
-                ))}
+                {Array(field.tableData.cols).fill(null).map((_, colIndex) => {
+                  const columnName = field.tableData?.columnHeaders?.[colIndex] || '';
+                  return (
+                    <div
+                      key={`header-${colIndex}`}
+                      className={`relative flex items-center justify-center text-xs font-medium text-purple-800 bg-purple-200 border-r border-purple-300 last:border-r-0 ${isInteractive ? 'cursor-pointer hover:bg-purple-300 pointer-events-auto' : 'pointer-events-none'} transition-colors`}
+                      style={{
+                        width: field.tableData?.columnWidths
+                          ? `${field.tableData.columnWidths[colIndex] * 100}%`
+                          : `${100 / field.tableData!.cols}%`
+                      }}
+                      onClick={isInteractive ? (e) => handleColumnHeaderClick(field, colIndex, e) : undefined}
+                      title={isInteractive ? (columnName ? `"${columnName}" - 클릭하여 수정` : '클릭하여 열 이름 설정') : undefined}
+                    >
+                      <span className="truncate px-1">
+                        {columnName || (colIndex + 1)}
+                      </span>
+                      {colIndex < field.tableData!.cols - 1 && (
+                        <div
+                          className={`absolute right-0 top-0 w-2 h-full ${isInteractive ? 'cursor-col-resize pointer-events-auto' : 'pointer-events-none'} bg-purple-500 bg-opacity-0 hover:bg-opacity-30 transition-colors z-10`}
+                          onMouseDown={isInteractive ? (e) => handleColumnResizeMouseDown(field, colIndex, e) : undefined}
+                          onClick={(e) => e.stopPropagation()}
+                          title={isInteractive ? '드래그하여 컬럼 너비 조절' : undefined}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="flex flex-col" style={{ height: 'calc(100% - 24px)' }}>
@@ -594,6 +656,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   }
 
   return (
+    <>
     <div className="bg-white rounded-lg shadow-lg overflow-hidden h-full flex flex-col">
       <div className="bg-gray-100 px-4 py-3 border-b flex-shrink-0">
         <h3 className="font-medium text-gray-800">템플릿 미리보기</h3>
@@ -724,6 +787,16 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
         )}
       </div>
     </div>
+
+    {/* 열 이름 입력 모달 */}
+    <ColumnHeaderModal
+      isOpen={columnHeaderModal.isOpen}
+      onClose={() => setColumnHeaderModal(prev => ({ ...prev, isOpen: false }))}
+      onSave={handleColumnHeaderSave}
+      columnIndex={columnHeaderModal.columnIndex}
+      currentName={columnHeaderModal.currentName}
+    />
+    </>
   );
 };
 

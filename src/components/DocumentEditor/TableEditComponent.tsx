@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 // 테이블 편집 컴포넌트
 export interface TableEditComponentProps {
-  tableInfo: { rows: number; cols: number; columnWidths?: number[] };
+  tableInfo: { rows: number; cols: number; columnWidths?: number[]; columnHeaders?: string[] };
   tableData: any;
   fieldId: string;
   onCellChange: (rowIndex: number, colIndex: number, newValue: string) => void;
@@ -119,6 +119,25 @@ const TableEditComponent: React.FC<TableEditComponentProps> = ({
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border border-gray-300">
+          {/* 열 헤더가 있는 경우 thead 표시 */}
+          {tableInfo.columnHeaders && tableInfo.columnHeaders.some(h => h) && (
+            <thead>
+              <tr className="bg-purple-100">
+                {Array(tableInfo.cols).fill(null).map((_, colIndex) => {
+                  const headerText = tableInfo.columnHeaders?.[colIndex] || '';
+                  return (
+                    <th
+                      key={`header-${colIndex}`}
+                      className="border border-purple-300 px-2 py-1 text-sm font-semibold text-purple-800"
+                      style={{ minWidth: '120px' }}
+                    >
+                      {headerText || (colIndex + 1)}
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
+          )}
           <tbody>
             {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
               <tr key={rowIndex}>

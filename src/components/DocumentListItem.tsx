@@ -1,9 +1,28 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Document, TaskInfo, CoordinateField } from '../types/document';
+import { Document, TaskInfo, CoordinateField, DocumentStatusLog } from '../types/document';
 import { useAuthStore } from '../stores/authStore';
 import { StatusBadge, DOCUMENT_STATUS } from '../utils/documentStatusUtils';
 import { getRoleAssignmentMessage, formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
+
+// 반려자 정보를 가져오는 헬퍼 함수
+const getRejectInfo = (statusLogs?: DocumentStatusLog[]): { name: string; timestamp: string } | null => {
+  if (!statusLogs || statusLogs.length === 0) return null;
+  
+  // rejectLog가 true인 로그 중 가장 최근 것을 찾음
+  const rejectLog = statusLogs
+    .filter(log => log.rejectLog === true)
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+  
+  if (rejectLog && (rejectLog.changedByName || rejectLog.changedByEmail)) {
+    return {
+      name: rejectLog.changedByName || rejectLog.changedByEmail || '알 수 없음',
+      timestamp: rejectLog.timestamp
+    };
+  }
+  
+  return null;
+};
 
 type ExtendedTaskInfo = TaskInfo & Partial<{
   assignedUser: { name?: string; username?: string };
@@ -270,11 +289,12 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                 size="sm"
                 isRejected={document.isRejected}
                 rejectComment={
-                  document.isRejected &&
-                  document.status === 'EDITING' &&
-                  document.statusLogs
+                  document.statusLogs && (document.status === 'REJECTED' || document.isRejected)
                     ? document.statusLogs
-                        .filter(log => log.status === 'EDITING')
+                        .filter(log => 
+                          // rejectLog가 true인 로그를 우선적으로 찾고, 없으면 REJECTED 상태의 로그를 찾음
+                          log.rejectLog === true || log.status === 'REJECTED'
+                        )
                         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0]?.comment
                     : undefined
                 }
@@ -306,6 +326,16 @@ const DocumentListItem: React.FC<DocumentListItemProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500 w-14 shrink-0">완료일</span>
                     <span className="text-green-600 font-medium truncate">{formatKoreanFullDateTime(completedLog.timestamp)}</span>
+                  </div>
+                ) : null;
+              })()}
+              {/* 반려된 문서일 때 반려자 정보 표시 */}
+              {(document.isRejected || document.status === 'REJECTED') && (() => {
+                const rejectInfo = getRejectInfo(document.statusLogs);
+                return rejectInfo ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 w-14 shrink-0">반려자</span>
+                    <span className="text-red-600 font-medium truncate">{rejectInfo.name}</span>
                   </div>
                 ) : null;
               })()}
