@@ -11,10 +11,19 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, isAuthenticated, logout, refreshUser } = useAuthStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
+
+  // 로그인 상태이고 user가 없거나 필요한 정보가 없을 때 refreshUser 호출
+  useEffect(() => {
+    if (isAuthenticated && (!user || user.hasFolderAccess === undefined)) {
+      console.log('Layout: User or hasFolderAccess missing, refreshing user...');
+      refreshUser();
+    }
+  }, [isAuthenticated, user, refreshUser]);
+
   const navigation = useMemo(() => {
     const base = [
       { name: '대시보드', href: '/tasks' },
@@ -85,7 +94,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <div className="container mx-auto px-4">
           <div className="flex flex-wrap items-center gap-4 py-4 md:flex-nowrap md:justify-between">
             <div className="flex w-full items-center justify-between md:w-auto md:justify-start">
-              <Link to={user?.position === '교직원' ? '/folders' : '/tasks'} className="flex items-center">
+              <Link to={'/tasks'} className="flex items-center">
                 <img 
                   src={getLogoPath()} 
                   alt="CoWorks Logo" 

@@ -275,6 +275,9 @@ const DocumentNew: React.FC = () => {
         }
         
         alert(message || '문서 처리가 완료되었습니다.');
+        
+        // bulk 문서 생성 후 최신 사용자 정보 가져오기
+        await refreshUser();
       } else {
         // 엑셀파일 업로드 없을시 -> 일반 단일 문서 생성
         await createDocument({
@@ -283,6 +286,9 @@ const DocumentNew: React.FC = () => {
           title: documentTitle.trim() || undefined,
           deadline: deadline || undefined,
         });
+
+        // 문서 생성 후 최신 사용자 정보 가져오기
+        await refreshUser();
 
         alert('문서가 생성되었습니다.');
       }
