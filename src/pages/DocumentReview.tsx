@@ -568,6 +568,7 @@ const DocumentReview: React.FC = () => {
                         let isTableField = false;
                         let isEditorSignature = false;
                         let isReviewerSignature = false;
+                        let isSignerSignature = false;
                         let tableInfo = null;
 
                         // 편집자 서명 필드 확인
@@ -575,39 +576,41 @@ const DocumentReview: React.FC = () => {
                           isEditorSignature = true;
                         }
 
-                        // 검토자 서명 필드 확인
-                        if (field.type === 'reviewer_signature') {
+                        // 검토자/서명자 서명 필드 확인
+                        if (field.type === 'reviewer_signature' || field.type === 'signer_signature') {
                           isReviewerSignature = true;
+                          isSignerSignature = true;
                         }
 
-                      // 1. tableData 속성으로 확인
-                      if (field.tableData) {
-                        isTableField = true;
-                        tableInfo = field.tableData;
-                      } else {
-                        // 2. value를 파싱해서 테이블 데이터 확인
+                      // 1. value를 파싱해서 테이블 데이터 확인 (우선순위 높음)
+                      if (field.value && typeof field.value === 'string') {
                         try {
-                          if (field.value && typeof field.value === 'string') {
-                            const parsedValue = JSON.parse(field.value);
-                            if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
-                              isTableField = true;
-                              tableInfo = {
-                                rows: parsedValue.rows,
-                                cols: parsedValue.cols,
-                                columnWidths: parsedValue.columnWidths
-                              };
-                            }
+                          const parsedValue = JSON.parse(field.value);
+                          if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
+                            isTableField = true;
+                            tableInfo = {
+                              rows: parsedValue.rows,
+                              cols: parsedValue.cols,
+                              columnWidths: parsedValue.columnWidths,
+                              columnHeaders: parsedValue.columnHeaders
+                            };
                           }
                         } catch (e) {
-                          // JSON 파싱 실패 시 일반 필드로 처리
+                          // JSON 파싱 실패 시 다음 단계로
                         }
+                      }
+                      
+                      // 2. tableData 속성으로 확인 (value가 없거나 파싱 실패한 경우)
+                      if (!isTableField && field.tableData) {
+                        isTableField = true;
+                        tableInfo = field.tableData;
                       }
 
                       return (
                         <div
                           key={field.id}
                           className={`absolute ${
-                            isEditorSignature || isReviewerSignature 
+                            isEditorSignature || isSignerSignature 
                               ? 'border-2 bg-red-100 border-red-500 bg-opacity-30' 
                               : ''
                           }`}
@@ -644,7 +647,7 @@ const DocumentReview: React.FC = () => {
                                 )}
                               </div>
                             )
-                          ) : isReviewerSignature ? (
+                          ) : isSignerSignature ? (
                             field.value && field.value.startsWith('data:image') ? (
                               <img
                                 src={field.value}
@@ -655,9 +658,9 @@ const DocumentReview: React.FC = () => {
                             ) : (
                               <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
                                 <span>
-                                  {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명
+                                  {(field as any).signerName || (field as any).reviewerName || (field as any).signerEmail || (field as any).reviewerEmail || '서명자'} 서명
                                 </span>
-                                {(field as any).reviewerEmail === user?.email && (
+                                {(((field as any).signerEmail === user?.email || (field as any).reviewerEmail === user?.email)) && (
                                   <span className="text-red-500">(본인)</span>
                                 )}
                               </div>
@@ -678,6 +681,9 @@ const DocumentReview: React.FC = () => {
                               }
 
                               const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
+                              const rowHeight = hasColumnHeaders 
+                                ? `${heightPercent / (tableInfo.rows + 1)}px` 
+                                : `${heightPercent / tableInfo.rows}px`;
 
                               return (
                                 <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
@@ -694,6 +700,7 @@ const DocumentReview: React.FC = () => {
                                               className="border border-purple-400 text-center"
                                               style={{
                                                 width: cellWidth,
+                                                height: rowHeight,
                                                 fontSize: `${Math.max((field.fontSize || 16) * 1.0, 10)}px`,
                                                 fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                                 padding: '4px',
@@ -723,6 +730,7 @@ const DocumentReview: React.FC = () => {
                                               className="border border-black text-center"
                                               style={{
                                                 width: cellWidth,
+                                                height: rowHeight,
                                                 fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
                                                 fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                                 padding: '4px',
