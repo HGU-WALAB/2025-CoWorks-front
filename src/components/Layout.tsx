@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { useDocumentStore } from '../stores/documentStore';
 import NotificationDropdown from './NotificationDropdown';
 import Footer from './Footer';
 
@@ -12,9 +13,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, refreshUser } = useAuthStore();
+  const { documents, fetchDocuments } = useDocumentStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
+
+  // 검토 대기 문서 개수 계산
+  const reviewCount = useMemo(() => {
+    if (!user?.hasFolderAccess || !isAuthenticated) return 0;
+    
+    return documents.filter(doc => 
+      doc.status === 'REVIEWING' && 
+      doc.tasks?.some(task => 
+        task.role === 'REVIEWER' && 
+        task.assignedUserEmail === user.email
+      )
+    ).length;
+  }, [documents, user, isAuthenticated]);
 
   // 로그인 상태이고 user가 없거나 필요한 정보가 없을 때 refreshUser 호출
   useEffect(() => {
@@ -23,6 +38,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       refreshUser();
     }
   }, [isAuthenticated, user, refreshUser]);
+
+  // 관리자인 경우 문서 목록 로드 (검토 개수 표시를 위해)
+  useEffect(() => {
+    if (isAuthenticated && user?.hasFolderAccess) {
+      fetchDocuments();
+    }
+  }, [isAuthenticated, user?.hasFolderAccess, fetchDocuments]);
 
   const navigation = useMemo(() => {
     const base = [
@@ -90,9 +112,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header - 고정 위치 */}
-      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b">
+      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b overflow-visible">
         <div className="container mx-auto px-4">
-          <div className="flex flex-wrap items-center gap-4 py-4 md:flex-nowrap md:justify-between">
+          <div className="flex flex-wrap items-center gap-4 py-4 md:flex-nowrap md:justify-between overflow-visible">
             <div className="flex w-full items-center justify-between md:w-auto md:justify-start">
               <Link to={'/tasks'} className="flex items-center">
                 <img 
@@ -102,37 +124,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 />
               </Link>
 
-              {isAuthenticated && (
+              {/* {isAuthenticated && (
                 <div className="flex items-center gap-3 md:hidden">
                   <NotificationDropdown />
                 </div>
-              )}
+              )} */}
             </div>
             
             {isAuthenticated && (
-              <nav className="order-3 flex w-full gap-3 overflow-x-auto rounded-md bg-gray-50 px-2 py-2 text-sm font-medium text-gray-600 md:order-none md:w-auto md:bg-transparent md:px-0 md:py-0 md:text-base md:text-gray-600 md:[&::-webkit-scrollbar]:hidden">
+              <nav className="order-3 flex w-full gap-3 rounded-md bg-gray-50 px-2 py-2 text-sm font-medium text-gray-600 md:order-none md:w-auto md:bg-transparent md:px-0 md:py-0 md:text-base md:text-gray-600">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`whitespace-nowrap px-3 py-2 rounded-md transition-colors ${
+                    className={`whitespace-nowrap px-3 py-2 rounded-md transition-colors relative ${
                       location.pathname.startsWith(item.href)
                         ? 'bg-primary-100 text-primary-700'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
                     {item.name}
+                    {item.name === '검토' && reviewCount > 0 && (
+                      <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full min-w-[20px] z-[100] shadow-sm">
+                        {reviewCount}
+                      </span>
+                    )}
                   </Link>
                 ))}
               </nav>
             )}
 
             <div className="flex items-center gap-4 md:flex-none">
-              {isAuthenticated && (
+              {/* {isAuthenticated && (
                 <div className="hidden md:block">
                   <NotificationDropdown />
                 </div>
-              )}
+              )} */}
               
               {isAuthenticated ? (
                 <div className="relative hidden md:block">
