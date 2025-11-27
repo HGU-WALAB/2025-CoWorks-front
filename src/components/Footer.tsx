@@ -14,8 +14,8 @@ const Footer: React.FC<FooterProps> = ({ light = false }) => {
         <div className="flex flex-col lg:flex-row justify-between items-center gap-4">
           {/* Copyright */}
           <div className={`text-sm ${light ? 'text-white' : 'text-gray-600'}`}>
-            &copy; {new Date().getFullYear()} HGU · CoWorks
-            <span className="ml-2 text-xs opacity-75">김도현, 전수민, 안준용</span>
+            &copy; {new Date().getFullYear()} WALAB CoWorks
+            <span className="ml-2 text-xs opacity-75">김도현 전수민 안준용</span>
           </div>
 
           {/* Links */}
