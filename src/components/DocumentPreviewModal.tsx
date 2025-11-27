@@ -204,65 +204,77 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 style={{ background: 'transparent' }}
               />
             ) : isTableField && tableInfo && tableData ? (
-              <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
-                {/* 열 헤더가 있는 경우 표시 */}
-                {tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h) && (
-                  <thead>
-                    <tr className="bg-purple-100">
-                      {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
-                        const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
-                        const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
-                        return (
-                          <th
-                            key={`header-${colIndex}`}
-                            className="border border-purple-400 text-center"
-                            style={{
-                              width: cellWidth,
-                              fontSize: `${Math.max((field.fontSize || 16) * 1.0, 10)}px`,
-                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
-                              padding: '4px',
-                              fontWeight: '600',
-                              lineHeight: '1.2',
-                              overflow: 'hidden',
-                              backgroundColor: '#e9d5ff',
-                              color: '#6b21a8'
-                            }}
-                          >
-                            {headerText || (colIndex + 1)}
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                )}
-                <tbody>
-                  {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
-                        const cellValue = tableData.cells?.[rowIndex]?.[colIndex] || '';
-                        const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
-                        return (
-                          <td
-                            key={colIndex}
-                            className="border border-black text-center"
-                            style={{
-                              width: cellWidth,
-                              fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
-                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
-                              padding: '4px',
-                              fontWeight: '500',
-                              lineHeight: '1.2',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {cellValue}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              (() => {
+                const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
+                const rowHeight = hasColumnHeaders 
+                  ? `${field.height / (tableInfo.rows + 1)}px` 
+                  : `${field.height / tableInfo.rows}px`;
+
+                return (
+                  <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
+                    {/* 열 헤더가 있는 경우 표시 */}
+                    {hasColumnHeaders && (
+                      <thead>
+                        <tr className="bg-purple-100">
+                          {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                            const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
+                            const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                            return (
+                              <th
+                                key={`header-${colIndex}`}
+                                className="border border-purple-400 text-center"
+                                style={{
+                                  width: cellWidth,
+                                  height: rowHeight,
+                                  fontSize: `${Math.max((field.fontSize || 16) * 1.0, 10)}px`,
+                                  fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                  padding: '4px',
+                                  fontWeight: '600',
+                                  lineHeight: '1.2',
+                                  overflow: 'hidden',
+                                  backgroundColor: '#e9d5ff',
+                                  color: '#6b21a8'
+                                }}
+                              >
+                                {headerText || (colIndex + 1)}
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                    )}
+                    <tbody>
+                      {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                            const cellValue = tableData.cells?.[rowIndex]?.[colIndex] || '';
+                            const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                            return (
+                              <td
+                                key={colIndex}
+                                className="border border-black text-center"
+                                style={{
+                                  width: cellWidth,
+                                  height: rowHeight,
+                                  fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
+                                  fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                  padding: '4px',
+                                  fontWeight: '500',
+                                  lineHeight: '1.2',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                {cellValue}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()
+            
             ) : field.value ? (
               <div
                 className="text-gray-900 flex items-center justify-center w-full h-full"
@@ -614,183 +626,119 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                       top: `${topPercent}px`,
                       width: `${widthPercent}px`,
                       height: `${heightPercent}px`,
+                      fontSize: `${field.fontSize || 18}px`,
+                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                      fontWeight: '500',
+                      overflow: 'visible',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
                     {isEditorSignature ? (
-                      // 작성자 서명 필드 렌더링 - 편집 페이지와 동일
-                      <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
-                        {field.value && field.value.startsWith('data:image') ? (
-                          <img
-                            src={field.value}
-                            alt="작성자 서명"
-                            className="max-w-full h-full object-contain bg-transparent"
-                            style={{
-                              maxWidth: '100%',
-                              maxHeight: '100%',
-                              background: 'transparent'
-                            }}
-                          />
-                        ) : field.value ? (
-                          <div
-                            className="text-center text-gray-800"
-                            style={{
-                              fontSize: `${(field.fontSize || 18)}px !important`,
-                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                              fontWeight: '500 !important',
-                              color: '#1f2937 !important'
-                            }}
-                          >
-                            서명됨: {new Date().toLocaleDateString()}
-                          </div>
-                        ) : (
-                          <div
-                            className="text-center text-gray-500"
-                            style={{
-                              fontSize: `${(field.fontSize || 12)}px !important`,
-                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`
-                            }}
-                          >
-                            {/* 빈 서명 영역 - 표시하지 않음 */}
-                          </div>
-                        )}
-                      </div>
-                    ) : isReviewerSignature ? (
-                      // 서명자 서명 필드 렌더링
-                      <div className="w-full h-full p-2 flex flex-col items-center justify-center bg-transparent">
-                        {field.value && field.value.startsWith('data:image') ? (
-                          <img
-                            src={field.value}
-                            alt={`${(field as any).reviewerName || '서명자'} 서명`}
-                            className="max-w-full h-full object-contain bg-transparent"
-                            style={{
-                              maxWidth: '100%',
-                              maxHeight: '100%',
-                              background: 'transparent'
-                            }}
-                          />
-                        ) : (
-                          <div
-                            className="text-center text-gray-600"
-                            style={{
-                              fontSize: `${(field.fontSize || 18)}px`,
-                              fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
-                              fontWeight: '500'
-                            }}
-                          >
-                            {(field as any).reviewerName || (field as any).reviewerEmail || '서명자'} 서명 대기
-                          </div>
-                        )}
-                      </div>
-                    ) : isTableField && tableInfo && tableData ? (
-                      // 테이블 렌더링 - 배경색 제거, 테두리만 유지
-                      <div className="w-full h-full p-1 flex flex-col">
-                        {/* 열 헤더가 있는 경우 표시 */}
-                        {tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h) && (
-                          <div
-                            className="flex bg-purple-200 border-b border-purple-400"
-                            style={{
-                              minHeight: '20px'
-                            }}
-                          >
-                            {Array(tableInfo.cols).fill(null).map((_, colIndex) => {
-                              const headerText = tableInfo.columnHeaders?.[colIndex] || '';
-                              return (
-                                <div
-                                  key={`header-${colIndex}`}
-                                  className="flex items-center justify-center text-purple-800 font-semibold border-r border-purple-300 last:border-r-0 px-1"
-                                  style={{
-                                    width: tableInfo.columnWidths
-                                      ? `${tableInfo.columnWidths[colIndex] * 100}%`
-                                      : `${100 / tableInfo.cols}%`,
-                                    fontSize: `${(field.fontSize || 14) * 0.85}px`,
-                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`
-                                  }}
-                                  title={headerText}
-                                >
-                                  <span className="truncate">{headerText || (colIndex + 1)}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        <div 
-                          className="grid flex-1"
-                          style={{
-                            gridTemplateColumns: tableInfo.columnWidths 
-                              ? tableInfo.columnWidths.map((width: number) => `${width * 100}%`).join(' ')
-                              : `repeat(${tableInfo.cols}, 1fr)`,
-                            gap: '0px' // 셀 간격 완전 제거
-                          }}
-                        >
-                          {Array(tableInfo.rows).fill(null).map((_, rowIndex) =>
-                            Array(tableInfo.cols).fill(null).map((_, colIndex) => {
-                              let cellText = '';
-                              
-                              try {
-                                // 편집 페이지와 동일한 셀 값 추출 로직
-                                if (tableData.cells && 
-                                    Array.isArray(tableData.cells) && 
-                                    tableData.cells[rowIndex] && 
-                                    Array.isArray(tableData.cells[rowIndex])) {
-                                  cellText = tableData.cells[rowIndex][colIndex] || '';
-                                }
-                              } catch {
-                                cellText = '';
-                              }
-
-                              return (
-                                <div 
-                                  key={`${rowIndex}-${colIndex}`}
-                                  className="border border-gray-800 flex items-center justify-center"
-                                  style={{ 
-                                    minHeight: '20px',
-                                    fontSize: `${(field.fontSize || 18)}px !important`,
-                                    fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                    color: '#1f2937', // 진한 회색 텍스트
-                                    fontWeight: '500 !important',
-                                    backgroundColor: 'transparent', // 배경색 완전 제거
-                                    lineHeight: '1.4 !important',
-                                    textAlign: 'center',
-                                    overflow: 'visible',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    whiteSpace: 'nowrap',
-                                    textRendering: 'optimizeLegibility',
-                                    WebkitFontSmoothing: 'antialiased',
-                                    MozOsxFontSmoothing: 'grayscale',
-                                    padding: '2px 4px'
-                                  }}
-                                >
-                                  <span 
-                                    className="text-center truncate leading-tight"
-                                    style={{
-                                      display: 'block',
-                                      width: '100%',
-                                      fontSize: `${(field.fontSize || 18)}px !important`,
-                                      fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif !important`,
-                                      fontWeight: '500 !important',
-                                      color: '#1f2937 !important',
-                                      lineHeight: '1.4 !important',
-                                      textAlign: 'center',
-                                      wordBreak: 'keep-all',
-                                      whiteSpace: 'nowrap',
-                                      textRendering: 'optimizeLegibility',
-                                      WebkitFontSmoothing: 'antialiased',
-                                      MozOsxFontSmoothing: 'grayscale'
-                                    }}
-                                  >
-                                    {cellText}
-                                  </span>
-                                </div>
-                              );
-                            })
+                      field.value && field.value.startsWith('data:image') ? (
+                        <img
+                          src={field.value}
+                          alt="작성자 서명"
+                          className="w-full h-full object-contain"
+                          style={{ background: 'transparent' }}
+                        />
+                      ) : (
+                        <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
+                          <span>작성자 서명</span>
+                          {(field as any).editorName && (
+                            <span>({(field as any).editorName})</span>
                           )}
                         </div>
-                      </div>
+                      )
+                    ) : isReviewerSignature ? (
+                      field.value && field.value.startsWith('data:image') ? (
+                        <img
+                          src={field.value}
+                          alt="서명자 서명"
+                          className="w-full h-full object-contain"
+                          style={{ background: 'transparent' }}
+                        />
+                      ) : (
+                        <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
+                          <span>
+                            {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명
+                          </span>
+                        </div>
+                      )
+                    ) : isTableField && tableInfo && tableData ? (
+                      (() => {
+                        const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
+                        const rowHeight = hasColumnHeaders 
+                          ? `${heightPercent / (tableInfo.rows + 1)}px` 
+                          : `${heightPercent / tableInfo.rows}px`;
+
+                        return (
+                          <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
+                            {/* 열 헤더가 있는 경우 표시 */}
+                            {hasColumnHeaders && (
+                              <thead>
+                                <tr className="bg-purple-100">
+                                  {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                                    const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
+                                    const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                                    return (
+                                      <th
+                                        key={`header-${colIndex}`}
+                                        className="border border-purple-400 text-center"
+                                        style={{
+                                          width: cellWidth,
+                                          height: rowHeight,
+                                          fontSize: `${Math.max((field.fontSize || 16) * 1.0, 10)}px`,
+                                          fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                          padding: '4px',
+                                          fontWeight: '600',
+                                          lineHeight: '1.2',
+                                          overflow: 'hidden',
+                                          backgroundColor: '#e9d5ff',
+                                          color: '#6b21a8'
+                                        }}
+                                      >
+                                        {headerText || (colIndex + 1)}
+                                      </th>
+                                    );
+                                  })}
+                                </tr>
+                              </thead>
+                            )}
+                            <tbody>
+                              {Array(tableInfo.rows).fill(null).map((_, rowIndex) => (
+                                <tr key={rowIndex}>
+                                  {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
+                                    const cellValue = tableData.cells?.[rowIndex]?.[colIndex] || '';
+                                    const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
+                                    return (
+                                      <td
+                                        key={colIndex}
+                                        className="border border-black text-center"
+                                        style={{
+                                          width: cellWidth,
+                                          height: rowHeight,
+                                          fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
+                                          fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
+                                          padding: '4px',
+                                          fontWeight: '500',
+                                          lineHeight: '1.2',
+                                          overflow: 'hidden',
+                                        }}
+                                      >
+                                        {cellValue}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        );
+                      })()
                     ) : field.value ? (
-                      // 일반 필드 - 값이 있는 경우 (편집 페이지와 동일)
-                      <div 
+                      <div
                         className="text-gray-900 flex items-center justify-center w-full h-full"
                         style={{
                           fontSize: `${field.fontSize || 18}px`,
@@ -805,20 +753,12 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                           alignItems: 'center',
                           justifyContent: 'center',
                           whiteSpace: 'nowrap',
-                          textRendering: 'optimizeLegibility',
-                          WebkitFontSmoothing: 'antialiased',
-                          MozOsxFontSmoothing: 'grayscale',
                           padding: '2px 4px'
                         }}
                       >
                         {field.value}
                       </div>
-                    ) : (
-                      // 일반 필드 - 값이 없는 경우 (빈 상태) - 미리보기에서는 아무것도 표시하지 않음
-                      <div className="w-full h-full">
-                        {/* 빈 필드는 미리보기에서 표시하지 않음 */}
-                      </div>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}
