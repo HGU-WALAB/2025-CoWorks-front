@@ -392,19 +392,20 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {task.lastViewedAt && (
-                        <div className="text-xs text-gray-500 text-right">
-                          <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
-                          <div>
-                            {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
+                      <div className="text-xs text-gray-500 text-right">
+                        <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
+                        <div>
+                          {task.lastViewedAt 
+                            ? new Date(task.lastViewedAt).toLocaleString('ko-KR', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : '미확인'
+                          }
                         </div>
-                      )}
+                      </div>
                       {isAdmin && (
                         <button
                           onClick={() => handleEmailClick(task)}
@@ -439,19 +440,20 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {task.lastViewedAt && (
-                        <div className="text-xs text-gray-500 text-right">
-                          <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
-                          <div>
-                            {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
+                      <div className="text-xs text-gray-500 text-right">
+                        <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
+                        <div>
+                          {task.lastViewedAt 
+                            ? new Date(task.lastViewedAt).toLocaleString('ko-KR', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : '미확인'
+                          }
                         </div>
-                      )}
+                      </div>
                       {isAdmin && (
                         <button
                           onClick={() => handleEmailClick(task)}
@@ -486,19 +488,20 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {task.lastViewedAt && (
-                        <div className="text-xs text-gray-500 text-right">
-                          <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
-                          <div>
-                            {new Date(task.lastViewedAt).toLocaleString('ko-KR', {
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
+                      <div className="text-xs text-gray-500 text-right">
+                        <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
+                        <div>
+                          {task.lastViewedAt 
+                            ? new Date(task.lastViewedAt).toLocaleString('ko-KR', {
+                                month: '2-digit',
+                                day: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                            : '미확인'
+                          }
                         </div>
-                      )}
+                      </div>
                       {isAdmin && (
                         <button
                           onClick={() => handleEmailClick(task)}

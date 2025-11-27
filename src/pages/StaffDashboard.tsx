@@ -176,11 +176,12 @@ const StaffDashboard: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${month}.${day} ${hours}:${minutes}`;
+    return `${year}.${month}.${day} ${hours}:${minutes}`;
   };
 
   return (
@@ -484,7 +485,7 @@ const StaffDashboard: React.FC = () => {
                       작성자
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      반려자
+                      서명자
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       생성일
@@ -497,8 +498,8 @@ const StaffDashboard: React.FC = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredDocuments.map((doc) => {
                     const editor = doc.tasks?.find(task => task.role === 'EDITOR');
+                    const signer = doc.tasks?.find(task => task.role === 'SIGNER');
                     const status = getStatusDisplay(doc);
-                    const rejectInfo = getRejectInfo(doc.statusLogs);
 
                     return (
                       <tr
@@ -519,12 +520,8 @@ const StaffDashboard: React.FC = () => {
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {editor?.assignedUserName || editor?.assignedUserEmail || '-'}
                         </td>
-                        <td className="px-6 py-4 text-sm">
-                          {rejectInfo ? (
-                            <span className="text-red-600 font-medium">{rejectInfo.name}</span>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {signer?.assignedUserName || signer?.assignedUserEmail || '-'}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
                           {formatDate(doc.createdAt)}
