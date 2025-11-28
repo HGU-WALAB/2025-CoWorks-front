@@ -49,7 +49,8 @@ const StaffDashboard: React.FC = () => {
     const stats: Record<string, { total: number; completed: number; inProgress: number }> = {};
     
     documents.forEach(doc => {
-      const folderId = doc.folderId || 'unclassified';
+      // folderId가 없거나 빈 문자열이면 미분류로 처리
+      const folderId = (doc.folderId && doc.folderId.trim() !== '') ? doc.folderId : 'unclassified';
       if (!stats[folderId]) {
         stats[folderId] = { total: 0, completed: 0, inProgress: 0 };
       }
@@ -89,7 +90,8 @@ const StaffDashboard: React.FC = () => {
     // 폴더 필터
     if (selectedFolder !== null) {
       if (selectedFolder === 'unclassified') {
-        filtered = filtered.filter(doc => !doc.folderId);
+        // folderId가 없거나 빈 문자열인 문서만 표시
+        filtered = filtered.filter(doc => !doc.folderId || doc.folderId.trim() === '');
       } else {
         filtered = filtered.filter(doc => doc.folderId === selectedFolder);
       }
