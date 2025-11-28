@@ -620,7 +620,11 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                             사용
                           </button>
                           <button
-                            onClick={() => deleteSavedSignature(signature.id)}
+                            onClick={() => {
+                              if (window.confirm('정말 이 서명을 삭제하시겠습니까?')) {
+                                deleteSavedSignature(signature.id);
+                              }
+                            }}
                             className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
                           >
                             버리기
