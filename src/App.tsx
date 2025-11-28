@@ -50,7 +50,7 @@ const HomeRedirect: React.FC = () => {
 const TasksRedirect: React.FC = () => {
   return (
     <ProtectedRoute>
-      <Layout>
+      <Layout showFooter>
         <TaskDashboard />
       </Layout>
     </ProtectedRoute>
@@ -101,7 +101,7 @@ function App() {
           path="/templates" 
           element={
             <ProtectedRoute>
-              <Layout>
+              <Layout showFooter>
                 <TemplateList />
               </Layout>
             </ProtectedRoute>
@@ -111,7 +111,7 @@ function App() {
           path="/templates/pdf/upload" 
           element={
             <ProtectedRoute>
-              <Layout>
+              <Layout showFooter>
                 <TemplateUpload />
               </Layout>
             </ProtectedRoute>
@@ -131,7 +131,7 @@ function App() {
           path="/documents" 
           element={
             <ProtectedRoute>
-              <Layout>
+              <Layout showFooter>
                 <DocumentList />
               </Layout>
             </ProtectedRoute>
@@ -210,7 +210,7 @@ function App() {
           path="/folders" 
           element={
             <ProtectedRoute>
-              <Layout>
+              <Layout showFooter>
                 <FolderPage />
               </Layout>
             </ProtectedRoute>
@@ -220,7 +220,7 @@ function App() {
           path="/folders/:folderId" 
           element={
             <ProtectedRoute>
-              <Layout>
+              <Layout showFooter>
                 <FolderPage />
               </Layout>
             </ProtectedRoute>

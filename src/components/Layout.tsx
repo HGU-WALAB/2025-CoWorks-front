@@ -2,14 +2,16 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useDocumentStore } from '../stores/documentStore';
-import NotificationDropdown from './NotificationDropdown';
 import Footer from './Footer';
 
 interface LayoutProps {
   children: React.ReactNode;
+  showFooter?: boolean;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const FOOTER_FIXED_HEIGHT = 80;
+
+const Layout: React.FC<LayoutProps> = ({ children, showFooter = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, refreshUser } = useAuthStore();
@@ -227,13 +229,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Main content - 헤더 높이만큼 상단 여백 추가 */}
-      <main
-        className="w-full py-8 flex-1"
-        style={{ paddingTop: headerHeight }}
+      <div
+        className="flex flex-col flex-1 w-full"
+        style={{
+          paddingTop: headerHeight,
+          paddingBottom: showFooter ? FOOTER_FIXED_HEIGHT : 0,
+        }}
       >
-        {children}
-      </main>
-      <Footer />
+        <main className="w-full py-8 flex-1">
+          {children}
+        </main>
+      </div>
+      {showFooter && (
+        <div className="fixed bottom-0 left-0 right-0 z-40">
+          <Footer />
+        </div>
+      )}
     </div>
   );
 };
