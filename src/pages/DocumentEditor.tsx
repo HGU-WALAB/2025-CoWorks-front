@@ -974,36 +974,49 @@ const DocumentEditor: React.FC = () => {
   // 권한 확인 - 문서 상태에 따른 접근 제한
   useEffect(() => {
     const checkPermissionAndStartEditing = async () => {
-      if (currentDocument && user) {
+      if (currentDocument && user && id) {
+        // currentDocument.id와 URL의 id가 일치하는지 확인 (잘못된 캐시 방지)
+        if (currentDocument.id !== parseInt(id)) {
+          console.log('⚠️ DocumentEditor: Document ID mismatch, waiting for correct document...', {
+            currentDocId: currentDocument.id,
+            urlId: parseInt(id)
+          });
+          return; // 올바른 문서가 로드될 때까지 대기
+        }
+        
         const status = currentDocument.status;
+        const isRejected = currentDocument.isRejected;
 
-        // 문서 상태별 접근 제한
-        if (status === 'REVIEWING') {
-          // 검토 중일 때는 작성자 접근 불가
-          alert('현재 문서는 검토 중입니다. 검토가 완료될 때까지 편집할 수 없습니다.');
-          navigate('/documents');
-          return;
-        }
+        // 반려된 문서는 상태와 관계없이 편집 가능
+        if (!isRejected) {
+          // 문서 상태별 접근 제한 (반려되지 않은 경우만)
+          if (status === 'REVIEWING') {
+            // 검토 중일 때는 작성자 접근 불가
+            alert('현재 문서는 검토 중입니다. 검토가 완료될 때까지 편집할 수 없습니다.');
+            navigate('/documents');
+            return;
+          }
 
-        if (status === 'SIGNING') {
-          // 서명 중일 때는 작성자 접근 불가
-          alert('현재 문서는 서명 중입니다. 서명이 완료될 때까지 편집할 수 없습니다.');
-          navigate('/documents');
-          return;
-        }
+          if (status === 'SIGNING') {
+            // 서명 중일 때는 작성자 접근 불가
+            alert('현재 문서는 서명 중입니다. 서명이 완료될 때까지 편집할 수 없습니다.');
+            navigate('/documents');
+            return;
+          }
 
-        if (status === 'COMPLETED') {
-          // 완료된 문서는 편집 불가
-          alert('이미 완료된 문서입니다. 편집할 수 없습니다.');
-          navigate('/documents');
-          return;
-        }
+          if (status === 'COMPLETED') {
+            // 완료된 문서는 편집 불가
+            alert('이미 완료된 문서입니다. 편집할 수 없습니다.');
+            navigate('/documents');
+            return;
+          }
 
-        if (status === 'READY_FOR_REVIEW') {
-          // 서명자 지정 단계에서는 편집 불가
-          alert('현재 문서는 서명자 지정 단계입니다. 편집할 수 없습니다.');
-          navigate('/documents');
-          return;
+          if (status === 'READY_FOR_REVIEW') {
+            // 서명자 지정 단계에서는 편집 불가
+            alert('현재 문서는 서명자 지정 단계입니다. 편집할 수 없습니다.');
+            navigate('/documents');
+            return;
+          }
         }
 
         // 작성자 권한 확인

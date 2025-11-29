@@ -2,27 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
-import { getRoleAssignmentMessageShort, formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
-import { DocumentStatusLog } from '../types/document';
-
-// 반려자 정보를 가져오는 헬퍼 함수
-const getRejectInfo = (statusLogs?: DocumentStatusLog[]): { name: string; timestamp: string } | null => {
-  if (!statusLogs || statusLogs.length === 0) return null;
-  
-  // rejectLog가 true인 로그 중 가장 최근 것을 찾음
-  const rejectLog = statusLogs
-    .filter(log => log.rejectLog === true)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-  
-  if (rejectLog && (rejectLog.changedByName || rejectLog.changedByEmail)) {
-    return {
-      name: rejectLog.changedByName || rejectLog.changedByEmail || '알 수 없음',
-      timestamp: rejectLog.timestamp
-    };
-  }
-  
-  return null;
-};
+import { formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
 
 const UserDashboard: React.FC = () => {
   const { documents, todoDocuments, fetchDocuments, fetchTodoDocuments, loading } = useDocumentStore();
@@ -46,30 +26,26 @@ const UserDashboard: React.FC = () => {
     }
   }, [fetchDocuments, fetchTodoDocuments, isAuthenticated, currentUserEmail]);
 
-  // 라우터 location이 변경될 때마다 데이터 새로고침
+  // 라우터 location이 변경될 때마다 데이터 새로고침 (location.key 사용으로 모든 네비게이션 감지)
   useEffect(() => {
-    console.log('📍 UserDashboard: Location changed to', location.pathname);
     if (location.pathname === '/tasks' && isAuthenticated && currentUserEmail) {
       console.log('📍 UserDashboard: Refreshing due to location change...');
       fetchDocuments();
       fetchTodoDocuments();
     }
-  }, [location, isAuthenticated, currentUserEmail, fetchDocuments, fetchTodoDocuments]);
+  }, [location.pathname, location.key, isAuthenticated, currentUserEmail]);
 
   // 컴포넌트가 마운트될 때마다 강제로 데이터 새로고침
+  // location.key를 의존성에 추가하여 페이지 이동 시마다 새로고침
   useEffect(() => {
-    console.log('🎯 UserDashboard: Component MOUNTED');
+    console.log('🎯 UserDashboard: Component render with location.key:', location.key);
     if (isAuthenticated && currentUserEmail) {
-      console.log('🎯 UserDashboard: Fetching on mount...');
+      console.log('🎯 UserDashboard: Fetching data...');
       fetchDocuments();
       fetchTodoDocuments();
     }
-
-    return () => {
-      console.log('🎯 UserDashboard: Component UNMOUNTING');
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.key]);
 
   // 페이지 가시성 변경 시 데이터 새로고침
   useEffect(() => {
@@ -107,16 +83,37 @@ const UserDashboard: React.FC = () => {
       }
     };
 
+    const handleForceRefreshDocuments = () => {
+      console.log('🔄 UserDashboard: Force refresh documents event received');
+      if (isAuthenticated && currentUserEmail) {
+        console.log('🔄 UserDashboard: Force refreshing documents...');
+        fetchDocuments();
+        fetchTodoDocuments();
+      }
+    };
+
+    // 브라우저 뒤로 가기/앞으로 가기 시 데이터 새로고침
+    const handlePopState = () => {
+      if (isAuthenticated && currentUserEmail) {
+        fetchDocuments();
+        fetchTodoDocuments();
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
     window.addEventListener('documentCreated', handleDocumentCreated as EventListener);
     window.addEventListener('forceRefreshTasks', handleForceRefresh);
+    window.addEventListener('forceRefreshDocuments', handleForceRefreshDocuments);
+    window.addEventListener('popstate', handlePopState);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('documentCreated', handleDocumentCreated as EventListener);
       window.removeEventListener('forceRefreshTasks', handleForceRefresh);
+      window.removeEventListener('forceRefreshDocuments', handleForceRefreshDocuments);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, [isAuthenticated, currentUserEmail, fetchDocuments, fetchTodoDocuments]);
 
