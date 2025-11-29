@@ -683,7 +683,10 @@ const DocumentSignerAssignment: React.FC = () => {
           </button>
           <button
             onClick={async () => {
+              console.log('🔙 DocumentSignerAssignment: 돌아가기 버튼 클릭');
               await refreshDocumentsAndUser();
+              console.log('🔙 DocumentSignerAssignment: refreshDocumentsAndUser 완료');
+              // 문서 목록으로 이동
               navigate('/documents');
             }}
             className="px-4 py-2 text-gray-600 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"

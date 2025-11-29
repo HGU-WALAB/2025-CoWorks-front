@@ -46,12 +46,15 @@ const DocumentList: React.FC = () => {
     refreshDocuments();
   }, [refreshDocuments, refreshUser, isAuthenticated]);
 
-  // 라우터 location 변경 시 최신 문서 목록 동기화
+  // 라우터 location 변경 시 최신 문서 목록 동기화 (location.key로 모든 네비게이션 감지)
   useEffect(() => {
+    console.log('📍 DocumentList: Location changed', { pathname: location.pathname, key: location.key });
     if (location.pathname === '/documents' && isAuthenticated) {
-      refreshDocuments();
+      console.log('📍 DocumentList: Refreshing documents...');
+      fetchDocuments();
     }
-  }, [location.pathname, refreshDocuments, isAuthenticated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key, isAuthenticated]);
 
   // 브라우저 포커스/visibility 변경 시 자동 새로고침
   useEffect(() => {

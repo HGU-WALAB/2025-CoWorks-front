@@ -33,14 +33,6 @@ const Layout: React.FC<LayoutProps> = ({ children, showFooter = false }) => {
     ).length;
   }, [documents, user, isAuthenticated]);
 
-  // 로그인 상태이고 user가 없거나 필요한 정보가 없을 때 refreshUser 호출
-  useEffect(() => {
-    if (isAuthenticated && (!user || user.hasFolderAccess === undefined)) {
-      console.log('Layout: User or hasFolderAccess missing, refreshing user...');
-      refreshUser();
-    }
-  }, [isAuthenticated, user, refreshUser]);
-
   // 관리자인 경우 문서 목록 로드 (검토 개수 표시를 위해)
   useEffect(() => {
     if (isAuthenticated && user?.hasFolderAccess) {

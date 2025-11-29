@@ -1,35 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { useFolderStore } from '../stores/folderStore';
-import { Document, DocumentStatusLog } from '../types/document';
+import { Document } from '../types/document';
 import WorkflowModal from '../components/WorkflowModal';
-
-// 반려자 정보를 가져오는 헬퍼 함수
-const getRejectInfo = (statusLogs?: DocumentStatusLog[]): { name: string; timestamp: string } | null => {
-  if (!statusLogs || statusLogs.length === 0) return null;
-  
-  // rejectLog가 true인 로그 중 가장 최근 것을 찾음
-  const rejectLog = statusLogs
-    .filter(log => log.rejectLog === true)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-  
-  if (rejectLog && (rejectLog.changedByName || rejectLog.changedByEmail)) {
-    return {
-      name: rejectLog.changedByName || rejectLog.changedByEmail || '알 수 없음',
-      timestamp: rejectLog.timestamp
-    };
-  }
-  
-  return null;
-};
 
 const StaffDashboard: React.FC = () => {
   const { documents, fetchDocuments, loading } = useDocumentStore();
   const { folders, loadFolderContents } = useFolderStore();
-  const { user, isAuthenticated } = useAuthStore();
-  const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
+  const location = useLocation();
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,11 +18,42 @@ const StaffDashboard: React.FC = () => {
   const [showWorkflowModal, setShowWorkflowModal] = useState(false);
   const [selectedWorkflowDocument, setSelectedWorkflowDocument] = useState<Document | null>(null);
 
+  // location.key가 변경될 때마다 (페이지 이동 시) 데이터 새로고침
   useEffect(() => {
+    console.log('🎯 StaffDashboard: Location key changed:', location.key);
     if (isAuthenticated) {
+      console.log('🎯 StaffDashboard: Fetching data...');
       fetchDocuments();
       loadFolderContents(null); // 루트 폴더 로드
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
+
+  // 브라우저 뒤로 가기/앞으로 가기 시 데이터 새로고침
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isAuthenticated) {
+        fetchDocuments();
+        loadFolderContents(null);
+      }
+    };
+
+    const handleForceRefreshDocuments = () => {
+      console.log('🔄 StaffDashboard: Force refresh documents event received');
+      if (isAuthenticated) {
+        console.log('🔄 StaffDashboard: Force refreshing documents...');
+        fetchDocuments();
+        loadFolderContents(null);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('forceRefreshDocuments', handleForceRefreshDocuments);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('forceRefreshDocuments', handleForceRefreshDocuments);
+    };
   }, [isAuthenticated, fetchDocuments, loadFolderContents]);
 
   // 폴더별 문서 통계
