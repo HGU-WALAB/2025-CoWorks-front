@@ -9,6 +9,7 @@ import DocumentReview from './pages/DocumentReview';
 import DocumentSignerAssignment from './pages/DocumentSignerAssignment';
 import DocumentSign from './pages/DocumentSign';
 import DocumentSignStandalone from './pages/DocumentSignStandalone';
+import DocumentCompleted from './pages/DocumentCompleted';
 import DocumentNew from './pages/DocumentNew';
 import TaskDashboard from './pages/TaskDashboard';
 import ReviewDashboard from './pages/ReviewDashboard';
@@ -224,6 +225,16 @@ function App() {
             <ProtectedRoute>
               <Layout>
                 <DocumentSign />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/documents/:id/completed" 
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DocumentCompleted />
               </Layout>
             </ProtectedRoute>
           } 

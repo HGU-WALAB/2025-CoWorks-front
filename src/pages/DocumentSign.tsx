@@ -341,10 +341,10 @@ const DocumentSign: React.FC = () => {
 
       // 문서 상태에 따라 처리
       if (finalStatus === 'COMPLETED') {
-        // 모든 서명이 완료된 경우
+        // 모든 서명이 완료된 경우 - 완성된 문서 페이지로 이동
         setIsRedirecting(true);
         await refreshDocumentsAndUser();
-        navigate('/documents');
+        navigate(`/documents/${id}/completed`);
       } else if (finalStatus === 'SIGNING') {
         // 아직 다른 서명자가 서명해야 하는 경우
         setIsRedirecting(false);
