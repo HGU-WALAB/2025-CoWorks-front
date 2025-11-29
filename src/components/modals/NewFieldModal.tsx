@@ -24,6 +24,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
   const [fieldTypeOption, setFieldTypeOption] = useState<'normal' | 'table' | 'editor_signature' | 'reviewer_signature'>('normal');
   const [tableRows, setTableRows] = useState(2);
   const [tableCols, setTableCols] = useState(2);
+  const [columnHeaders, setColumnHeaders] = useState<string[]>(['', '']);
 
   useEffect(() => {
     if (isOpen) {
@@ -32,8 +33,23 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
       setFieldTypeOption('normal');
       setTableRows(2);
       setTableCols(2);
+      setColumnHeaders(['', '']);
     }
   }, [isOpen]);
+
+  // 열 개수가 변경될 때 columnHeaders 배열 크기 조정
+  useEffect(() => {
+    if (fieldTypeOption === 'table') {
+      const currentLength = columnHeaders.length;
+      if (tableCols > currentLength) {
+        // 열 개수가 늘어나면 빈 문자열로 채움
+        setColumnHeaders([...columnHeaders, ...Array(tableCols - currentLength).fill('')]);
+      } else if (tableCols < currentLength) {
+        // 열 개수가 줄어들면 뒤에서부터 제거
+        setColumnHeaders(columnHeaders.slice(0, tableCols));
+      }
+    }
+  }, [tableCols, fieldTypeOption]);
 
   // 서명자 서명 필드의 인덱스 계산 (기존 서명자 필드 개수 + 1)
   const getReviewerIndex = (): number => {
@@ -75,7 +91,8 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
             rows: tableRows,
             cols: tableCols,
             cells: Array(tableRows).fill(null).map(() => Array(tableCols).fill('')),
-            columnWidths: Array(tableCols).fill(1 / tableCols)
+            columnWidths: Array(tableCols).fill(1 / tableCols),
+            columnHeaders: columnHeaders.slice(0, tableCols) // 열 개수만큼만 저장
           }
         }),
         // 서명자 서명 필드인 경우 reviewerIndex 추가 (부모에서 재계산됨)
@@ -214,6 +231,36 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+              </div>
+              
+              {/* Column Header 입력 필드들 */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  열 헤더 이름
+                </label>
+                <div className="space-y-2">
+                  {columnHeaders.slice(0, tableCols).map((header, index) => (
+                    <div key={index}>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        {index + 1}번째 열
+                      </label>
+                      <input
+                        type="text"
+                        value={header}
+                        onChange={(e) => {
+                          const newHeaders = [...columnHeaders];
+                          newHeaders[index] = e.target.value;
+                          setColumnHeaders(newHeaders);
+                        }}
+                        placeholder={`열 ${index + 1} 헤더 이름 (선택사항)`}
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  헤더 이름을 입력하지 않으면 기본적으로 숫자(1, 2, 3...)로 표시됩니다.
+                </p>
               </div>
             </div>
           )}
