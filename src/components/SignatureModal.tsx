@@ -32,6 +32,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [capturedSignature, setCapturedSignature] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
+  const [saveToLocal, setSaveToLocal] = useState(false); // 서명 저장 체크박스 상태
   const originalBodyOverflow = useRef<string | null>(null);
   const originalBodyTouchAction = useRef<string | null>(null);
 
@@ -76,6 +77,9 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      // 체크박스 상태 초기화
+      setSaveToLocal(false);
+      
       // 저장된 서명을 먼저 로드
       const saved = loadSavedSignatures();
       
@@ -251,10 +255,9 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
 
     const signatureData = canvas.toDataURL('image/png');
 
-    // 로컬 저장 옵션 제공
-    const shouldSaveLocally = confirm('이 서명을 저장하여 나중에 재사용하시겠습니까?');
-    if (shouldSaveLocally) {
-      const name = prompt('서명 이름을 입력하세요:', `${reviewerName}의 서명`) || `${reviewerName}의 서명`;
+    // 체크박스가 체크되어 있으면 로컬에 저장
+    if (saveToLocal) {
+      const name = `${reviewerName}의 서명`;
       saveSignatureToLocal(signatureData, name);
     }
 
@@ -436,15 +439,22 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
               </div>
 
 
-              <div className="flex justify-between">
-                <button
-                  onClick={clearSignature}
-                  className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  지우기
-                </button>
+              <div className="space-y-3">
+                <div className="flex items-center justify-end">
+                  <input
+                    type="checkbox"
+                    id="saveSignatureCheckbox"
+                    checked={saveToLocal}
+                    onChange={(e) => setSaveToLocal(e.target.checked)}
+                    className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                  />
+                  <label htmlFor="saveSignatureCheckbox" className="ml-2 text-base text-gray-700 cursor-pointer">
+                    서명 저장
+                  </label>
+                </div>
 
-                <div className="space-x-3">
+                {/* 버튼들 */}
+                <div className="flex justify-end space-x-3">
                   <button
                     onClick={onClose}
                     className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -455,7 +465,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
                     onClick={saveSignature}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    서명 저장
+                    서명하기
                   </button>
                 </div>
               </div>
