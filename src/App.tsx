@@ -39,7 +39,19 @@ const HomeRedirect: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
   
-  if (user?.position === '교직원') {
+  // 사용자 정보가 로드 중인 경우 대기
+  if (!user || !user.position) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (user.position === '교직원') {
     return <Navigate to="/folders" replace />;
   }
   
@@ -58,20 +70,39 @@ const TasksRedirect: React.FC = () => {
 };
 
 function App() {
-  const { initialize, refreshUser, isAuthenticated } = useAuthStore();
+  const { initialize, refreshUser } = useAuthStore();
+  const [isInitialized, setIsInitialized] = React.useState(false);
 
-  // 앱 시작 시 저장된 토큰 복원 및 Authorization 헤더 설정
+  // 앱 시작 시 저장된 토큰 복원 및 사용자 정보 로드
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    const initApp = async () => {
+      // 1. 토큰 복원 및 Authorization 헤더 설정
+      initialize();
+      
+      // 2. 인증된 상태라면 사용자 정보 새로고침
+      const state = useAuthStore.getState();
+      if (state.isAuthenticated) {
+        await refreshUser();
+      }
+      
+      // 3. 초기화 완료
+      setIsInitialized(true);
+    };
+    
+    initApp();
+  }, [initialize, refreshUser]);
 
-  // 앱 시작 시 인증된 상태라면 사용자 정보 새로고침 (한 번만)
-  useEffect(() => {
-    if (isAuthenticated) {
-      refreshUser();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 빈 배열로 초기 마운트 시에만 실행
+  // 초기화가 완료될 때까지 로딩 표시
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Router>
