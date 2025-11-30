@@ -99,38 +99,53 @@ const DocumentSignStandalone: React.FC = () => {
   } = usePdfPages(currentDocument?.template, []);
 
   // 두 터치 포인트 간 거리 계산
-  const getTouchDistance = (touch1: React.Touch, touch2: React.Touch): number => {
+  const getTouchDistance = (touch1: Touch, touch2: Touch): number => {
     const dx = touch2.clientX - touch1.clientX;
     const dy = touch2.clientY - touch1.clientY;
     return Math.sqrt(dx * dx + dy * dy);
   };
 
-  // 터치 시작 핸들러
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      const distance = getTouchDistance(e.touches[0], e.touches[1]);
-      setTouchStartDistance(distance);
-      setTouchStartScale(pdfScale);
-    }
-  };
+  // 터치 이벤트 핸들러 등록 (passive: false로 설정)
+  useEffect(() => {
+    const container = pdfContainerRef.current;
+    if (!container) return;
 
-  // 터치 이동 핸들러
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && touchStartDistance !== null) {
-      e.preventDefault();
-      const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
-      const scale = currentDistance / touchStartDistance;
-      const newScale = Math.max(0.5, Math.min(3, touchStartScale * scale));
-      setPdfScale(newScale);
-    }
-  };
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const distance = getTouchDistance(e.touches[0], e.touches[1]);
+        setTouchStartDistance(distance);
+        setTouchStartScale(pdfScale);
+      }
+    };
 
-  // 터치 종료 핸들러
-  const handleTouchEnd = () => {
-    setTouchStartDistance(null);
-  };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStartDistance !== null) {
+        e.preventDefault();
+        const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+        const scale = currentDistance / touchStartDistance;
+        const newScale = Math.max(0.5, Math.min(3, touchStartScale * scale));
+        setPdfScale(newScale);
+      }
+    };
 
+    const handleTouchEnd = () => {
+      setTouchStartDistance(null);
+    };
+
+    // passive: false로 설정하여 preventDefault()가 작동하도록 함
+    container.addEventListener('touchstart', handleTouchStart, { passive: false });
+    container.addEventListener('touchmove', handleTouchMove, { passive: false });
+    container.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      container.removeEventListener('touchstart', handleTouchStart);
+      container.removeEventListener('touchmove', handleTouchMove);
+      container.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [pdfScale, touchStartDistance, touchStartScale]);
+
+  // 자동 스케일 조정
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -541,12 +556,9 @@ const DocumentSignStandalone: React.FC = () => {
               )}
 
               {/* PDF 컨테이너 */}
-              <div 
-                ref={pdfContainerRef} 
+              <div
+                ref={pdfContainerRef}
                 className="w-full touch-none"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
               >
                 <div
                   className="mx-auto origin-top-left"
