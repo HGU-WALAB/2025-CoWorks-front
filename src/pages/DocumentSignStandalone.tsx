@@ -242,19 +242,6 @@ const DocumentSignStandalone: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const { token } = useAuthStore.getState();
-
-      const response = await axios.post(
-        `${API_BASE_URL}/documents/${currentDocument.id}/approve`,
-        { signatureData },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
       setShowSignatureModal(false);
       setSubmissionResult('success');
       
@@ -364,7 +351,10 @@ const DocumentSignStandalone: React.FC = () => {
     );
   }
 
-  if (!isSigner()) {
+  // 서명 권한이 없지만 문서가 완료 상태인 경우는 허용 (미리보기만 가능)
+  const isDocumentCompleted = currentDocument?.status === 'COMPLETED';
+
+  if (!isSigner() && !isDocumentCompleted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
@@ -379,8 +369,8 @@ const DocumentSignStandalone: React.FC = () => {
     );
   }
 
-  // 상태 확인 (SIGNING 상태가 아니면 접근 불가)
-  if (currentDocument.status !== 'SIGNING') {
+  // 상태 확인 (SIGNING도 아니고 COMPLETED도 아니면 접근 불가)
+  if (currentDocument.status !== 'SIGNING' && currentDocument.status !== 'COMPLETED') {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
@@ -492,7 +482,7 @@ const DocumentSignStandalone: React.FC = () => {
           )}
 
           {/* 이미 서명한 경우 메시지 */}
-          {isSigner() && hasCurrentUserSigned() && !submissionResult && (
+          {isSigner() && hasCurrentUserSigned() && !submissionResult && currentDocument.status !== 'COMPLETED' && (
             <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
               <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -500,6 +490,23 @@ const DocumentSignStandalone: React.FC = () => {
               <span className="text-sm font-medium text-blue-800">
                 이미 서명하셨습니다. 다른 서명자의 서명을 기다리고 있습니다.
               </span>
+            </div>
+          )}
+
+          {/* 문서 완료 메시지 */}
+          {currentDocument.status === 'COMPLETED' && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
+              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+              <div className="flex-1">
+                <span className="text-sm font-medium text-green-800 block">
+                  완료된 문서입니다
+                </span>
+                <span className="text-xs text-green-700">
+                  모든 서명이 완료되었습니다.
+                </span>
+              </div>
             </div>
           )}
         </div>
