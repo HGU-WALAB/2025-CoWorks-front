@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { SignatureModal } from '../components/SignatureModal';
@@ -72,8 +72,16 @@ const PDF_HEIGHT = 1754;
 
 const DocumentSignStandalone: React.FC = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const token = searchParams.get('token'); // URL에서 토큰 추출
+  
   const { currentDocument, loading, error, getDocument } = useDocumentStore();
-  const { user, token, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+
+  // 익명 사용자 정보 (토큰 기반)
+  const [anonymousUserEmail, setAnonymousUserEmail] = useState<string | null>(null);
+  const [isAnonymousUser, setIsAnonymousUser] = useState(false);
 
   // 모달 상태
   const [showSignatureModal, setShowSignatureModal] = useState(false);
@@ -181,28 +189,61 @@ const DocumentSignStandalone: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      getDocument(parseInt(id));
+      // 토큰이 있으면 익명 사용자로 문서 조회
+      if (token) {
+        fetchDocumentWithToken(parseInt(id), token);
+      } else if (isAuthenticated) {
+        // 로그인한 사용자는 기존 방식으로 조회
+        getDocument(parseInt(id));
+      }
     }
-  }, [id, getDocument]);
+  }, [id, token, isAuthenticated, getDocument]);
 
-  // 인증 상태 확인
-  if (!isAuthenticated || !token || !user) {
+  // 토큰 기반 문서 조회 함수
+  const fetchDocumentWithToken = async (docId: number, signingToken: string) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/public/sign/${docId}?token=${signingToken}`
+      );
+      
+      if (response.data) {
+        // 익명 사용자 정보 설정
+        setIsAnonymousUser(true);
+        setAnonymousUserEmail(response.data.signerEmail);
+        
+        // 문서 스토어에 직접 설정 (임시 방법)
+        useDocumentStore.setState({ 
+          currentDocument: response.data.document,
+          loading: false,
+          error: null
+        });
+
+        // 문서가 이미 완료된 경우 완료 모달 표시
+        if (response.data.document?.status === 'COMPLETED') {
+          setSubmissionResult('success');
+        }
+      }
+    } catch (error) {
+      console.error('❌ 토큰 기반 문서 조회 실패:', error);
+      useDocumentStore.setState({
+        loading: false,
+        error: '문서를 불러올 수 없습니다. 링크가 만료되었거나 유효하지 않습니다.'
+      });
+    }
+  };
+
+  // 인증 상태 확인 - 익명 사용자도 허용
+  if (!isAuthenticated && !isAnonymousUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
           <div className="flex items-center">
             <div className="text-yellow-600 text-2xl mr-3">⚠️</div>
             <div>
-              <h3 className="font-bold text-yellow-800 mb-2">로그인이 필요합니다</h3>
+              <h3 className="font-bold text-yellow-800 mb-2">접근 권한이 없습니다</h3>
               <p className="text-yellow-700 mb-4">
-                이 페이지에 접근하려면 로그인이 필요합니다.
+                유효한 서명 링크가 아닙니다.
               </p>
-              <button
-                onClick={() => window.location.href = '/login'}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                로그인하러 가기
-              </button>
             </div>
           </div>
         </div>
@@ -212,21 +253,39 @@ const DocumentSignStandalone: React.FC = () => {
 
   // 서명자 권한 확인
   const isSigner = () => {
-    if (!currentDocument || !user) return false;
-    return currentDocument.tasks?.some(task =>
-      task.role === 'SIGNER' &&
-      task.assignedUserEmail === user.email
-    );
+    if (!currentDocument) return false;
+    
+    // 익명 사용자인 경우
+    if (isAnonymousUser && anonymousUserEmail) {
+      return currentDocument.tasks?.some(task =>
+        task.role === 'SIGNER' &&
+        task.assignedUserEmail === anonymousUserEmail
+      );
+    }
+    
+    // 로그인 사용자인 경우
+    if (user) {
+      return currentDocument.tasks?.some(task =>
+        task.role === 'SIGNER' &&
+        task.assignedUserEmail === user.email
+      );
+    }
+    
+    return false;
   };
 
   // 현재 사용자가 이미 서명했는지 확인
   const hasCurrentUserSigned = () => {
-    if (!currentDocument || !user) return false;
+    if (!currentDocument) return false;
 
     const coordinateFields = (currentDocument.data?.coordinateFields || []) as any[];
+    const currentUserEmail = isAnonymousUser ? anonymousUserEmail : user?.email;
+    
+    if (!currentUserEmail) return false;
+    
     return coordinateFields.some((field) =>
       (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
-      (field.signerEmail === user.email || field.reviewerEmail === user.email) &&
+      (field.signerEmail === currentUserEmail || field.reviewerEmail === currentUserEmail) &&
       field.value &&
       field.value !== null &&
       field.value !== ''
@@ -235,7 +294,7 @@ const DocumentSignStandalone: React.FC = () => {
 
   // 서명 가능한 상태인지 확인
   const canSign = () => {
-    if (!currentDocument || !user) return false;
+    if (!currentDocument) return false;
     return isSigner() && 
            currentDocument.status === 'SIGNING' && 
            !hasCurrentUserSigned() &&
@@ -253,15 +312,40 @@ const DocumentSignStandalone: React.FC = () => {
 
   // 서명 저장 핸들러
   const handleSignatureSave = async (signatureData: string) => {
-    if (!currentDocument || !user) return;
+    if (!currentDocument) return;
 
     setIsSubmitting(true);
     try {
-      setShowSignatureModal(false);
-      setSubmissionResult('success');
+      // 익명 사용자는 토큰 기반 API 사용
+      if (isAnonymousUser && token) {
+        await axios.post(
+          `${API_BASE_URL}/public/sign/${currentDocument.id}?token=${token}`,
+          { signature: signatureData },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      } else {
+        // 로그인 사용자는 기존 API 사용
+        const authToken = useAuthStore.getState().token;
+        await axios.post(
+          `${API_BASE_URL}/documents/${currentDocument.id}/sign`,
+          { signature: signatureData },
+          {
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      }
       
-      // 문서 재로드
-      await getDocument(Number(id));
+      setShowSignatureModal(false);
+      
+      // 서명 완료 후 페이지 새로고침하여 서명이 반영된 문서 표시
+      window.location.reload();
       
     } catch (error) {
       console.error('❌ 서명 실패:', error);
@@ -286,28 +370,40 @@ const DocumentSignStandalone: React.FC = () => {
 
   // 반려 실행
   const executeReject = async (reason: string) => {
-    if (!currentDocument || !user) return;
+    if (!currentDocument) return;
 
     setIsSubmitting(true);
     try {
-      const { token } = useAuthStore.getState();
-
-      await axios.post(
-        `${API_BASE_URL}/documents/${currentDocument.id}/reject`,
-        { reason },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+      // 익명 사용자는 토큰 기반 API 사용
+      if (isAnonymousUser && token) {
+        await axios.post(
+          `${API_BASE_URL}/public/sign/${currentDocument.id}/reject?token=${token}`,
+          { reason },
+          {
+            headers: {
+              'Content-Type': 'application/json'
+            }
           }
-        }
-      );
+        );
+      } else {
+        // 로그인 사용자는 기존 API 사용
+        const authToken = useAuthStore.getState().token;
+        await axios.post(
+          `${API_BASE_URL}/documents/${currentDocument.id}/reject`,
+          { reason },
+          {
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      }
 
       setShowRejectModal(false);
-      setSubmissionResult('rejected');
       
-      // 문서 재로드
-      await getDocument(Number(id));
+      // 반려 완료 후 페이지 새로고침
+      window.location.reload();
       
     } catch (error) {
       console.error('반려 실패:', error);
@@ -414,9 +510,9 @@ const DocumentSignStandalone: React.FC = () => {
                 {currentDocument.title || currentDocument.templateName}
               </h1>
               <StatusBadge status={currentDocument.status || DOCUMENT_STATUS.SIGNING} size="md" isRejected={currentDocument.isRejected} />
-              <p className="text-sm text-gray-500">
+              {/* <p className="text-sm text-gray-500">
                 생성일: {new Date(currentDocument.createdAt).toLocaleDateString()}
-              </p>
+              </p> */}
             </div>
 
             {/* 액션 버튼들 - 서명/반려 완료 전에만 표시 */}
@@ -473,43 +569,43 @@ const DocumentSignStandalone: React.FC = () => {
             )}
           </div>
 
-          {/* 서명 완료/반려 메시지 */}
-          {submissionResult === 'success' && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
-              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-medium text-green-800">
-                서명이 완료되었습니다. 감사합니다.
-              </span>
+          {/* 서명 완료 메시지 - 상단 버튼으로 표시 */}
+          {isSigner() && hasCurrentUserSigned() && (
+            <div className="flex flex-col sm:flex-row items-center gap-3 px-4 py-3 bg-green-50 border border-green-300 rounded-lg">
+              <div className="flex items-center gap-2 flex-1">
+                <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <span className="text-sm font-bold text-green-800 block">
+                    서명이 완료되었습니다
+                  </span>
+                  <span className="text-xs text-green-700">
+                    {currentDocument.status === 'COMPLETED' 
+                      ? '모든 서명이 완료되었습니다.' 
+                      : '다른 서명자의 서명을 기다리고 있습니다.'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.location.href = import.meta.env.VITE_PUBLIC_URL || 'https://coworks.kr'}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                >
+                  CoWorks로 이동
+                </button>
+                <button
+                  onClick={() => window.close()}
+                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
           )}
 
-          {submissionResult === 'rejected' && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
-              <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-medium text-red-800">
-                문서가 반려되었습니다.
-              </span>
-            </div>
-          )}
-
-          {/* 이미 서명한 경우 메시지 */}
-          {isSigner() && hasCurrentUserSigned() && !submissionResult && currentDocument.status !== 'COMPLETED' && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm font-medium text-blue-800">
-                이미 서명하셨습니다. 다른 서명자의 서명을 기다리고 있습니다.
-              </span>
-            </div>
-          )}
-
-          {/* 문서 완료 메시지 */}
-          {currentDocument.status === 'COMPLETED' && (
+          {/* 문서 완료 메시지 - 서명자가 아닌 경우에만 표시 */}
+          {!isSigner() && currentDocument.status === 'COMPLETED' && (
             <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
               <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -641,9 +737,10 @@ const DocumentSignStandalone: React.FC = () => {
                           }
 
                           // 본인 서명 필드인지 확인
-                          const isCurrentUserSignature = isSignerSignature && user && (
-                            (field as any).signerEmail === user.email || 
-                            (field as any).reviewerEmail === user.email
+                          const currentUserEmail = isAnonymousUser ? anonymousUserEmail : user?.email;
+                          const isCurrentUserSignature = isSignerSignature && currentUserEmail && (
+                            (field as any).signerEmail === currentUserEmail || 
+                            (field as any).reviewerEmail === currentUserEmail
                           );
 
                           return (
@@ -808,7 +905,11 @@ const DocumentSignStandalone: React.FC = () => {
           isOpen={showSignatureModal}
           onClose={() => setShowSignatureModal(false)}
           onSave={handleSignatureSave}
-          reviewerName={user?.name || '서명자'}
+          reviewerName={
+            isAnonymousUser 
+              ? (anonymousUserEmail || '서명자')
+              : (user?.name || '서명자')
+          }
         />
       )}
 
