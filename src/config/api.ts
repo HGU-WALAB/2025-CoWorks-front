@@ -19,6 +19,7 @@ export const API_ENDPOINTS = {
     DOWNLOAD_PDF: (id: number | string) => `/documents/${id}/download-pdf`,
     MARK_AS_VIEWED: (id: number | string) => `/documents/${id}/view`,
     SEND_MESSAGE: (id: number | string) => `/documents/${id}/send-message`,
+    BY_TEMPLATE: (templateId: number | string) => `/documents/by-template/${templateId}`,
     BULK_PREVIEW: '/documents/bulk/preview',
     BULK_COMMIT: '/documents/bulk/commit',
     BULK_CANCEL: '/documents/bulk/cancel',
