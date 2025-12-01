@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import TemplateList from './pages/TemplateList';
 import TemplateUpload from './pages/TemplateUpload';
@@ -29,6 +29,35 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
   
+  return <>{children}</>;
+};
+
+// 토큰 기반 공개 서명 라우트 컴포넌트
+const PublicSignRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const token = searchParams.get('token');
+  
+  // 토큰이 없으면 에러 메시지 표시
+  if (!token) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md w-full">
+          <div className="flex items-center mb-4">
+            <svg className="w-6 h-6 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <h3 className="text-lg font-semibold text-red-800">유효하지 않은 접근</h3>
+          </div>
+          <p className="text-red-700">
+            유효한 서명 링크가 아닙니다. 이메일을 다시 확인해주세요.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  // 토큰이 있으면 익명 사용자로 접근 허용
   return <>{children}</>;
 };
 
@@ -239,13 +268,13 @@ function App() {
             </ProtectedRoute>
           } 
         />
-        {/* 이메일 링크 전용 서명 페이지 - Layout 없이 독립적으로 동작 */}
+        {/* 이메일 링크 전용 서명 페이지 - 토큰 기반 공개 접근 */}
         <Route 
           path="/email-sign/:id" 
           element={
-            <ProtectedRoute>
+            <PublicSignRoute>
               <DocumentSignStandalone />
-            </ProtectedRoute>
+            </PublicSignRoute>
           } 
         />
         <Route 
