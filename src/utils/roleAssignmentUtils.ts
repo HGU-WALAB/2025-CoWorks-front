@@ -2,50 +2,12 @@ import { Document } from '../types/document';
 
 export const formatKoreanFullDateTime = (dateInput: string | number | Date): string => {
   const date = new Date(dateInput);
-  const now = new Date();
-  const diffInMs = now.getTime() - date.getTime();
-  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-  
-  // 오늘
-  if (diffInDays === 0) {
-    const HH = String(date.getHours()).padStart(2, '0');
-    const MM = String(date.getMinutes()).padStart(2, '0');
-    return `오늘 ${HH}:${MM}`;
-  }
-  
-  // 어제
-  if (diffInDays === 1) {
-    const HH = String(date.getHours()).padStart(2, '0');
-    const MM = String(date.getMinutes()).padStart(2, '0');
-    return `어제 ${HH}:${MM}`;
-  }
-  
-  // 일주일 이내
-  if (diffInDays > 1 && diffInDays < 7) {
-    return `${diffInDays}일 전`;
-  }
-  
-  // 미래 날짜 (마감일 등)
-  if (diffInDays < 0) {
-    const futureDays = Math.abs(diffInDays);
-    if (futureDays === 0) {
-      const HH = String(date.getHours()).padStart(2, '0');
-      const MM = String(date.getMinutes()).padStart(2, '0');
-      return `오늘 ${HH}:${MM}`;
-    }
-    if (futureDays === 1) {
-      return `내일`;
-    }
-    if (futureDays < 7) {
-      return `${futureDays}일 후`;
-    }
-  }
-  
-  // 그 외 (일주일 이상)
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}년 ${mm}월 ${dd}일`;
+  const HH = String(date.getHours()).padStart(2, '0');
+  const MM = String(date.getMinutes()).padStart(2, '0');
+  return `${yyyy}년 ${mm}월 ${dd}일 ${HH} : ${MM}`;
 };
 
 export const formatKoreanShortDateTime = (dateInput: string | number | Date): string => {
@@ -135,5 +97,57 @@ export const getRoleAssignmentMessageShort = (
   if (!userTask || !userTask.createdAt) return null;
 
   return { label, time: formatKoreanShortDateTime(userTask.createdAt) };
+};
+
+/**
+ * 상대적 시간 표기 (오늘, 어제, n일 전/후)
+ * UserDashboard의 처리 대기 문서 카드에서만 사용
+ */
+export const formatRelativeDateTime = (dateInput: string | number | Date): string => {
+  const date = new Date(dateInput);
+  const now = new Date();
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  
+  // 오늘
+  if (diffInDays === 0) {
+    const HH = String(date.getHours()).padStart(2, '0');
+    const MM = String(date.getMinutes()).padStart(2, '0');
+    return `오늘 ${HH}:${MM}`;
+  }
+  
+  // 어제
+  if (diffInDays === 1) {
+    const HH = String(date.getHours()).padStart(2, '0');
+    const MM = String(date.getMinutes()).padStart(2, '0');
+    return `어제 ${HH}:${MM}`;
+  }
+  
+  // 일주일 이내
+  if (diffInDays > 1 && diffInDays < 7) {
+    return `${diffInDays}일 전`;
+  }
+  
+  // 미래 날짜 (마감일 등)
+  if (diffInDays < 0) {
+    const futureDays = Math.abs(diffInDays);
+    if (futureDays === 0) {
+      const HH = String(date.getHours()).padStart(2, '0');
+      const MM = String(date.getMinutes()).padStart(2, '0');
+      return `오늘 ${HH}:${MM}`;
+    }
+    if (futureDays === 1) {
+      return `내일`;
+    }
+    if (futureDays < 7) {
+      return `${futureDays}일 후`;
+    }
+  }
+  
+  // 그 외 (일주일 이상)
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}년 ${mm}월 ${dd}일`;
 };
 
