@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
-import { formatKoreanFullDateTime } from '../utils/roleAssignmentUtils';
+import { formatRelativeDateTime } from '../utils/roleAssignmentUtils';
 
 const UserDashboard: React.FC = () => {
   const { documents, todoDocuments, fetchDocuments, fetchTodoDocuments, loading } = useDocumentStore();
@@ -275,18 +275,18 @@ const UserDashboard: React.FC = () => {
             // 작성자 지정 날짜, 반려 시간, 서명자 지정 날짜 계산
             let assignmentInfo = '';
             if (doc.status === 'EDITING' && isEditor && myTask?.createdAt) {
-              assignmentInfo = `지정일: ${formatKoreanFullDateTime(new Date(myTask.createdAt))}`;
+              assignmentInfo = `지정일: ${formatRelativeDateTime(new Date(myTask.createdAt))}`;
             } else if (doc.status === 'READY_FOR_REVIEW' && myTask?.createdAt) {
-              assignmentInfo = `지정일: ${formatKoreanFullDateTime(new Date(myTask.createdAt))}`;
+              assignmentInfo = `지정일: ${formatRelativeDateTime(new Date(myTask.createdAt))}`;
             } else if ((doc.status === 'REJECTED' || doc.isRejected) && doc.statusLogs) {
               const rejectedLog = doc.statusLogs
                 .filter(log => log.status === 'REJECTED')
                 .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
               if (rejectedLog) {
-                assignmentInfo = `반려일: ${formatKoreanFullDateTime(new Date(rejectedLog.timestamp))}`;
+                assignmentInfo = `반려일: ${formatRelativeDateTime(new Date(rejectedLog.timestamp))}`;
               }
             } else if (doc.status === 'SIGNING' && myTask?.createdAt) {
-              assignmentInfo = `지정일: ${formatKoreanFullDateTime(new Date(myTask.createdAt))}`;
+              assignmentInfo = `지정일: ${formatRelativeDateTime(new Date(myTask.createdAt))}`;
             }
 
             const getStatusInfo = (status: string, isRejected?: boolean, isEditor?: boolean) => {
@@ -407,7 +407,7 @@ const UserDashboard: React.FC = () => {
                   {/* 만료일 */}
                   {deadlineDate && (
                     <div className={`text-sm font-semibold mb-3 ${isOverdue ? 'text-red-600' : 'text-blue-600'}`}>
-                      마감일: {formatKoreanFullDateTime(deadlineDate)}
+                      마감일: {formatRelativeDateTime(deadlineDate)}
                       {isOverdue && ' (지연)'}
                     </div>
                   )}
