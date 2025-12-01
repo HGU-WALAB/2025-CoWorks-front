@@ -188,27 +188,34 @@ const UserDashboard: React.FC = () => {
     );
   }
 
-  // 사용자별 작업 분류
+  // 사용자별 작업 분류 (todoDocuments 기반)
   const getUserTasks = () => {
-    const myDocuments = documents.filter(doc =>
-      doc.tasks?.some(task => task.assignedUserEmail === currentUserEmail) || false
-    );
+    // todoDocuments와 동일한 로직 적용: 실제로 처리해야 하는 문서만 필터링
+    const myTodoDocuments = todoDocuments.filter(doc => {
+      // SIGNING 상태인 경우, 현재 사용자가 서명자인 경우만 포함
+      if (doc.status === 'SIGNING') {
+        return doc.tasks?.some(task =>
+          task.role === 'SIGNER' && task.assignedUserEmail === currentUserEmail
+        ) || false;
+      }
+      return true;
+    });
 
-    const editingTasks = myDocuments.filter(doc => 
+    const editingTasks = myTodoDocuments.filter(doc => 
       ['DRAFT', 'EDITING', 'READY_FOR_REVIEW'].includes(doc.status) && 
       !doc.isRejected && 
       doc.status !== 'REJECTED'
     );
 
-    const reviewingTasks = myDocuments.filter(doc => 
+    const reviewingTasks = myTodoDocuments.filter(doc => 
       doc.status === 'REVIEWING'
     );
 
-    const signingTasks = myDocuments.filter(doc => 
+    const signingTasks = myTodoDocuments.filter(doc => 
       doc.status === 'SIGNING'
     );
 
-    const rejectedTasks = myDocuments.filter(doc => {
+    const rejectedTasks = myTodoDocuments.filter(doc => {
       if (doc.status === 'REJECTED') {
         return true;
       }
@@ -220,7 +227,7 @@ const UserDashboard: React.FC = () => {
       return false;
     });
 
-    const completedTasks = myDocuments.filter(doc => 
+    const completedTasks = myTodoDocuments.filter(doc => 
       doc.status === 'COMPLETED'
     );
 
