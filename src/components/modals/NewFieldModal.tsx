@@ -108,7 +108,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-96 max-w-full mx-4">
+      <div className="bg-white rounded-lg p-6 w-[600px] max-w-full mx-4 max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold mb-4">새 필드 추가</h3>
         
         <div className="space-y-4">
@@ -238,25 +238,27 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   열 헤더 이름
                 </label>
-                <div className="space-y-2">
-                  {columnHeaders.slice(0, tableCols).map((header, index) => (
-                    <div key={index}>
-                      <label className="block text-xs text-gray-600 mb-1">
-                        {index + 1}번째 열
-                      </label>
-                      <input
-                        type="text"
-                        value={header}
-                        onChange={(e) => {
-                          const newHeaders = [...columnHeaders];
-                          newHeaders[index] = e.target.value;
-                          setColumnHeaders(newHeaders);
-                        }}
-                        placeholder={`열 ${index + 1} 헤더 이름 (선택사항)`}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  ))}
+                <div className="overflow-x-auto">
+                  <div className="flex gap-2 min-w-max pb-2">
+                    {columnHeaders.slice(0, tableCols).map((header, index) => (
+                      <div key={index} className="flex-shrink-0 w-32">
+                        <label className="block text-xs text-gray-600 mb-1">
+                          {index + 1}번째 열
+                        </label>
+                        <input
+                          type="text"
+                          value={header}
+                          onChange={(e) => {
+                            const newHeaders = [...columnHeaders];
+                            newHeaders[index] = e.target.value;
+                            setColumnHeaders(newHeaders);
+                          }}
+                          placeholder={`열 ${index + 1}`}
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
                   헤더 이름을 입력하지 않으면 기본적으로 숫자(1, 2, 3...)로 표시됩니다.
