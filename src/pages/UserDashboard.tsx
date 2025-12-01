@@ -463,146 +463,154 @@ const UserDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
         {/* 헤더 */}
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900 mb-2">내 작업 현황</h1>
           <p className="text-sm text-gray-600">할당된 작업과 문서 상태를 확인하세요</p>
         </div>
 
-        {/* 통계 카드 */}
-        <div className={`grid grid-cols-2 md:grid-cols-3 ${showReviewingCard ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4 mb-6`}>
-          {/* 전체 */}
-          {!showReviewingCard && (
-            <div 
-              onClick={() => setSelectedFilter('ALL')}
-              className="block cursor-pointer"
-            >
-              <div className={`p-6 rounded-xl transition-all duration-200 ${
-                !selectedFilter || selectedFilter === 'ALL'
-                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
-                  : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
-              }`}>
-                <div className={`text-4xl font-bold mb-2 ${
-                  !selectedFilter || selectedFilter === 'ALL' ? 'text-white' : 'text-gray-900'
-                }`}>{tasks.editingTasks.length + tasks.signingTasks.length + tasks.rejectedTasks.length + (showReviewingCard ? tasks.reviewingTasks.length : 0)}</div>
-                <div className={`text-sm font-semibold mb-3 ${
-                  !selectedFilter || selectedFilter === 'ALL' ? 'text-primary-100' : 'text-gray-600'
-                }`}>전체</div>
-                <div className={`w-full h-px ${
-                  !selectedFilter || selectedFilter === 'ALL' ? 'bg-white/30' : 'bg-gray-200'
-                }`}></div>
-              </div>
-            </div>
-          )}
+        {/* 통계 및 액션 영역 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {/* 왼쪽: 통계 카드 영역 (2/3) */}
+          <div className="lg:col-span-2">
+            <div className={`grid ${showReviewingCard ? 'grid-cols-4' : 'grid-cols-4'} gap-4 h-full`}>
+              {/* 전체 */}
+              {!showReviewingCard && (
+                <button
+                  onClick={() => setSelectedFilter('ALL')}
+                  className={`p-5 rounded-xl transition-all duration-200 ${
+                    !selectedFilter || selectedFilter === 'ALL'
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
+                      : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
+                  }`}
+                >
+                  <div className={`text-4xl font-bold mb-2 ${
+                    !selectedFilter || selectedFilter === 'ALL' ? 'text-white' : 'text-gray-900'
+                  }`}>{tasks.editingTasks.length + tasks.signingTasks.length + tasks.rejectedTasks.length + (showReviewingCard ? tasks.reviewingTasks.length : 0)}</div>
+                  <div className={`text-sm font-medium ${
+                    !selectedFilter || selectedFilter === 'ALL' ? 'text-primary-100' : 'text-gray-600'
+                  }`}>전체</div>
+                </button>
+              )}
 
-          {/* 작성중 */}
-          {showReviewingCard ? (
-            <Link to="/documents?status=EDITING" className="block">
-              <div className="p-6 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group">
-                <div className="text-4xl font-bold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">{tasks.editingTasks.length}</div>
-                <div className="text-sm font-semibold text-gray-600 group-hover:text-primary-600 transition-colors mb-3">작성중</div>
-                <div className="w-full h-px bg-gray-200 group-hover:bg-primary-500 transition-colors"></div>
-              </div>
-            </Link>
-          ) : (
-            <div 
-              onClick={() => setSelectedFilter(selectedFilter === 'EDITING' ? 'ALL' : 'EDITING')}
-              className="block cursor-pointer"
-            >
-              <div className={`p-6 rounded-xl transition-all duration-200 ${
-                selectedFilter === 'EDITING'
-                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
-                  : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
-              }`}>
-                <div className={`text-4xl font-bold mb-2 ${
-                  selectedFilter === 'EDITING' ? 'text-white' : 'text-gray-900'
-                }`}>{tasks.editingTasks.length}</div>
-                <div className={`text-sm font-semibold mb-3 ${
-                  selectedFilter === 'EDITING' ? 'text-primary-100' : 'text-gray-600'
-                }`}>작성중</div>
-                <div className={`w-full h-px ${
-                  selectedFilter === 'EDITING' ? 'bg-white/30' : 'bg-gray-200'
-                }`}></div>
-              </div>
-            </div>
-          )}
+              {/* 작성중 */}
+              {showReviewingCard ? (
+              <Link to="/documents?status=EDITING" className="block">
+                <button className="w-full h-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5">
+                  <div className="text-4xl font-bold mb-2 text-gray-900">{tasks.editingTasks.length}</div>
+                  <div className="text-sm font-medium text-gray-600">작성중</div>
+                  </button>
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setSelectedFilter(selectedFilter === 'EDITING' ? 'ALL' : 'EDITING')}
+                  className={`p-5 rounded-xl transition-all duration-200 ${
+                    selectedFilter === 'EDITING'
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
+                      : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
+                  }`}
+                >
+                  <div className={`text-4xl font-bold mb-2 ${
+                    selectedFilter === 'EDITING' ? 'text-white' : 'text-gray-900'
+                  }`}>{tasks.editingTasks.length}</div>
+                  <div className={`text-sm font-medium ${
+                    selectedFilter === 'EDITING' ? 'text-primary-100' : 'text-gray-600'
+                  }`}>작성중</div>
+                </button>
+              )}
 
-          {/* 검토중 (관리자/교직원만) */}
-          {showReviewingCard && (
-            <Link to="/documents?status=REVIEWING" className="block">
-              <div className="p-6 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group">
-                <div className="text-4xl font-bold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">{tasks.reviewingTasks.length}</div>
-                <div className="text-sm font-semibold text-gray-600 group-hover:text-primary-600 transition-colors mb-3">검토중</div>
-                <div className="w-full h-px bg-gray-200 group-hover:bg-primary-500 transition-colors"></div>
-              </div>
-            </Link>
-          )}
+              {/* 검토중 (관리자/교직원만) */}
+              {showReviewingCard && (
+              <Link to="/documents?status=REVIEWING" className="block">
+                <button className="w-full h-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5">
+                  <div className="text-4xl font-bold mb-2 text-gray-900">{tasks.reviewingTasks.length}</div>
+                  <div className="text-sm font-medium text-gray-600">검토중</div>
+                  </button>
+                </Link>
+              )}
 
-          {/* 서명중 */}
-          {showReviewingCard ? (
-            <Link to="/documents?status=SIGNING" className="block">
-              <div className="p-6 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group">
-                <div className="text-4xl font-bold mb-2 text-gray-900 group-hover:text-primary-600 transition-colors">{tasks.signingTasks.length}</div>
-                <div className="text-sm font-semibold text-gray-600 group-hover:text-primary-600 transition-colors mb-3">서명중</div>
-                <div className="w-full h-px bg-gray-200 group-hover:bg-primary-500 transition-colors"></div>
-              </div>
-            </Link>
-          ) : (
-            <div 
-              onClick={() => setSelectedFilter(selectedFilter === 'SIGNING' ? 'ALL' : 'SIGNING')}
-              className="block cursor-pointer"
-            >
-              <div className={`p-6 rounded-xl transition-all duration-200 ${
-                selectedFilter === 'SIGNING'
-                  ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
-                  : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
-              }`}>
-                <div className={`text-4xl font-bold mb-2 ${
-                  selectedFilter === 'SIGNING' ? 'text-white' : 'text-gray-900'
-                }`}>{tasks.signingTasks.length}</div>
-                <div className={`text-sm font-semibold mb-3 ${
-                  selectedFilter === 'SIGNING' ? 'text-primary-100' : 'text-gray-600'
-                }`}>서명중</div>
-                <div className={`w-full h-px ${
-                  selectedFilter === 'SIGNING' ? 'bg-white/30' : 'bg-gray-200'
-                }`}></div>
-              </div>
-            </div>
-          )}
+              {/* 서명중 */}
+              {showReviewingCard ? (
+              <Link to="/documents?status=SIGNING" className="block">
+                <button className="w-full h-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5">
+                  <div className="text-4xl font-bold mb-2 text-gray-900">{tasks.signingTasks.length}</div>
+                  <div className="text-sm font-medium text-gray-600">서명중</div>
+                  </button>
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setSelectedFilter(selectedFilter === 'SIGNING' ? 'ALL' : 'SIGNING')}
+                  className={`p-5 rounded-xl transition-all duration-200 ${
+                    selectedFilter === 'SIGNING'
+                      ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/30 scale-105'
+                      : 'bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5'
+                  }`}
+                >
+                  <div className={`text-4xl font-bold mb-2 ${
+                    selectedFilter === 'SIGNING' ? 'text-white' : 'text-gray-900'
+                  }`}>{tasks.signingTasks.length}</div>
+                  <div className={`text-sm font-medium ${
+                    selectedFilter === 'SIGNING' ? 'text-primary-100' : 'text-gray-600'
+                  }`}>서명중</div>
+                </button>
+              )}
 
-          {/* 반려 */}
-          {showReviewingCard ? (
-            <Link to="/documents?status=REJECTED" className="block">
-              <div className="p-6 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-red-500 hover:shadow-lg hover:-translate-y-1 cursor-pointer group">
-                <div className={`text-4xl font-bold mb-2 transition-colors ${tasks.rejectedTasks.length > 0 ? 'text-red-600 group-hover:text-red-700' : 'text-gray-900 group-hover:text-red-600'}`}>{tasks.rejectedTasks.length}</div>
-                <div className="text-sm font-semibold text-gray-600 group-hover:text-red-600 transition-colors mb-3">반려</div>
-                <div className="w-full h-px bg-gray-200 group-hover:bg-red-500 transition-colors"></div>
-              </div>
-            </Link>
-          ) : (
-            <div 
-              onClick={() => setSelectedFilter(selectedFilter === 'REJECTED' ? 'ALL' : 'REJECTED')}
-              className="block cursor-pointer"
-            >
-              <div className={`p-6 rounded-xl transition-all duration-200 ${
-                selectedFilter === 'REJECTED'
-                  ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30 scale-105'
-                  : 'bg-white border-2 border-gray-200 hover:border-red-300 hover:shadow-md hover:-translate-y-0.5'
-              }`}>
-                <div className={`text-4xl font-bold mb-2 ${
-                  selectedFilter === 'REJECTED' ? 'text-white' : tasks.rejectedTasks.length > 0 ? 'text-red-600' : 'text-gray-900'
-                }`}>{tasks.rejectedTasks.length}</div>
-                <div className={`text-sm font-semibold mb-3 ${
-                  selectedFilter === 'REJECTED' ? 'text-red-100' : 'text-gray-600'
-                }`}>반려</div>
-                <div className={`w-full h-px ${
-                  selectedFilter === 'REJECTED' ? 'bg-white/30' : 'bg-gray-200'
-                }`}></div>
-              </div>
+              {/* 반려 */}
+              {showReviewingCard ? (
+              <Link to="/documents?status=REJECTED" className="block">
+                <button className="w-full h-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-red-300 hover:shadow-md hover:-translate-y-0.5">
+                  <div className={`text-4xl font-bold mb-2 ${tasks.rejectedTasks.length > 0 ? 'text-red-600' : 'text-gray-900'}`}>{tasks.rejectedTasks.length}</div>
+                  <div className="text-sm font-medium text-gray-600">반려</div>
+                  </button>
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setSelectedFilter(selectedFilter === 'REJECTED' ? 'ALL' : 'REJECTED')}
+                  className={`p-5 rounded-xl transition-all duration-200 ${
+                    selectedFilter === 'REJECTED'
+                      ? 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg shadow-red-500/30 scale-105'
+                      : 'bg-white border-2 border-gray-200 hover:border-red-300 hover:shadow-md hover:-translate-y-0.5'
+                  }`}
+                >
+                  <div className={`text-4xl font-bold mb-2 ${
+                    selectedFilter === 'REJECTED' ? 'text-white' : tasks.rejectedTasks.length > 0 ? 'text-red-600' : 'text-gray-900'
+                  }`}>{tasks.rejectedTasks.length}</div>
+                  <div className={`text-sm font-medium ${
+                    selectedFilter === 'REJECTED' ? 'text-red-100' : 'text-gray-600'
+                  }`}>반려</div>
+                </button>
+              )}
             </div>
-          )}
+          </div>
+
+          {/* 오른쪽: 액션 버튼 영역 (1/3) */}
+          <div className="flex flex-col gap-4">
+            {/* 문서 생성 버튼 */}
+            <Link to="/documents/new" className="block">
+              <button className="w-full p-4 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="text-base font-semibold">새 문서 생성</span>
+                </div>
+              </button>
+            </Link>
+            
+            {/* 전체 문서 보기 버튼 */}
+            <Link to="/documents" className="block">
+              <button className="w-full p-4 rounded-xl bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md transition-all duration-200">
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span className="text-base font-semibold text-gray-700">전체 문서 보기</span>
+                </div>
+              </button>
+            </Link>
+          </div>
         </div>
 
         {/* 선택된 필터 표시 */}
