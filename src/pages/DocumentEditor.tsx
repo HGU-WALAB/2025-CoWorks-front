@@ -7,6 +7,7 @@ import DocumentPreviewModal from '../components/DocumentPreviewModal';
 import { SignatureModal } from '../components/SignatureModal';
 import TableBulkInput from '../components/TableBulkInput';
 import TableEditComponent from '../components/DocumentEditor/TableEditComponent';
+import LoadDocumentDataModal from '../components/modals/LoadDocumentDataModal';
 import { createDebounce } from '../utils/debounce';
 import { usePdfPages } from '../hooks/usePdfPages';
 import { usePrint, type PrintField, type PrintSignatureField } from '../utils/printUtils';
@@ -99,6 +100,11 @@ const DocumentEditor: React.FC = () => {
   const [currentTableInfo, setCurrentTableInfo] = useState<{ rows: number; cols: number } | null>(null);
   const [currentTableLabel, setCurrentTableLabel] = useState<string>('');
   const [currentTableData, setCurrentTableData] = useState<string[][] | undefined>(undefined);
+
+  // 문서 데이터 불러오기 모달 상태
+  const [showLoadDataModal, setShowLoadDataModal] = useState(false);
+  const [originalFieldData, setOriginalFieldData] = useState<CoordinateField[] | null>(null);
+  const [hasLoadedExternalData, setHasLoadedExternalData] = useState(false);
 
   // 리사이저블 패널 상태
   const [rightPanelWidth, setRightPanelWidth] = useState(524);
@@ -958,6 +964,54 @@ const DocumentEditor: React.FC = () => {
     }
   }, [id, templateFields]);
 
+  // 외부 문서 데이터 불러오기 핸들러
+  const handleLoadExternalData = useCallback((loadedFields: any[]) => {
+    // 현재 데이터를 원본으로 저장 (처음 불러올 때만)
+    if (!originalFieldData) {
+      setOriginalFieldData([...coordinateFields]);
+    }
+    
+    // 불러온 데이터를 현재 필드에 적용
+    setCoordinateFields(prevFields => {
+      return prevFields.map(field => {
+        // 서명 관련 필드는 건드리지 않음
+        if (field.type === 'editor_signature') {
+          return field;
+        }
+        
+        // 불러온 데이터에서 해당 필드 찾기 (ID 또는 label 기준)
+        const loadedField = loadedFields.find((lf: any) => 
+          lf.id === field.id || lf.label === field.label
+        );
+        
+        if (loadedField && loadedField.value) {
+          return {
+            ...field,
+            value: loadedField.value
+          };
+        }
+        
+        return field;
+      });
+    });
+    
+    setHasLoadedExternalData(true);
+  }, [coordinateFields, originalFieldData]);
+
+  // 불러온 문서 데이터 지우기 핸들러
+  const handleClearLoadedData = useCallback(() => {
+    if (!originalFieldData) {
+      alert('불러온 데이터가 없습니다.');
+      return;
+    }
+    
+    if (window.confirm('불러온 문서 내용을 모두 지우고 원래 상태로 복구하시겠습니까?')) {
+      setCoordinateFields(originalFieldData);
+      setOriginalFieldData(null);
+      setHasLoadedExternalData(false);
+    }
+  }, [originalFieldData]);
+
   // 초기 데이터 로드
   useEffect(() => {
     if (id) {
@@ -966,6 +1020,9 @@ const DocumentEditor: React.FC = () => {
       setTemplateFields([]);
       // coordinateFields는 필드 구조 유지, 값만 초기화
       setCoordinateFields(prev => prev.map(field => ({ ...field, value: '' })));
+      // 불러온 데이터 상태 초기화
+      setOriginalFieldData(null);
+      setHasLoadedExternalData(false);
       
       getDocument(parseInt(id));
     }
@@ -2073,34 +2130,53 @@ const DocumentEditor: React.FC = () => {
           <div className="p-4 border-b bg-gray-50 flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-medium text-gray-900">문서 필드</h2>
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm">
+              <div className="flex items-center gap-2">
+                {/* 문서 내용 불러오기/지우기 버튼 */}
+                <button
+                  onClick={() => setShowLoadDataModal(true)}
+                  className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200 transition-colors"
+                  title="이전 문서에서 내용 불러오기"
+                >
+                  내용 불러오기
+                </button>
+                {hasLoadedExternalData && (
                   <button
-                    onClick={() => setCurrentPageNumber(prev => Math.max(1, prev - 1))}
-                    disabled={currentPageNumber <= 1}
-                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    title="이전 페이지 (←)"
+                    onClick={handleClearLoadedData}
+                    className="px-2 py-1 text-xs font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded border border-red-200 transition-colors"
+                    title="불러온 내용 지우기"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
+                    내용 지우기
                   </button>
-                  <span className="text-sm font-medium text-gray-700 min-w-[60px] text-center">
-                    {currentPageNumber} / {totalPages}
-                  </span>
-                  <button
-                    onClick={() => setCurrentPageNumber(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPageNumber >= totalPages}
-                    className="p-1 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                    title="다음 페이지 (→)"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm mb-3">
+                <button
+                  onClick={() => setCurrentPageNumber(prev => Math.max(1, prev - 1))}
+                  disabled={currentPageNumber <= 1}
+                  className="p-1 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="이전 페이지 (←)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm font-medium text-gray-700 min-w-[60px] text-center">
+                  {currentPageNumber} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPageNumber(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPageNumber >= totalPages}
+                  className="p-1 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="다음 페이지 (→)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-500">
                 {coordinateFields.filter(field => ((field as any).page || 1) === currentPageNumber).length}개 필드
@@ -2433,6 +2509,17 @@ const DocumentEditor: React.FC = () => {
           tableInfo={currentTableInfo}
           fieldLabel={currentTableLabel}
           existingData={currentTableData}
+        />
+      )}
+
+      {/* 문서 데이터 불러오기 모달 */}
+      {currentDocument && (
+        <LoadDocumentDataModal
+          isOpen={showLoadDataModal}
+          onClose={() => setShowLoadDataModal(false)}
+          templateId={currentDocument.templateId}
+          currentDocumentId={currentDocument.id}
+          onLoadData={handleLoadExternalData}
         />
       )}
 
