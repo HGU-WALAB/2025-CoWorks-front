@@ -161,7 +161,14 @@ const UserDashboard: React.FC = () => {
       });
     }
 
-    return filtered;
+    // 마감일순 정렬: deadline 기준 오름차순 (마감일이 없는 경우 마지막으로)
+    const sorted = [...filtered].sort((a, b) => {
+      const aDeadline = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const bDeadline = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      return aDeadline - bDeadline;
+    });
+
+    return sorted;
   }, [todoDocuments, currentUserEmail, selectedFilter]);
 
   // 인증되지 않은 경우 처리
@@ -270,7 +277,7 @@ const UserDashboard: React.FC = () => {
         </div>
         
         {/* 카드 그리드 레이아웃 */}
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredTodoDocuments.map((doc) => {
             const myTask = doc.tasks?.find(task => task.assignedUserEmail === currentUserEmail);
             const isNewTask = myTask?.isNew;
@@ -300,7 +307,7 @@ const UserDashboard: React.FC = () => {
               if (isRejected && status === 'EDITING' && isEditor) {
                 return {
                   color: 'red',
-                  bgColor: 'bg-red-50',
+                  bgColor: 'bg-red-100',
                   textColor: 'text-red-700',
                   borderColor: 'border-red-200',
                   label: '반려됨'
@@ -313,7 +320,7 @@ const UserDashboard: React.FC = () => {
                   if (isEditor) {
                     baseInfo = {
                       color: 'blue',
-                      bgColor: 'bg-blue-50',
+                      bgColor: 'bg-blue-100',
                       textColor: 'text-blue-700',
                       borderColor: 'border-blue-200',
                       label: '작성중'
@@ -325,7 +332,7 @@ const UserDashboard: React.FC = () => {
                 case 'READY_FOR_REVIEW':
                   baseInfo = {
                     color: 'blue',
-                    bgColor: 'bg-blue-50',
+                    bgColor: 'bg-blue-100',
                     textColor: 'text-blue-700',
                     borderColor: 'border-blue-200',
                     label: '서명자 지정하기'
@@ -334,7 +341,7 @@ const UserDashboard: React.FC = () => {
                 case 'REVIEWING':
                   baseInfo = {
                     color: 'yellow',
-                    bgColor: 'bg-yellow-50',
+                    bgColor: 'bg-yellow-100',
                     textColor: 'text-yellow-700',
                     borderColor: 'border-yellow-200',
                     label: '검토중'
@@ -343,7 +350,7 @@ const UserDashboard: React.FC = () => {
                 case 'SIGNING':
                   baseInfo = {
                     color: 'orange',
-                    bgColor: 'bg-orange-50',
+                    bgColor: 'bg-orange-100',
                     textColor: 'text-orange-700',
                     borderColor: 'border-orange-200',
                     label: '서명중'
@@ -352,7 +359,7 @@ const UserDashboard: React.FC = () => {
                 case 'REJECTED':
                   baseInfo = {
                     color: 'red',
-                    bgColor: 'bg-red-50',
+                    bgColor: 'bg-red-100',
                     textColor: 'text-red-700',
                     borderColor: 'border-red-200',
                     label: '반려됨'
@@ -361,7 +368,7 @@ const UserDashboard: React.FC = () => {
                 default:
                   baseInfo = {
                     color: 'blue',
-                    bgColor: 'bg-blue-50',
+                    bgColor: 'bg-blue-100',
                     textColor: 'text-blue-700',
                     borderColor: 'border-blue-200',
                     label: '처리 필요'
@@ -386,11 +393,11 @@ const UserDashboard: React.FC = () => {
                 <div className="p-4">
                   {/* 상태 배지와 NEW 표시 */}
                   <div className="flex items-center justify-between mb-3">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-medium ${statusInfo.textColor}`}>
+                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold ${statusInfo.bgColor} ${statusInfo.textColor}`}>
                       {statusInfo.label}
                     </span>
                     {isNewTask && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-600 text-white">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-600 text-white">
                         NEW
                       </span>
                     )}
@@ -406,14 +413,14 @@ const UserDashboard: React.FC = () => {
 
                   {/* 지정/반려 날짜 */}
                   {assignmentInfo && (
-                    <div className="text-sm text-blue-600 font-semibold mb-2">
+                    <div className={`text-sm font-semibold mb-2 ${statusInfo.textColor}`}>
                       {assignmentInfo}
                     </div>
                   )}
 
                   {/* 만료일 */}
                   {deadlineDate && (
-                    <div className={`text-sm font-semibold mb-3 ${isOverdue ? 'text-red-600' : 'text-blue-600'}`}>
+                    <div className={`text-sm font-semibold mb-3 ${isOverdue ? 'text-red-600' : statusInfo.textColor}`}>
                       마감일: {formatRelativeDateTime(deadlineDate)}
                       {isOverdue && ' (지연)'}
                     </div>
@@ -424,15 +431,15 @@ const UserDashboard: React.FC = () => {
                     {doc.status === 'EDITING' && isEditor ? (
                       <Link
                         to={`/documents/${doc.id}`}
-                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
                       >
-                        편집하기
+                        작성하기
                       </Link>
                     ) :
                     doc.status === 'READY_FOR_REVIEW' ? (
                       <Link
                         to={`/documents/${doc.id}/signer-assignment`}
-                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
                       >
                         서명자 지정하기
                       </Link>
@@ -440,21 +447,21 @@ const UserDashboard: React.FC = () => {
                     doc.status === 'REVIEWING' ? (
                       <Link
                         to={`/documents/${doc.id}/review`}
-                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-yellow-600 hover:bg-yellow-700 transition-colors"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
                       >
                         검토하기
                       </Link>
                     ) : doc.status === 'SIGNING' ? (
                       <Link
                         to={`/documents/${doc.id}/sign`}
-                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
                       >
                         서명하기
                       </Link>
                     ) : doc.status === 'REJECTED' || (doc.isRejected && doc.status === 'EDITING' && isEditor) ? (
                       <Link
                         to={`/documents/${doc.id}`}
-                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 text-sm font-medium rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
                       >
                         수정하기
                       </Link>
