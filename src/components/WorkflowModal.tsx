@@ -3,6 +3,8 @@ import { Document, DocumentStatusLog, TaskInfo } from '../types/document';
 import { useAuthStore } from '../stores/authStore';
 import axios from 'axios';
 import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
+import DocumentPreviewModal from './DocumentPreviewModal';
+import { loadPdfPagesFromTemplate } from '../utils/pdfPageLoader';
 
 interface WorkflowModalProps {
   isOpen: boolean;
@@ -167,6 +169,11 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
   const { user: currentUser } = useAuthStore();
   const [emailComposerOpen, setEmailComposerOpen] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<{ name: string; email: string } | null>(null);
+  
+  // 미리보기 모달 상태
+  const [showPreview, setShowPreview] = useState(false);
+  const [coordinateFields, setCoordinateFields] = useState<any[]>([]);
+  const [signatureFields, setSignatureFields] = useState<any[]>([]);
 
   // ESC 키로 닫기
   React.useEffect(() => {
@@ -226,6 +233,47 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
     }
   };
 
+  // 미리보기 핸들러
+  const handlePreview = () => {
+    if (!doc) return;
+
+    try {
+      // 저장된 필드 데이터만 사용
+      const savedFields = doc.data?.coordinateFields || [];
+      setCoordinateFields(savedFields);
+
+      // 서명 필드 처리
+      const docSignatureFields = doc.data?.signatureFields || [];
+      const docSignatures = doc.data?.signatures || {};
+
+      const processedSignatureFields = docSignatureFields.map((field: any) => ({
+        ...field,
+        signatureData: docSignatures[field.reviewerEmail]
+      }));
+
+      setSignatureFields(processedSignatureFields);
+      setShowPreview(true);
+    } catch (error) {
+      console.error('미리보기 오류:', error);
+      alert('미리보기를 불러오는 중 오류가 발생했습니다.');
+    }
+  };
+
+  // PDF 이미지 URL 생성 함수
+  const getPdfImageUrl = (document: Document) => {
+    if (!document.template?.pdfImagePath) {
+      return '';
+    }
+    const filename = document.template.pdfImagePath.split('/').pop()?.replace('.pdf', '.png') || '';
+    return `/uploads/pdf-templates/${filename}`;
+  };
+
+  // 여러 페이지 URL 배열 생성
+  const getPdfImageUrls = (document: Document): string[] => {
+    if (!document.template) return [];
+    return loadPdfPagesFromTemplate(document.template);
+  };
+
   if (!isOpen || !doc) return null;
 
   // 관리자 여부 확인 (position이 '교직원'인 경우)
@@ -245,12 +293,20 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                 {doc.title}
               </p>
             </div>
-            <button
-              onClick={onClose}
-              className="btn btn-primary text-sm"
-            >
-              닫기
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handlePreview}
+                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+              >
+                미리보기
+              </button>
+              <button
+                onClick={onClose}
+                className="btn btn-primary text-sm"
+              >
+                닫기
+              </button>
+            </div>
           </div>
           <div className="p-6">
           {/* 반려 상태 알림 */}
@@ -539,6 +595,19 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
           setSelectedRecipient(null);
         }}
         onSend={handleSendEmail}
+      />
+    )}
+
+    {/* 미리보기 모달 */}
+    {showPreview && doc && doc.template?.pdfImagePath && (
+      <DocumentPreviewModal
+        isOpen={showPreview}
+        onClose={() => setShowPreview(false)}
+        pdfImageUrl={getPdfImageUrl(doc)}
+        pdfImageUrls={getPdfImageUrls(doc)}
+        coordinateFields={coordinateFields}
+        signatureFields={signatureFields}
+        documentTitle={doc.title || doc.templateName}
       />
     )}
   </>
