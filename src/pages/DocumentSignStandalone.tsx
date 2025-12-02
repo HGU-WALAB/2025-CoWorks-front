@@ -449,9 +449,40 @@ const DocumentSignStandalone: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md w-full">
-          <p className="text-red-800">{error}</p>
+      <div className="min-h-screen w-full bg-gray-50 flex flex-col">
+        {/* 헤더 */}
+        <div className="bg-white border-b shadow-sm px-4 sm:px-6 py-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="text-xl font-semibold text-gray-900">문서 조회 오류</h1>
+            </div>
+          </div>
+        </div>
+
+        {/* 오류 메시지 */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-red-800 font-medium">{error}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.location.href = import.meta.env.VITE_PUBLIC_URL || 'https://coworks.kr'}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                CoWorks로 이동
+              </button>
+              <button
+                onClick={() => window.close()}
+                className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
