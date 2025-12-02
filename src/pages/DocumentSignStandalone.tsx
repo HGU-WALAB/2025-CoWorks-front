@@ -94,6 +94,7 @@ const DocumentSignStandalone: React.FC = () => {
   const [pdfScale, setPdfScale] = useState(1);
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartScale, setTouchStartScale] = useState<number>(1);
+  const [isManuallyScaled, setIsManuallyScaled] = useState(false); // 수동 줌 여부 추적
 
   // PDF 페이지 관리 훅 사용
   const {
@@ -134,11 +135,13 @@ const DocumentSignStandalone: React.FC = () => {
         const scale = currentDistance / touchStartDistance;
         const newScale = Math.max(0.5, Math.min(3, touchStartScale * scale));
         setPdfScale(newScale);
+        setIsManuallyScaled(true); // 수동 줌 활성화
       }
     };
 
     const handleTouchEnd = () => {
       setTouchStartDistance(null);
+      // 터치가 끝나도 스케일은 유지 (isManuallyScaled가 true로 유지됨)
     };
 
     // passive: false로 설정하여 preventDefault()가 작동하도록 함
@@ -159,8 +162,8 @@ const DocumentSignStandalone: React.FC = () => {
       return;
     }
 
-    // 터치 제스처가 없을 때만 자동 스케일 조정
-    if (touchStartDistance === null) {
+    // 터치 제스처가 없고 수동으로 조정하지 않았을 때만 자동 스케일 조정
+    if (touchStartDistance === null && !isManuallyScaled) {
       const updateScale = () => {
         const containerWidth = pdfContainerRef.current?.clientWidth ?? window.innerWidth;
         const computedScale = Math.min(1, containerWidth / PDF_WIDTH);
@@ -185,7 +188,7 @@ const DocumentSignStandalone: React.FC = () => {
         }
       };
     }
-  }, [currentDocument?.id, touchStartDistance]);
+  }, [currentDocument?.id, touchStartDistance, isManuallyScaled]);
 
   useEffect(() => {
     if (id) {
@@ -654,7 +657,11 @@ const DocumentSignStandalone: React.FC = () => {
               {/* PDF 컨테이너 */}
               <div
                 ref={pdfContainerRef}
-                className="w-full touch-none"
+                className="w-full overflow-auto"
+                style={{
+                  maxHeight: '80vh',
+                  touchAction: 'pan-x pan-y pinch-zoom'
+                }}
               >
                 <div
                   className="mx-auto origin-top-left"
