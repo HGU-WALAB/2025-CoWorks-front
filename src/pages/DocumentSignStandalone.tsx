@@ -714,26 +714,28 @@ const DocumentSignStandalone: React.FC = () => {
                             isSignerSignature = true;
                           }
 
-                          // 테이블 필드 확인
-                          if (field.tableData) {
+                          // 1. value를 파싱해서 테이블 데이터 확인 (우선순위 높음)
+                          if (field.value && typeof field.value === 'string' && !isEditorSignature && !isSignerSignature) {
+                            try {
+                              const parsedValue = JSON.parse(field.value);
+                              if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
+                                isTableField = true;
+                                tableInfo = {
+                                  rows: parsedValue.rows,
+                                  cols: parsedValue.cols,
+                                  columnWidths: parsedValue.columnWidths,
+                                  columnHeaders: parsedValue.columnHeaders
+                                };
+                              }
+                            } catch (e) {
+                              // JSON 파싱 실패 시 다음 단계로
+                            }
+                          }
+                          
+                          // 2. tableData 속성으로 확인 (value가 없거나 파싱 실패한 경우)
+                          if (!isTableField && field.tableData) {
                             isTableField = true;
                             tableInfo = field.tableData;
-                          } else {
-                            try {
-                              if (field.value && typeof field.value === 'string') {
-                                const parsedValue = JSON.parse(field.value);
-                                if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
-                                  isTableField = true;
-                                  tableInfo = {
-                                    rows: parsedValue.rows,
-                                    cols: parsedValue.cols,
-                                    columnWidths: parsedValue.columnWidths
-                                  };
-                                }
-                              }
-                            } catch {
-                              // JSON 파싱 실패 시 일반 필드로 처리
-                            }
                           }
 
                           // 본인 서명 필드인지 확인
@@ -802,6 +804,9 @@ const DocumentSignStandalone: React.FC = () => {
                                   }
 
                                   const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
+                                  const rowHeight = hasColumnHeaders 
+                                    ? `${heightPercent / (tableInfo.rows + 1)}px` 
+                                    : `${heightPercent / tableInfo.rows}px`;
 
                                   return (
                                     <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
@@ -818,6 +823,7 @@ const DocumentSignStandalone: React.FC = () => {
                                                   className="border border-purple-400 text-center"
                                                   style={{
                                                     width: cellWidth,
+                                                    height: rowHeight,
                                                     fontSize: `${Math.max((field.fontSize || 16) * 1.0, 10)}px`,
                                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                                     padding: '4px',
@@ -847,6 +853,7 @@ const DocumentSignStandalone: React.FC = () => {
                                                   className="border border-black text-center"
                                                   style={{
                                                     width: cellWidth,
+                                                    height: rowHeight,
                                                     fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
                                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                                     padding: '4px',
