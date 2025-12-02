@@ -189,20 +189,24 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               justifyContent: 'center',
             }}
           >
-            {isEditorSignature && field.value && field.value.startsWith('data:image') ? (
-              <img
-                src={field.value}
-                alt="작성자 서명"
-                className="w-full h-full object-contain"
-                style={{ background: 'transparent' }}
-              />
-            ) : isReviewerSignature && field.value && field.value.startsWith('data:image') ? (
-              <img
-                src={field.value}
-                alt="서명자 서명"
-                className="w-full h-full object-contain"
-                style={{ background: 'transparent' }}
-              />
+            {isEditorSignature ? (
+              field.value && field.value.startsWith('data:image') ? (
+                <img
+                  src={field.value}
+                  alt="작성자 서명"
+                  className="w-full h-full object-contain"
+                  style={{ background: 'transparent' }}
+                />
+              ) : null
+            ) : isReviewerSignature ? (
+              field.value && field.value.startsWith('data:image') ? (
+                <img
+                  src={field.value}
+                  alt="서명자 서명"
+                  className="w-full h-full object-contain"
+                  style={{ background: 'transparent' }}
+                />
+              ) : null
             ) : isTableField && tableInfo && tableData ? (
               (() => {
                 const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
@@ -643,14 +647,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                           className="w-full h-full object-contain"
                           style={{ background: 'transparent' }}
                         />
-                      ) : (
-                        <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
-                          <span>작성자 서명</span>
-                          {(field as any).editorName && (
-                            <span>({(field as any).editorName})</span>
-                          )}
-                        </div>
-                      )
+                      ) : null
                     ) : isReviewerSignature ? (
                       field.value && field.value.startsWith('data:image') ? (
                         <img
@@ -659,13 +656,7 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                           className="w-full h-full object-contain"
                           style={{ background: 'transparent' }}
                         />
-                      ) : (
-                        <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
-                          <span>
-                            {(field as any).reviewerName || (field as any).reviewerEmail || '검토자'} 서명
-                          </span>
-                        </div>
-                      )
+                      ) : null
                     ) : isTableField && tableInfo && tableData ? (
                       (() => {
                         const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
@@ -802,10 +793,10 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         <div className="p-4 border-t bg-gray-50">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              <div>입력된 필드: {coordinateFields.filter(f => f.value?.trim()).length} / {coordinateFields.length}</div>
+              {/* <div>입력된 필드: {coordinateFields.filter(f => f.value?.trim()).length} / {coordinateFields.length}</div>
               {signatureFields.length > 0 && (
                 <div className="mt-1">서명 필드: {signatureFields.filter(f => f.signatureData).length} / {signatureFields.length}</div>
-              )}
+              )} */}
             </div>
             <div className="flex gap-2">
               <button

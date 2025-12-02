@@ -94,6 +94,7 @@ const DocumentSignStandalone: React.FC = () => {
   const [pdfScale, setPdfScale] = useState(1);
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartScale, setTouchStartScale] = useState<number>(1);
+  const [isManuallyScaled, setIsManuallyScaled] = useState(false); // 수동 줌 여부 추적
 
   // PDF 페이지 관리 훅 사용
   const {
@@ -134,11 +135,13 @@ const DocumentSignStandalone: React.FC = () => {
         const scale = currentDistance / touchStartDistance;
         const newScale = Math.max(0.5, Math.min(3, touchStartScale * scale));
         setPdfScale(newScale);
+        setIsManuallyScaled(true); // 수동 줌 활성화
       }
     };
 
     const handleTouchEnd = () => {
       setTouchStartDistance(null);
+      // 터치가 끝나도 스케일은 유지 (isManuallyScaled가 true로 유지됨)
     };
 
     // passive: false로 설정하여 preventDefault()가 작동하도록 함
@@ -159,8 +162,8 @@ const DocumentSignStandalone: React.FC = () => {
       return;
     }
 
-    // 터치 제스처가 없을 때만 자동 스케일 조정
-    if (touchStartDistance === null) {
+    // 터치 제스처가 없고 수동으로 조정하지 않았을 때만 자동 스케일 조정
+    if (touchStartDistance === null && !isManuallyScaled) {
       const updateScale = () => {
         const containerWidth = pdfContainerRef.current?.clientWidth ?? window.innerWidth;
         const computedScale = Math.min(1, containerWidth / PDF_WIDTH);
@@ -185,7 +188,7 @@ const DocumentSignStandalone: React.FC = () => {
         }
       };
     }
-  }, [currentDocument?.id, touchStartDistance]);
+  }, [currentDocument?.id, touchStartDistance, isManuallyScaled]);
 
   useEffect(() => {
     if (id) {
@@ -446,9 +449,40 @@ const DocumentSignStandalone: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md w-full">
-          <p className="text-red-800">{error}</p>
+      <div className="min-h-screen w-full bg-gray-50 flex flex-col">
+        {/* 헤더 */}
+        <div className="bg-white border-b shadow-sm px-4 sm:px-6 py-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1 className="text-xl font-semibold text-gray-900">문서 조회 오류</h1>
+            </div>
+          </div>
+        </div>
+
+        {/* 오류 메시지 */}
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md w-full">
+            <div className="flex items-center gap-3 mb-4">
+              <svg className="w-6 h-6 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-red-800 font-medium">{error}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => window.location.href = import.meta.env.VITE_PUBLIC_URL || 'https://coworks.kr'}
+                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                CoWorks로 이동
+              </button>
+              <button
+                onClick={() => window.close()}
+                className="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -654,7 +688,11 @@ const DocumentSignStandalone: React.FC = () => {
               {/* PDF 컨테이너 */}
               <div
                 ref={pdfContainerRef}
-                className="w-full touch-none"
+                className="w-full overflow-auto"
+                style={{
+                  maxHeight: '80vh',
+                  touchAction: 'pan-x pan-y pinch-zoom'
+                }}
               >
                 <div
                   className="mx-auto origin-top-left"
@@ -714,26 +752,28 @@ const DocumentSignStandalone: React.FC = () => {
                             isSignerSignature = true;
                           }
 
-                          // 테이블 필드 확인
-                          if (field.tableData) {
+                          // 1. value를 파싱해서 테이블 데이터 확인 (우선순위 높음)
+                          if (field.value && typeof field.value === 'string' && !isEditorSignature && !isSignerSignature) {
+                            try {
+                              const parsedValue = JSON.parse(field.value);
+                              if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
+                                isTableField = true;
+                                tableInfo = {
+                                  rows: parsedValue.rows,
+                                  cols: parsedValue.cols,
+                                  columnWidths: parsedValue.columnWidths,
+                                  columnHeaders: parsedValue.columnHeaders
+                                };
+                              }
+                            } catch (e) {
+                              // JSON 파싱 실패 시 다음 단계로
+                            }
+                          }
+                          
+                          // 2. tableData 속성으로 확인 (value가 없거나 파싱 실패한 경우)
+                          if (!isTableField && field.tableData) {
                             isTableField = true;
                             tableInfo = field.tableData;
-                          } else {
-                            try {
-                              if (field.value && typeof field.value === 'string') {
-                                const parsedValue = JSON.parse(field.value);
-                                if (parsedValue.rows && parsedValue.cols && parsedValue.cells) {
-                                  isTableField = true;
-                                  tableInfo = {
-                                    rows: parsedValue.rows,
-                                    cols: parsedValue.cols,
-                                    columnWidths: parsedValue.columnWidths
-                                  };
-                                }
-                              }
-                            } catch {
-                              // JSON 파싱 실패 시 일반 필드로 처리
-                            }
                           }
 
                           // 본인 서명 필드인지 확인
@@ -802,6 +842,9 @@ const DocumentSignStandalone: React.FC = () => {
                                   }
 
                                   const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
+                                  const rowHeight = hasColumnHeaders 
+                                    ? `${heightPercent / (tableInfo.rows + 1)}px` 
+                                    : `${heightPercent / tableInfo.rows}px`;
 
                                   return (
                                     <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
@@ -818,6 +861,7 @@ const DocumentSignStandalone: React.FC = () => {
                                                   className="border border-purple-400 text-center"
                                                   style={{
                                                     width: cellWidth,
+                                                    height: rowHeight,
                                                     fontSize: `${Math.max((field.fontSize || 16) * 1.0, 10)}px`,
                                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                                     padding: '4px',
@@ -847,6 +891,7 @@ const DocumentSignStandalone: React.FC = () => {
                                                   className="border border-black text-center"
                                                   style={{
                                                     width: cellWidth,
+                                                    height: rowHeight,
                                                     fontSize: `${Math.max((field.fontSize || 18) * 1.2, 10)}px`,
                                                     fontFamily: `"${field.fontFamily || 'Arial'}", sans-serif`,
                                                     padding: '4px',
