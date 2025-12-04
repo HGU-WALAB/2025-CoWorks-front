@@ -10,6 +10,7 @@ interface TableBulkInputProps {
   };
   fieldLabel: string;
   existingData?: string[][]; // 기존 테이블 데이터
+  columnHeaders?: string[]; // 열 헤더 이름들
 }
 
 const TableBulkInput: React.FC<TableBulkInputProps> = ({
@@ -18,7 +19,8 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
   onApply,
   tableInfo,
   fieldLabel,
-  existingData
+  existingData,
+  columnHeaders
 }) => {
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState('');
@@ -77,7 +79,7 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
       );
 
       setPreview(adjustedData);
-    } catch (err) {
+    } catch {
       setError('텍스트 파싱 중 오류가 발생했습니다.');
       setPreview([]);
     }
@@ -189,6 +191,22 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
                 {preview.length > 0 ? (
                   <div className="overflow-auto max-h-80">
                     <table className="w-full border-collapse">
+                      {/* Column Headers */}
+                      {columnHeaders && columnHeaders.length > 0 && (
+                        <thead>
+                          <tr>
+                            {columnHeaders.map((header, colIndex) => (
+                              <th
+                                key={colIndex}
+                                className="border border-gray-300 p-2 text-sm text-center bg-purple-200 font-semibold text-gray-700"
+                                style={{ minWidth: '80px' }}
+                              >
+                                {header || `열 ${colIndex + 1}`}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                      )}
                       <tbody>
                         {preview.map((row, rowIndex) => (
                           <tr key={rowIndex}>
@@ -196,7 +214,7 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
                               <td
                                 key={colIndex}
                                 className={`border border-gray-300 p-2 text-sm text-center ${
-                                  cell ? 'bg-green-50' : 'bg-gray-50'
+                                  cell ? 'bg-blue-100' : 'bg-gray-50'
                                 }`}
                                 style={{ minWidth: '80px' }}
                               >

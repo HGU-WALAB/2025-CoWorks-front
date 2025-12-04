@@ -34,6 +34,7 @@ interface CoordinateField {
     cols: number;
     cells: string[][];
     columnWidths?: number[]; // 컬럼 너비 비율 추가
+    columnHeaders?: string[]; // 컬럼 헤더 이름들
   };
 }
 
@@ -58,6 +59,7 @@ interface TemplateField {
     cols: number;
     cells: string[][]; // 각 셀의 내용
     columnWidths?: number[]; // 컬럼 너비 비율 추가
+    columnHeaders?: string[]; // 컬럼 헤더 이름들
   };
 }
 
@@ -100,6 +102,7 @@ const DocumentEditor: React.FC = () => {
   const [currentTableInfo, setCurrentTableInfo] = useState<{ rows: number; cols: number } | null>(null);
   const [currentTableLabel, setCurrentTableLabel] = useState<string>('');
   const [currentTableData, setCurrentTableData] = useState<string[][] | undefined>(undefined);
+  const [currentTableColumnHeaders, setCurrentTableColumnHeaders] = useState<string[] | undefined>(undefined);
 
   // 문서 데이터 불러오기 모달 상태
   const [showLoadDataModal, setShowLoadDataModal] = useState(false);
@@ -724,10 +727,17 @@ const DocumentEditor: React.FC = () => {
       );
     }
 
+    // column headers 추출
+    let columnHeaders: string[] | undefined = undefined;
+    if (field.tableData.columnHeaders && Array.isArray(field.tableData.columnHeaders)) {
+      columnHeaders = field.tableData.columnHeaders;
+    }
+
     setCurrentTableFieldId(fieldId);
     setCurrentTableInfo({ rows: field.tableData.rows, cols: field.tableData.cols });
     setCurrentTableLabel(field.label || '표');
     setCurrentTableData(existingTableData);
+    setCurrentTableColumnHeaders(columnHeaders);
     setShowTableBulkInput(true);
   }, [coordinateFields]);
 
@@ -737,6 +747,7 @@ const DocumentEditor: React.FC = () => {
     setCurrentTableInfo(null);
     setCurrentTableLabel('');
     setCurrentTableData(undefined);
+    setCurrentTableColumnHeaders(undefined);
   }, []);
 
   const handleTableBulkInputApply = useCallback((data: string[][]) => {
@@ -2509,6 +2520,7 @@ const DocumentEditor: React.FC = () => {
           tableInfo={currentTableInfo}
           fieldLabel={currentTableLabel}
           existingData={currentTableData}
+          columnHeaders={currentTableColumnHeaders}
         />
       )}
 
