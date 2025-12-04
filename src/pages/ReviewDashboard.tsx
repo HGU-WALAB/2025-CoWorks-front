@@ -21,10 +21,21 @@ const ReviewDashboard: React.FC = () => {
     }
   }, [isAuthenticated, fetchDocuments, loadFolderContents]);
 
-  // 검토 단계 문서만 필터링
+  // 검토 단계 문서 중 현재 사용자가 검토자인 문서만 필터링
   const reviewingDocuments = useMemo(() => {
-    return documents.filter(doc => doc.status === 'REVIEWING');
-  }, [documents]);
+    return documents.filter(doc => {
+      // REVIEWING 상태가 아니면 제외
+      if (doc.status !== 'REVIEWING') return false;
+      
+      // 현재 사용자가 검토자인지 확인
+      const isReviewer = doc.tasks?.some(task => 
+        task.role === 'REVIEWER' && 
+        (task.assignedUserEmail === user?.email || task.assignedUserId === user?.id)
+      );
+      
+      return isReviewer;
+    });
+  }, [documents, user]);
 
   // 폴더별 검토 문서 통계
   const folderStats = useMemo(() => {

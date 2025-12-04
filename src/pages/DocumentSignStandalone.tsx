@@ -228,6 +228,17 @@ const DocumentSignStandalone: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ 토큰 기반 문서 조회 실패:', error);
+      
+      // 401 에러인 경우 (토큰 만료/무효) - 이미 서명이 완료된 상태일 수 있음
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        // 현재 문서가 이미 로드되어 있고 서명이 완료된 경우, 에러를 무시하고 계속 진행
+        if (currentDocument && (hasCurrentUserSigned() || currentDocument.status === 'COMPLETED')) {
+          console.log('✅ 서명 완료된 문서 - 토큰 만료는 정상');
+          setSubmissionResult('success');
+          return;
+        }
+      }
+      
       useDocumentStore.setState({
         loading: false,
         error: '문서를 불러올 수 없습니다. 링크가 만료되었거나 유효하지 않습니다.'
@@ -319,9 +330,11 @@ const DocumentSignStandalone: React.FC = () => {
 
     setIsSubmitting(true);
     try {
+      let responseData;
+      
       // 익명 사용자는 토큰 기반 API 사용
       if (isAnonymousUser && token) {
-        await axios.post(
+        const response = await axios.post(
           `${API_BASE_URL}/public/sign/${currentDocument.id}?token=${token}`,
           { signature: signatureData },
           {
@@ -330,10 +343,11 @@ const DocumentSignStandalone: React.FC = () => {
             }
           }
         );
+        responseData = response.data;
       } else {
         // 로그인 사용자는 기존 API 사용
         const authToken = useAuthStore.getState().token;
-        await axios.post(
+        const response = await axios.post(
           `${API_BASE_URL}/documents/${currentDocument.id}/sign`,
           { signature: signatureData },
           {
@@ -343,12 +357,56 @@ const DocumentSignStandalone: React.FC = () => {
             }
           }
         );
+        responseData = response.data;
       }
       
       setShowSignatureModal(false);
       
-      // 서명 완료 후 페이지 새로고침하여 서명이 반영된 문서 표시
-      window.location.reload();
+      // 서명 완료 상태 설정
+      setSubmissionResult('success');
+      
+      // 서명 성공 응답에서 업데이트된 문서 정보가 있으면 사용
+      if (responseData && responseData.document) {
+        useDocumentStore.setState({ 
+          currentDocument: responseData.document,
+          loading: false,
+          error: null
+        });
+      } else {
+        // 응답에 문서 정보가 없으면 토큰 기반으로 문서 다시 불러오기 시도
+        if (token) {
+          try {
+            await fetchDocumentWithToken(parseInt(id!), token);
+          } catch (refreshError) {
+            // 토큰이 만료되어 새로고침 실패해도 괜찮음 - 이미 서명은 완료됨
+            console.log('문서 새로고침 실패 (정상) - 서명은 완료됨');
+            
+            // 로컬 상태에 서명 데이터 직접 추가
+            const updatedDocument = { ...currentDocument };
+            if (updatedDocument.data?.coordinateFields) {
+              const currentUserEmail = isAnonymousUser ? anonymousUserEmail : user?.email;
+              updatedDocument.data.coordinateFields = updatedDocument.data.coordinateFields.map((field: any) => {
+                if (
+                  (field.type === 'signer_signature' || field.type === 'reviewer_signature') &&
+                  (field.signerEmail === currentUserEmail || field.reviewerEmail === currentUserEmail) &&
+                  !field.value
+                ) {
+                  return { ...field, value: signatureData };
+                }
+                return field;
+              });
+              
+              useDocumentStore.setState({ 
+                currentDocument: updatedDocument,
+                loading: false,
+                error: null
+              });
+            }
+          }
+        } else if (isAuthenticated) {
+          await getDocument(parseInt(id!));
+        }
+      }
       
     } catch (error) {
       console.error('❌ 서명 실패:', error);
@@ -405,8 +463,20 @@ const DocumentSignStandalone: React.FC = () => {
 
       setShowRejectModal(false);
       
-      // 반려 완료 후 페이지 새로고침
-      window.location.reload();
+      // 반려 완료 상태 설정
+      setSubmissionResult('rejected');
+      
+      // 토큰이 있으면 토큰 기반으로 문서 다시 불러오기 시도 (실패해도 괜찮음)
+      if (token) {
+        try {
+          await fetchDocumentWithToken(parseInt(id!), token);
+        } catch (refreshError) {
+          // 토큰이 만료되어 새로고침 실패해도 괜찮음 - 이미 반려는 완료됨
+          console.log('문서 새로고침 실패 (정상) - 반려는 완료됨');
+        }
+      } else if (isAuthenticated) {
+        await getDocument(parseInt(id!));
+      }
       
     } catch (error) {
       console.error('반려 실패:', error);
@@ -604,7 +674,7 @@ const DocumentSignStandalone: React.FC = () => {
           </div>
 
           {/* 서명 완료 메시지 - 상단 버튼으로 표시 */}
-          {isSigner() && hasCurrentUserSigned() && (
+          {(isSigner() && hasCurrentUserSigned() || submissionResult === 'success') && (
             <div className="flex flex-col sm:flex-row items-center gap-3 px-4 py-3 bg-green-50 border border-green-300 rounded-lg">
               <div className="flex items-center gap-2 flex-1">
                 <svg className="w-5 h-5 text-green-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -618,6 +688,39 @@ const DocumentSignStandalone: React.FC = () => {
                     {currentDocument.status === 'COMPLETED' 
                       ? '모든 서명이 완료되었습니다.' 
                       : '다른 서명자의 서명을 기다리고 있습니다.'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.location.href = import.meta.env.VITE_PUBLIC_URL || 'https://coworks.kr'}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                >
+                  CoWorks로 이동
+                </button>
+                <button
+                  onClick={() => window.close()}
+                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* 반려 완료 메시지 */}
+          {submissionResult === 'rejected' && (
+            <div className="flex flex-col sm:flex-row items-center gap-3 px-4 py-3 bg-red-50 border border-red-300 rounded-lg">
+              <div className="flex items-center gap-2 flex-1">
+                <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293z" clipRule="evenodd" />
+                </svg>
+                <div>
+                  <span className="text-sm font-bold text-red-800 block">
+                    문서가 반려되었습니다
+                  </span>
+                  <span className="text-xs text-red-700">
+                    문서가 반려 처리되었습니다.
                   </span>
                 </div>
               </div>
@@ -782,12 +885,15 @@ const DocumentSignStandalone: React.FC = () => {
                             (field as any).signerEmail === currentUserEmail || 
                             (field as any).reviewerEmail === currentUserEmail
                           );
+                          
+                          // 서명이 아직 없는 본인 필드에만 테두리 표시
+                          const showBorder = isCurrentUserSignature && !field.value;
 
                           return (
                             <div
                               key={field.id}
                               className={`absolute ${
-                                isCurrentUserSignature 
+                                showBorder
                                   ? 'border-2 bg-red-100 border-red-500 bg-opacity-30' 
                                   : ''
                               }`}
@@ -819,7 +925,7 @@ const DocumentSignStandalone: React.FC = () => {
                                   className="w-full h-full object-contain"
                                   style={{ background: 'transparent' }}
                                 />
-                              ) : isCurrentUserSignature ? (
+                              ) : isCurrentUserSignature && !field.value ? (
                                 <div className="text-xs text-red-700 font-medium text-center p-2 flex items-center justify-center gap-1 flex-wrap">
                                   <span>
                                     {(field as any).signerName || (field as any).reviewerName || (field as any).signerEmail || (field as any).reviewerEmail || '서명자'} 서명
