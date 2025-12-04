@@ -49,6 +49,20 @@ const TemplateList: React.FC = () => {
     return user?.name === template.createdByName;
   };
 
+  // 교직원이거나 템플릿 소유자인 경우 편집/복제/삭제 가능
+  const canManageTemplate = (template: Template) => {
+    const isStaff = user?.position === '교직원';
+    const isOwner = isTemplateOwner(template);
+    console.log('🔍 권한 체크:', { 
+      userPosition: user?.position, 
+      isStaff, 
+      isOwner, 
+      templateCreator: template.createdByName,
+      currentUser: user?.name 
+    });
+    return isStaff || isOwner;
+  };
+
   const handleDeleteTemplate = async (templateId: number, templateName: string) => {
     if (window.confirm(`"${templateName}" 템플릿을 삭제하시겠습니까?`)) {
       try {
@@ -231,7 +245,7 @@ const TemplateList: React.FC = () => {
                       )}
                       
                       <div className="flex space-x-2">
-                        {isTemplateOwner(template) && (
+                        {canManageTemplate(template) && (
                           <>
                             <Link
                               to={`/templates/edit/${template.id}`}

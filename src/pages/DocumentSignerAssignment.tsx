@@ -191,24 +191,6 @@ const DocumentSignerAssignment: React.FC = () => {
       // 입력 필드 초기화
       setSelectedReviewer('');
 
-      // 자동 매핑 로직: 서명자가 1명이고 서명 필드가 1개인 경우 자동 매핑
-      const signerFields = getSignerSignatureFieldsFromTemplate();
-      const allSigners = [...pendingSigners, newSigner];
-      
-      if (allSigners.length === 1 && signerFields.length === 1) {
-        const field = signerFields[0];
-        setReviewerFieldMappings({
-          [field.id]: {
-            email: newSigner.email,
-            name: newSigner.name
-          }
-        });
-        console.log('🔄 자동 매핑 완료:', {
-          fieldId: field.id,
-          signerEmail: newSigner.email
-        });
-      }
-
       alert('서명자가 추가되었습니다.\n\n아래에서 각 서명 필드에 서명자를 매핑해주세요.');
     } catch (error: any) {
       console.error('❌ 사용자 정보 조회 실패:', error);
