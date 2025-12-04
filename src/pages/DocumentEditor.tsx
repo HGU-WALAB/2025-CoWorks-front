@@ -103,6 +103,7 @@ const DocumentEditor: React.FC = () => {
   const [currentTableLabel, setCurrentTableLabel] = useState<string>('');
   const [currentTableData, setCurrentTableData] = useState<string[][] | undefined>(undefined);
   const [currentTableColumnHeaders, setCurrentTableColumnHeaders] = useState<string[] | undefined>(undefined);
+  const [currentTableColumnWidths, setCurrentTableColumnWidths] = useState<number[] | undefined>(undefined);
 
   // 문서 데이터 불러오기 모달 상태
   const [showLoadDataModal, setShowLoadDataModal] = useState(false);
@@ -733,11 +734,18 @@ const DocumentEditor: React.FC = () => {
       columnHeaders = field.tableData.columnHeaders;
     }
 
+    // column widths 추출
+    let columnWidths: number[] | undefined = undefined;
+    if (field.tableData.columnWidths && Array.isArray(field.tableData.columnWidths)) {
+      columnWidths = field.tableData.columnWidths;
+    }
+
     setCurrentTableFieldId(fieldId);
     setCurrentTableInfo({ rows: field.tableData.rows, cols: field.tableData.cols });
     setCurrentTableLabel(field.label || '표');
     setCurrentTableData(existingTableData);
     setCurrentTableColumnHeaders(columnHeaders);
+    setCurrentTableColumnWidths(columnWidths);
     setShowTableBulkInput(true);
   }, [coordinateFields]);
 
@@ -748,6 +756,7 @@ const DocumentEditor: React.FC = () => {
     setCurrentTableLabel('');
     setCurrentTableData(undefined);
     setCurrentTableColumnHeaders(undefined);
+    setCurrentTableColumnWidths(undefined);
   }, []);
 
   const handleTableBulkInputApply = useCallback((data: string[][]) => {
@@ -2521,6 +2530,7 @@ const DocumentEditor: React.FC = () => {
           fieldLabel={currentTableLabel}
           existingData={currentTableData}
           columnHeaders={currentTableColumnHeaders}
+          columnWidths={currentTableColumnWidths}
         />
       )}
 

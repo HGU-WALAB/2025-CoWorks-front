@@ -11,6 +11,7 @@ interface TableBulkInputProps {
   fieldLabel: string;
   existingData?: string[][]; // 기존 테이블 데이터
   columnHeaders?: string[]; // 열 헤더 이름들
+  columnWidths?: number[]; // 열 너비 비율들
 }
 
 const TableBulkInput: React.FC<TableBulkInputProps> = ({
@@ -20,7 +21,8 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
   tableInfo,
   fieldLabel,
   existingData,
-  columnHeaders
+  columnHeaders,
+  columnWidths
 }) => {
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState('');
@@ -141,16 +143,16 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-xl font-bold text-gray-800">표 한번에 적기</h2>
+      <div className="bg-white rounded-lg max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+        <div className="border-b border-gray-200 px-8 py-5">
+          <h2 className="text-2xl font-bold text-gray-800">표 한번에 적기</h2>
           <p className="text-sm text-gray-600 mt-1">
             {fieldLabel} ({tableInfo.rows}행 × {tableInfo.cols}열)
           </p>
         </div>
 
-        <div className="flex-1 overflow-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+        <div className="flex-1 overflow-auto p-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
             {/* 입력 영역 */}
             <div className="flex flex-col">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -169,7 +171,7 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
                 placeholder={`예시:\n사과|바나나|오렌지\n빨강|노랑|주황\n달콤|부드러움|상큼`}
                 className="flex-1 w-full p-3 border
                 border-gray-300 rounded-lg focus:ring-2
-                focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm min-h-[200px]"
+                focus:ring-blue-500 focus:border-transparent resize-none font-mono text-sm min-h-[300px]"
                 wrap="off"
               />
 
@@ -187,49 +189,63 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 미리보기
               </label>
-              <div className="border border-gray-300 rounded-lg overflow-hidden flex-1 min-h-[200px]">
+              <div className="border border-gray-300 rounded-lg overflow-hidden flex-1 min-h-[300px]">
                 {preview.length > 0 ? (
-                  <div className="overflow-auto max-h-80">
+                  <div className="overflow-auto max-h-[600px]">
                     <table className="w-full border-collapse">
                       {/* Column Headers */}
                       {columnHeaders && columnHeaders.length > 0 && (
                         <thead>
                           <tr>
-                            {columnHeaders.map((header, colIndex) => (
-                              <th
-                                key={colIndex}
-                                className="border border-gray-300 p-2 text-sm text-center bg-purple-200 font-semibold text-gray-700"
-                                style={{ minWidth: '80px' }}
-                              >
-                                {header || `열 ${colIndex + 1}`}
-                              </th>
-                            ))}
+                            {columnHeaders.map((header, colIndex) => {
+                              // columnWidths가 있으면 해당 비율로, 없으면 균등 분배
+                              const width = columnWidths && columnWidths[colIndex] 
+                                ? `${(columnWidths[colIndex] * 100).toFixed(2)}%`
+                                : `${(100 / tableInfo.cols).toFixed(2)}%`;
+                              
+                              return (
+                                <th
+                                  key={colIndex}
+                                  className="border border-gray-300 p-2 text-sm text-center bg-purple-200 font-semibold text-gray-700"
+                                  style={{ width, minWidth: '60px' }}
+                                >
+                                  {header || `열 ${colIndex + 1}`}
+                                </th>
+                              );
+                            })}
                           </tr>
                         </thead>
                       )}
                       <tbody>
                         {preview.map((row, rowIndex) => (
                           <tr key={rowIndex}>
-                            {row.map((cell, colIndex) => (
-                              <td
-                                key={colIndex}
-                                className={`border border-gray-300 p-2 text-sm text-center ${
-                                  cell ? 'bg-blue-100' : 'bg-gray-50'
-                                }`}
-                                style={{ minWidth: '80px' }}
-                              >
-                                {cell || (
-                                  <span className="text-gray-400 text-xs">빈 칸</span>
-                                )}
-                              </td>
-                            ))}
+                            {row.map((cell, colIndex) => {
+                              // columnWidths가 있으면 해당 비율로, 없으면 균등 분배
+                              const width = columnWidths && columnWidths[colIndex] 
+                                ? `${(columnWidths[colIndex] * 100).toFixed(2)}%`
+                                : `${(100 / tableInfo.cols).toFixed(2)}%`;
+                              
+                              return (
+                                <td
+                                  key={colIndex}
+                                  className={`border border-gray-300 p-2 text-sm text-center ${
+                                    cell ? 'bg-blue-100' : 'bg-gray-50'
+                                  }`}
+                                  style={{ width, minWidth: '60px' }}
+                                >
+                                  {cell || (
+                                    <span className="text-gray-400 text-xs">빈 칸</span>
+                                  )}
+                                </td>
+                              );
+                            })}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 ) : (
-                  <div className="h-80 flex items-center justify-center text-gray-500">
+                  <div className="h-[300px] flex items-center justify-center text-gray-500">
                     <div className="text-center">
                       <div className="text-4xl mb-2">📋</div>
                       <div>데이터를 입력하면 미리보기가 표시됩니다</div>
@@ -241,17 +257,17 @@ const TableBulkInput: React.FC<TableBulkInputProps> = ({
           </div>
         </div>
 
-        <div className="border-t border-gray-200 px-6 py-4 flex justify-end space-x-3">
+        <div className="border-t border-gray-200 px-8 py-5 flex justify-end space-x-4">
           <button
             onClick={handleClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-6 py-2.5 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
           >
             취소
           </button>
           <button
             onClick={handleApply}
             disabled={!!error || preview.length === 0}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`px-6 py-2.5 rounded-lg transition-colors font-medium ${
               error || preview.length === 0
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
