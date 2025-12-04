@@ -219,14 +219,14 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                     {/* 열 헤더가 있는 경우 표시 */}
                     {hasColumnHeaders && (
                       <thead>
-                        <tr className="bg-purple-100">
+                        <tr>
                           {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
                             const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
                             const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
                             return (
                               <th
                                 key={`header-${colIndex}`}
-                                className="border border-purple-400 text-center"
+                                className="border border-black text-center"
                                 style={{
                                   width: cellWidth,
                                   height: rowHeight,
@@ -236,11 +236,11 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                                   fontWeight: '600',
                                   lineHeight: '1.2',
                                   overflow: 'hidden',
-                                  backgroundColor: '#e9d5ff',
-                                  color: '#6b21a8'
+                                  backgroundColor: 'white',
+                                  color: 'black'
                                 }}
                               >
-                                {headerText || (colIndex + 1)}
+                                {headerText || `열 ${colIndex + 1}`}
                               </th>
                             );
                           })}
@@ -669,14 +669,14 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                             {/* 열 헤더가 있는 경우 표시 */}
                             {hasColumnHeaders && (
                               <thead>
-                                <tr className="bg-purple-100">
+                                <tr>
                                   {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
                                     const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
                                     const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
                                     return (
                                       <th
                                         key={`header-${colIndex}`}
-                                        className="border border-purple-400 text-center"
+                                        className="border border-black text-center"
                                         style={{
                                           width: cellWidth,
                                           height: rowHeight,
@@ -686,11 +686,11 @@ const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                                           fontWeight: '600',
                                           lineHeight: '1.2',
                                           overflow: 'hidden',
-                                          backgroundColor: '#e9d5ff',
-                                          color: '#6b21a8'
+                                          backgroundColor: 'white',
+                                          color: 'black'
                                         }}
                                       >
-                                        {headerText || (colIndex + 1)}
+                                        {headerText || `열 ${colIndex + 1}`}
                                       </th>
                                     );
                                   })}
