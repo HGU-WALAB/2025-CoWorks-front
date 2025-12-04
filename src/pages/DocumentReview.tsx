@@ -592,7 +592,7 @@ const DocumentReview: React.FC = () => {
                               rows: parsedValue.rows,
                               cols: parsedValue.cols,
                               columnWidths: parsedValue.columnWidths,
-                              columnHeaders: parsedValue.columnHeaders
+                              columnHeaders: parsedValue.columnHeaders || field.tableData?.columnHeaders
                             };
                           }
                         } catch (e) {
@@ -603,7 +603,18 @@ const DocumentReview: React.FC = () => {
                       // 2. tableData 속성으로 확인 (value가 없거나 파싱 실패한 경우)
                       if (!isTableField && field.tableData) {
                         isTableField = true;
-                        tableInfo = field.tableData;
+                        tableInfo = {
+                          rows: field.tableData.rows,
+                          cols: field.tableData.cols,
+                          columnWidths: field.tableData.columnWidths,
+                          columnHeaders: field.tableData.columnHeaders
+                        };
+                        // 디버깅: columnHeaders 확인
+                        console.log('🔍 DocumentReview - tableData에서 columnHeaders 확인:', {
+                          fieldId: field.id,
+                          columnHeaders: field.tableData.columnHeaders,
+                          tableInfo: tableInfo
+                        });
                       }
 
                       return (
@@ -680,7 +691,7 @@ const DocumentReview: React.FC = () => {
                                 console.error('테이블 데이터 파싱 실패:', err);
                               }
 
-                              const hasColumnHeaders = tableInfo.columnHeaders && tableInfo.columnHeaders.some((h: string) => h);
+                              const hasColumnHeaders = tableInfo.columnHeaders && Array.isArray(tableInfo.columnHeaders) && tableInfo.columnHeaders.length > 0;
                               const rowHeight = hasColumnHeaders 
                                 ? `${heightPercent / (tableInfo.rows + 1)}px` 
                                 : `${heightPercent / tableInfo.rows}px`;
@@ -711,7 +722,7 @@ const DocumentReview: React.FC = () => {
                                                 color: '#6b21a8'
                                               }}
                                             >
-                                              {headerText || (colIndex + 1)}
+                                              {headerText || `열 ${colIndex + 1}`}
                                             </th>
                                           );
                                         })}
