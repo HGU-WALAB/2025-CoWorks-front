@@ -228,14 +228,14 @@ const DocumentCompleted: React.FC = () => {
                 <table className="w-full h-full border-collapse" style={{ border: '2px solid black', tableLayout: 'fixed' }}>
                   {hasColumnHeaders && (
                     <thead>
-                      <tr className="bg-purple-100">
+                      <tr>
                         {Array(tableInfo!.cols).fill(null).map((_, colIndex) => {
                           const headerText = tableInfo!.columnHeaders?.[colIndex] || '';
                           const cellWidth = tableInfo!.columnWidths ? `${tableInfo!.columnWidths[colIndex] * 100}%` : `${100 / tableInfo!.cols}%`;
                           return (
                             <th
                               key={`header-${colIndex}`}
-                              className="border border-purple-400 text-center"
+                              className="border border-black text-center"
                               style={{
                                 width: cellWidth,
                                 height: rowHeight,
@@ -245,11 +245,11 @@ const DocumentCompleted: React.FC = () => {
                                 fontWeight: '600',
                                 lineHeight: '1.2',
                                 overflow: 'hidden',
-                                backgroundColor: '#e9d5ff',
-                                color: '#6b21a8'
+                                backgroundColor: 'white',
+                                color: 'black'
                               }}
                             >
-                              {headerText || (colIndex + 1)}
+                              {headerText || `열 ${colIndex + 1}`}
                             </th>
                           );
                         })}
