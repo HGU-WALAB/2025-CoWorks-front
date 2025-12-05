@@ -2091,11 +2091,18 @@ const DocumentEditor: React.FC = () => {
 
           {/* 고정 헤더 */}
           <div className="p-4 border-b bg-gray-50 flex-shrink-0">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-medium text-gray-900">문서 필드</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-medium text-gray-900">
+                문서 필드: <span className="text-gray-500 font-normal">{coordinateFields.filter(field => ((field as any).page || 1) === currentPageNumber).length}개 필드</span>
+              </h2>
+              {totalPages > 1 && (
+                <p className="text-xs text-gray-400">
+                  키보드: ← → 로 페이지 이동
+                </p>
+              )}
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm mb-3">
+              <div className="flex items-center justify-center gap-2 bg-white px-3 py-1.5 rounded-lg border shadow-sm">
                 <button
                   onClick={() => setCurrentPageNumber(prev => Math.max(1, prev - 1))}
                   disabled={currentPageNumber <= 1}
@@ -2121,16 +2128,6 @@ const DocumentEditor: React.FC = () => {
                 </button>
               </div>
             )}
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                {coordinateFields.filter(field => ((field as any).page || 1) === currentPageNumber).length}개 필드
-              </p>
-              {totalPages > 1 && (
-                <p className="text-xs text-gray-400">
-                  키보드: ← → 로 페이지 이동
-                </p>
-              )}
-            </div>
           </div>
 
           {/* 스크롤 가능한 필드 목록 */}
