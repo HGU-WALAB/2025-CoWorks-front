@@ -15,6 +15,19 @@ const UserDashboard: React.FC = () => {
   
   // 필터 상태 추가
   const [selectedFilter, setSelectedFilter] = React.useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = React.useState<string>('all');
+
+  // 문서들에서 년도 목록 추출
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    todoDocuments.forEach(doc => {
+      if (doc.createdAt) {
+        const year = new Date(doc.createdAt).getFullYear();
+        years.add(year);
+      }
+    });
+    return Array.from(years).sort((a, b) => b - a); // 최신순 정렬
+  }, [todoDocuments]);
 
   useEffect(() => {
     if (isAuthenticated && currentUserEmail) {
@@ -148,7 +161,18 @@ const UserDashboard: React.FC = () => {
       return true;
     });
 
-    // 필터 적용
+    // 년도 필터 적용
+    if (selectedYear && selectedYear !== 'all') {
+      filtered = filtered.filter(doc => {
+        if (doc.createdAt) {
+          const docYear = new Date(doc.createdAt).getFullYear();
+          return docYear === parseInt(selectedYear);
+        }
+        return false;
+      });
+    }
+
+    // 상태 필터 적용
     if (selectedFilter && selectedFilter !== 'ALL') {
       filtered = filtered.filter(doc => {
         if (selectedFilter === 'EDITING') {
@@ -169,7 +193,7 @@ const UserDashboard: React.FC = () => {
     });
 
     return sorted;
-  }, [todoDocuments, currentUserEmail, selectedFilter]);
+  }, [todoDocuments, currentUserEmail, selectedFilter, selectedYear]);
 
   // 인증되지 않은 경우 처리
   if (!isAuthenticated) {
@@ -270,9 +294,31 @@ const UserDashboard: React.FC = () => {
     return (
       <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm overflow-hidden">
         <div className="px-6 py-5 border-b-2 border-gray-200">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-6 bg-gradient-to-b from-primary-500 to-primary-600 rounded-full"></div>
-            <h2 className="text-xl font-semibold text-gray-900">처리 대기 문서</h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 bg-gradient-to-b from-primary-500 to-primary-600 rounded-full"></div>
+              <h2 className="text-xl font-semibold text-gray-900">처리 대기 문서</h2>
+            </div>
+            
+            {/* 년도 필터 드롭다운 */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="year-filter" className="text-sm font-medium text-gray-700">
+                생성 년도:
+              </label>
+              <select
+                id="year-filter"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+              >
+                <option value="all">전체</option>
+                {availableYears.map(year => (
+                  <option key={year} value={year.toString()}>
+                    {year}년
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         
@@ -323,7 +369,7 @@ const UserDashboard: React.FC = () => {
                       bgColor: 'bg-blue-100',
                       textColor: 'text-blue-700',
                       borderColor: 'border-blue-200',
-                      label: '작성중'
+                      label: '작성 단계'
                     };
                   } else {
                     return null;
@@ -353,7 +399,7 @@ const UserDashboard: React.FC = () => {
                     bgColor: 'bg-orange-100',
                     textColor: 'text-orange-700',
                     borderColor: 'border-orange-200',
-                    label: '서명중'
+                    label: '서명 단계'
                   };
                   break;
                 case 'REJECTED':
@@ -514,7 +560,7 @@ const UserDashboard: React.FC = () => {
               <Link to="/documents?status=EDITING" className="block">
                 <button className="w-full h-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5">
                   <div className="text-4xl font-bold mb-2 text-gray-900">{tasks.editingTasks.length}</div>
-                  <div className="text-sm font-medium text-gray-600">작성중</div>
+                  <div className="text-sm font-medium text-gray-600">작성 단계</div>
                   </button>
                 </Link>
               ) : (
@@ -531,7 +577,7 @@ const UserDashboard: React.FC = () => {
                   }`}>{tasks.editingTasks.length}</div>
                   <div className={`text-sm font-medium ${
                     selectedFilter === 'EDITING' ? 'text-primary-100' : 'text-gray-600'
-                  }`}>작성중</div>
+                  }`}>작성 단계</div>
                 </button>
               )}
 
@@ -550,7 +596,7 @@ const UserDashboard: React.FC = () => {
               <Link to="/documents?status=SIGNING" className="block">
                 <button className="w-full h-full p-5 rounded-xl transition-all duration-200 bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md hover:-translate-y-0.5">
                   <div className="text-4xl font-bold mb-2 text-gray-900">{tasks.signingTasks.length}</div>
-                  <div className="text-sm font-medium text-gray-600">서명중</div>
+                  <div className="text-sm font-medium text-gray-600">서명 단계</div>
                   </button>
                 </Link>
               ) : (
@@ -567,7 +613,7 @@ const UserDashboard: React.FC = () => {
                   }`}>{tasks.signingTasks.length}</div>
                   <div className={`text-sm font-medium ${
                     selectedFilter === 'SIGNING' ? 'text-primary-100' : 'text-gray-600'
-                  }`}>서명중</div>
+                  }`}>서명 단계</div>
                 </button>
               )}
 
@@ -632,8 +678,8 @@ const UserDashboard: React.FC = () => {
           <div className="mb-4 flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-gray-700">필터:</span>
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg text-sm font-medium shadow-sm">
-              {selectedFilter === 'EDITING' ? '작성중' :
-               selectedFilter === 'SIGNING' ? '서명중' :
+              {selectedFilter === 'EDITING' ? '작성 단계' :
+               selectedFilter === 'SIGNING' ? '서명 단계' :
                selectedFilter === 'REJECTED' ? '반려' : selectedFilter}
               <button onClick={() => setSelectedFilter('ALL')} className="hover:bg-white/20 rounded-full p-0.5 transition-colors">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
