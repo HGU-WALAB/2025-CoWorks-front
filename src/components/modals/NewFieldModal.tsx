@@ -20,7 +20,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
   defaultFontFamily
 }) => {
   const [label, setLabel] = useState('');
-  const [required, setRequired] = useState(false);
+  const [required, setRequired] = useState(true);
   const [fieldTypeOption, setFieldTypeOption] = useState<'normal' | 'table' | 'editor_signature' | 'reviewer_signature'>('normal');
   const [tableRows, setTableRows] = useState(2);
   const [tableCols, setTableCols] = useState(2);
@@ -29,7 +29,7 @@ const NewFieldModal: React.FC<NewFieldModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLabel('');
-      setRequired(false);
+      setRequired(true);
       setFieldTypeOption('normal');
       setTableRows(2);
       setTableCols(2);
