@@ -7,7 +7,6 @@ import NewFieldModal from '../../components/modals/NewFieldModal';
 import FieldEditModal from '../../components/modals/FieldEditModal';
 import TableCellEditModal from '../../components/modals/TableCellEditModal';
 import FolderSelector from '../../components/FolderSelector';
-import FolderCreateModal from '../../components/FolderCreateModal';
 import FolderLocationSelector from '../../components/FolderLocationSelector';
 import { folderService } from '../../services/folderService';
 import FieldManagement from './components/FieldManagement';
@@ -42,8 +41,8 @@ const TemplateUpload: React.FC = () => {
   const [description, setDescription] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedParentFolderId, setSelectedParentFolderId] = useState<string | null>(null);
+  const [newFolderName, setNewFolderName] = useState('');
   const [uploading, setUploading] = useState(false);
   const [, setError] = useState<string | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
@@ -472,16 +471,34 @@ const TemplateUpload: React.FC = () => {
       // FolderSelector 새로고침 트리거
       setFolderRefreshTrigger(prev => prev + 1);
       
-      // 모달 닫기
-      setShowCreateModal(false);
-      setSelectedParentFolderId(null);
+      // 모달 닫기 및 상태 초기화
       setShowLocationModal(false);
+      setSelectedParentFolderId(null);
+      setNewFolderName('');
       
       // 성공 메시지 표시 (선택사항)
       console.log('폴더가 성공적으로 생성되었습니다.');
     } catch (error: any) {
       console.error('Error creating folder:', error);
       throw error; // 모달에서 에러 처리
+    }
+  };
+
+  const handleCreateFolderFromModal = async () => {
+    if (!newFolderName.trim()) {
+      alert('폴더 이름을 입력해주세요.');
+      return;
+    }
+
+    if (newFolderName.trim().length > 100) {
+      alert('폴더 이름은 100자 이내로 입력해주세요.');
+      return;
+    }
+
+    try {
+      await handleCreateFolder(newFolderName.trim());
+    } catch (error: any) {
+      alert(error.message || '폴더 생성에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -698,33 +715,6 @@ const TemplateUpload: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-800">
             {isEditMode ? '템플릿 편집' : '새 템플릿 생성'}
           </h1>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => navigate('/templates')}
-              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              뒤로
-            </button>
-            <div className="relative group">
-              <button
-                onClick={handleSaveTemplate}
-                disabled={!canSave}
-                className={`px-6 py-2 rounded-lg transition-colors ${
-                  canSave 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-                title={!hasSignerSignatureField ? '서명자 서명 필드를 추가해주세요' : ''}
-              >
-                {uploading ? '저장 중...' : '저장'}
-              </button>
-              {!hasSignerSignatureField && (
-                <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
-                  ⚠️ 서명자 서명 필드를 최소 1개 이상 추가해주세요
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* PDF 업로드 및 기본 정보 섹션 */}
@@ -804,7 +794,7 @@ const TemplateUpload: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    폴더
+                    문서 저장 폴더
                   </label>
                   <button
                     type="button"
@@ -914,6 +904,37 @@ const TemplateUpload: React.FC = () => {
             />
           </div>
         </div>
+
+        {/* 저장 버튼 하단 고정 */}
+        <div className="mt-6 pb-6 border-t pt-6">
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => navigate('/templates')}
+              className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              취소
+            </button>
+            <div className="relative group">
+              <button
+                onClick={handleSaveTemplate}
+                disabled={!canSave}
+                className={`px-6 py-2 rounded-lg transition-colors ${
+                  canSave 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                title={!hasSignerSignatureField ? '서명자 서명 필드를 추가해주세요' : ''}
+              >
+                {uploading ? '저장 중...' : '저장'}
+              </button>
+              {!hasSignerSignatureField && (
+                <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block w-64 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50">
+                  ⚠️ 서명자 서명 필드를 최소 1개 이상 추가해주세요
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <NewFieldModal
@@ -954,14 +975,18 @@ const TemplateUpload: React.FC = () => {
         />
       )}
 
-      {/* 위치 선택 모달 */}
+      {/* 통합된 새 폴더 만들기 모달 */}
       {showLocationModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             {/* 배경 오버레이 */}
             <div 
               className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
-              onClick={() => setShowLocationModal(false)}
+              onClick={() => {
+                setShowLocationModal(false);
+                setSelectedParentFolderId(null);
+                setNewFolderName('');
+              }}
             />
 
             {/* 모달 컨테이너 */}
@@ -989,6 +1014,24 @@ const TemplateUpload: React.FC = () => {
                           className="w-full"
                         />
                       </div>
+                      <div>
+                        <label htmlFor="newFolderName" className="block text-sm font-medium text-gray-700 mb-2">
+                          폴더 이름 <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id="newFolderName"
+                          value={newFolderName}
+                          onChange={(e) => setNewFolderName(e.target.value)}
+                          placeholder="폴더 이름을 입력하세요"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          maxLength={100}
+                          autoFocus
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          {newFolderName.length}/100자
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -996,19 +1039,18 @@ const TemplateUpload: React.FC = () => {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowLocationModal(false);
-                    setShowCreateModal(true);
-                  }}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={handleCreateFolderFromModal}
+                  disabled={!newFolderName.trim()}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  계속
+                  저장
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     setShowLocationModal(false);
                     setSelectedParentFolderId(null);
+                    setNewFolderName('');
                   }}
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
                 >
@@ -1019,17 +1061,6 @@ const TemplateUpload: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* 폴더 생성 모달 */}
-      <FolderCreateModal
-        isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          setSelectedParentFolderId(null);
-        }}
-        onSubmit={handleCreateFolder}
-        parentFolderName={selectedParentFolderId ? 'Selected Folder' : null}
-      />
     </div>
   );
 };
