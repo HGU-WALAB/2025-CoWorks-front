@@ -45,6 +45,7 @@ export interface TaskInfo {
   createdAt: string;
   updatedAt: string;
   isNew?: boolean; // 새로운 할당인지 확인하는 필드
+  tokenExpiresAt?: string; // 서명자 토큰 만료일 (SIGNER만 해당)
 }
 
 export interface TemplateInfo {

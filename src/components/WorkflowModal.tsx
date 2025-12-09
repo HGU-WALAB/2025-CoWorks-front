@@ -15,15 +15,18 @@ interface WorkflowModalProps {
 interface EmailComposerProps {
   recipientName: string;
   recipientEmail: string;
+  recipientRole?: string;
   onClose: () => void;
   onSend: (message: string) => void;
 }
 
-const EmailComposer: React.FC<EmailComposerProps> = ({ recipientName, recipientEmail, onClose, onSend }) => {
+const EmailComposer: React.FC<EmailComposerProps> = ({ recipientName, recipientEmail, recipientRole, onClose, onSend }) => {
   const [message, setMessage] = useState('');
+  const isSigner = recipientRole === 'SIGNER';
 
   const handleSend = () => {
-    if (!message.trim()) {
+    // 서명자가 아닌 경우에만 메시지 필수
+    if (!isSigner && !message.trim()) {
       alert('메시지를 입력해주세요.');
       return;
     }
@@ -36,18 +39,37 @@ const EmailComposer: React.FC<EmailComposerProps> = ({ recipientName, recipientE
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-[60]">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">메일 보내기</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {isSigner ? '서명 요청 이메일 보내기' : '메일 보내기'}
+          </h3>
           <p className="text-sm text-gray-600 mt-1">
             받는 사람: {recipientName} ({recipientEmail})
           </p>
         </div>
         <div className="p-6">
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="메시지를 입력하세요..."
-            className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          {isSigner ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <svg className="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm text-blue-800 font-medium">서명 요청 이메일</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    서명자에게 문서 서명을 위한 고유 링크가 포함된 이메일이 전송됩니다.
+                    서명자는 이 링크를 통해 로그인 없이 문서에 서명할 수 있습니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="메시지를 입력하세요..."
+              className="w-full h-40 px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          )}
         </div>
         <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-end gap-2">
           <button
@@ -60,7 +82,7 @@ const EmailComposer: React.FC<EmailComposerProps> = ({ recipientName, recipientE
             onClick={handleSend}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            전송
+            {isSigner ? '서명 요청 보내기' : '전송'}
           </button>
         </div>
       </div>
@@ -168,7 +190,7 @@ const getAssignedUsers = (tasks: TaskInfo[] | undefined, roles: string[]) => {
 const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document: doc }) => {
   const { user: currentUser } = useAuthStore();
   const [emailComposerOpen, setEmailComposerOpen] = useState(false);
-  const [selectedRecipient, setSelectedRecipient] = useState<{ name: string; email: string } | null>(null);
+  const [selectedRecipient, setSelectedRecipient] = useState<{ name: string; email: string; role: string } | null>(null);
   
   // 미리보기 모달 상태
   const [showPreview, setShowPreview] = useState(false);
@@ -203,7 +225,8 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
   const handleEmailClick = (task: TaskInfo) => {
     setSelectedRecipient({
       name: task.assignedUserName,
-      email: task.assignedUserEmail
+      email: task.assignedUserEmail,
+      role: task.role
     });
     setEmailComposerOpen(true);
   };
@@ -217,6 +240,8 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
         `${API_BASE_URL}${API_ENDPOINTS.DOCUMENTS.SEND_MESSAGE(doc.id)}`,
         {
           recipientEmail: selectedRecipient.email,
+          recipientName: selectedRecipient.name,
+          recipientRole: selectedRecipient.role,
           message: message
         }
       );
@@ -227,7 +252,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
       console.error('메일 전송 실패:', error);
       console.error('에러 응답:', error.response?.data);
       console.error('에러 상태:', error.response?.status);
-      
+
       const errorMessage = error.response?.data?.error || '메일 전송에 실패했습니다.';
       alert(`메일 전송 실패\n${errorMessage}\n\n다시 시도해주세요.`);
     }
@@ -541,13 +566,52 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
                       <div>
                         <div className="font-medium text-gray-900">{task.assignedUserName}</div>
                         <div className="text-xs text-gray-500">{task.assignedUserEmail}</div>
+                        {/* 토큰 만료일 표시 */}
+                        {task.tokenExpiresAt ? (
+                          <div className={`text-xs mt-1 flex items-center gap-1 ${
+                            (() => {
+                              const expiresAt = new Date(task.tokenExpiresAt);
+                              const now = new Date();
+                              const diffDays = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                              if (diffDays < 0) return 'text-red-600';
+                              if (diffDays <= 2) return 'text-orange-600';
+                              return 'text-blue-600';
+                            })()
+                          }`}>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>
+                              링크 만료: {new Date(task.tokenExpiresAt).toLocaleDateString('ko-KR', {
+                                month: '2-digit',
+                                day: '2-digit'
+                              })}
+                              {(() => {
+                                const expiresAt = new Date(task.tokenExpiresAt);
+                                const now = new Date();
+                                const diffDays = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                if (diffDays < 0) return ` (만료됨)`;
+                                if (diffDays === 0) return ' (오늘)';
+                                if (diffDays === 1) return ' (내일)';
+                                return ` (${diffDays}일 후)`;
+                              })()}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-xs mt-1 text-gray-400 flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>링크 미발송</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-xs text-gray-500 text-right">
                         <div className="font-medium text-gray-600 mb-0.5">최근 확인</div>
                         <div>
-                          {task.lastViewedAt 
+                          {task.lastViewedAt
                             ? new Date(task.lastViewedAt).toLocaleString('ko-KR', {
                                 month: '2-digit',
                                 day: '2-digit',
@@ -590,6 +654,7 @@ const WorkflowModal: React.FC<WorkflowModalProps> = ({ isOpen, onClose, document
       <EmailComposer
         recipientName={selectedRecipient.name}
         recipientEmail={selectedRecipient.email}
+        recipientRole={selectedRecipient.role}
         onClose={() => {
           setEmailComposerOpen(false);
           setSelectedRecipient(null);
