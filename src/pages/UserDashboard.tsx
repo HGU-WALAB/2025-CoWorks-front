@@ -3,6 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { useDocumentStore } from '../stores/documentStore';
 import { useAuthStore } from '../stores/authStore';
 import { formatRelativeDateTime } from '../utils/roleAssignmentUtils';
+import WorkflowModal from '../components/WorkflowModal';
 
 const UserDashboard: React.FC = () => {
   const { documents, todoDocuments, fetchDocuments, fetchTodoDocuments, loading } = useDocumentStore();
@@ -16,6 +17,10 @@ const UserDashboard: React.FC = () => {
   // 필터 상태 추가
   const [selectedFilter, setSelectedFilter] = React.useState<string | null>(null);
   const [selectedYear, setSelectedYear] = React.useState<string>('all');
+  
+  // WorkflowModal 상태
+  const [showWorkflowModal, setShowWorkflowModal] = React.useState(false);
+  const [selectedWorkflowDocument, setSelectedWorkflowDocument] = React.useState<typeof documents[0] | null>(null);
 
   // 문서들에서 년도 목록 추출
   const availableYears = useMemo(() => {
@@ -195,6 +200,24 @@ const UserDashboard: React.FC = () => {
     return sorted;
   }, [todoDocuments, currentUserEmail, selectedFilter, selectedYear]);
 
+  // 내가 작성한 문서 중 작성 단계가 아닌 문서들 (처리 중인 문서)
+  const inProcessDocuments = useMemo(() => {
+    return documents.filter(doc => {
+      // 내가 작성자인지 확인
+      const isCreator = doc.tasks?.some(task =>
+        task.role === 'EDITOR' && task.assignedUserEmail === currentUserEmail
+      ) || false;
+
+      // 작성자이고, 작성 단계(DRAFT, EDITING, READY_FOR_REVIEW)가 아니며, 완료되지 않은 문서
+      return isCreator && !['DRAFT', 'EDITING', 'READY_FOR_REVIEW', 'COMPLETED'].includes(doc.status);
+    }).sort((a, b) => {
+      // 최신순 정렬
+      const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [documents, currentUserEmail]);
+
   // 인증되지 않은 경우 처리
   if (!isAuthenticated) {
     return (
@@ -279,8 +302,8 @@ const UserDashboard: React.FC = () => {
       return (
         <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm p-6">
           <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-50 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -292,12 +315,31 @@ const UserDashboard: React.FC = () => {
     }
 
     return (
-      <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b-2 border-gray-200">
+      <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm overflow-hidden flex flex-col min-h-0 flex-1">
+        <div className="px-6 py-5 border-b-2 border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-6 bg-gradient-to-b from-primary-500 to-primary-600 rounded-full"></div>
-              <h2 className="text-xl font-semibold text-gray-900">처리 대기 문서</h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-6 bg-gradient-to-b from-primary-500 to-primary-600 rounded-full"></div>
+                  <h2 className="text-xl font-semibold text-gray-900">처리 대기 문서</h2>
+                </div>
+                <p className="text-sm text-gray-600 mt-1">지금 바로 확인하고 처리해주세요</p>
+              </div>
+              
+              {/* 선택된 필터 표시 */}
+              {!showReviewingCard && selectedFilter && selectedFilter !== 'ALL' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg text-sm font-medium shadow-sm">
+                  {selectedFilter === 'EDITING' ? '작성 단계' :
+                   selectedFilter === 'SIGNING' ? '서명 단계' :
+                   selectedFilter === 'REJECTED' ? '반려' : selectedFilter}
+                  <button onClick={() => setSelectedFilter('ALL')} className="hover:bg-white/20 rounded-full p-0.5 transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              )}
             </div>
             
             {/* 년도 필터 드롭다운 */}
@@ -323,7 +365,7 @@ const UserDashboard: React.FC = () => {
         </div>
         
         {/* 카드 그리드 레이아웃 */}
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto flex-1 min-h-0">
           {filteredTodoDocuments.map((doc) => {
             const myTask = doc.tasks?.find(task => task.assignedUserEmail === currentUserEmail);
             const isNewTask = myTask?.isNew;
@@ -451,7 +493,14 @@ const UserDashboard: React.FC = () => {
 
                   {/* 문서 제목 */}
                   <Link 
-                    to={`/documents/${doc.id}`}
+                    to={
+                      doc.status === 'EDITING' && isEditor ? `/documents/${doc.id}` :
+                      doc.status === 'READY_FOR_REVIEW' ? `/documents/${doc.id}/signer-assignment` :
+                      doc.status === 'REVIEWING' ? `/documents/${doc.id}/review` :
+                      doc.status === 'SIGNING' ? `/documents/${doc.id}/sign` :
+                      doc.status === 'REJECTED' || (doc.isRejected && doc.status === 'EDITING' && isEditor) ? `/documents/${doc.id}` :
+                      `/documents/${doc.id}`
+                    }
                     className="block text-base font-semibold text-gray-900 hover:text-gray-700 mb-3 line-clamp-2"
                   >
                     {doc.title || doc.templateName}
@@ -527,15 +576,17 @@ const UserDashboard: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         {/* 헤더 */}
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-2">내 작업 현황</h1>
-          <p className="text-sm text-gray-600">할당된 작업과 문서 상태를 확인하세요</p>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">대시보드</h1>
+          <p className="text-sm text-gray-600">할당된 문서 상태를 확인하세요</p>
         </div>
 
-        {/* 통계 및 액션 영역 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          {/* 왼쪽: 통계 카드 영역 (2/3) */}
-          <div className="lg:col-span-2">
-            <div className={`grid ${showReviewingCard ? 'grid-cols-4' : 'grid-cols-4'} gap-4 h-full`}>
+        {/* 메인 컨텐츠 영역: 왼쪽(8) + 오른쪽(4) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* 왼쪽 영역 (8/12) - 기존 컨텐츠 */}
+          <div className="lg:col-span-8 flex flex-col gap-6 h-full">
+            {/* 통계 카드 영역 */}
+            <div className="flex-shrink-0">
+              <div className={`grid ${showReviewingCard ? 'grid-cols-4' : 'grid-cols-4'} gap-4`}>
               {/* 전체 */}
               {!showReviewingCard && (
                 <button
@@ -645,54 +696,90 @@ const UserDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* 오른쪽: 액션 버튼 영역 (1/3) */}
-          <div className="flex flex-col gap-4">
-            {/* 문서 생성 버튼 */}
-            <Link to="/documents/new" className="block">
-              <button className="w-full p-4 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105">
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span className="text-base font-semibold">새 문서 생성</span>
+            {/* TodoList 섹션 */}
+            <TodoList />
+          </div>
+
+          {/* 오른쪽 영역 (4/12) - 처리 중인 문서 */}
+          <div className="lg:col-span-4 flex">
+            <div className="bg-white rounded-xl border-2 border-gray-200 shadow-sm flex flex-col flex-1 min-h-0">
+              <div className="px-6 py-5 border-b-2 border-gray-200 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-6 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                  <h2 className="text-xl font-semibold text-gray-900">처리 중인 문서</h2>
                 </div>
-              </button>
-            </Link>
-            
-            {/* 전체 문서 보기 버튼 */}
-            <Link to="/documents" className="block">
-              <button className="w-full p-4 rounded-xl bg-white border-2 border-gray-200 hover:border-primary-300 hover:shadow-md transition-all duration-200">
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span className="text-base font-semibold text-gray-700">전체 문서 보기</span>
-                </div>
-              </button>
-            </Link>
+                <p className="text-sm text-gray-600 mt-2">작성을 완료한 문서의 진행 상황</p>
+              </div>
+              
+              <div className="p-6 flex-1 overflow-y-auto min-h-0">
+                {inProcessDocuments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <p className="text-gray-500 text-sm">처리 중인 문서가 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {inProcessDocuments.map((doc) => {
+                      const getStatusInfo = (status: string) => {
+                        switch (status) {
+                          case 'REVIEWING':
+                            return { label: '검토중', color: 'yellow', bgColor: 'bg-yellow-100', textColor: 'text-yellow-700' };
+                          case 'SIGNING':
+                            return { label: '서명중', color: 'orange', bgColor: 'bg-orange-100', textColor: 'text-orange-700' };
+                          case 'REJECTED':
+                            return { label: '반려됨', color: 'red', bgColor: 'bg-red-100', textColor: 'text-red-700' };
+                          case 'COMPLETED':
+                            return { label: '완료', color: 'green', bgColor: 'bg-green-100', textColor: 'text-green-700' };
+                          default:
+                            return { label: '처리중', color: 'blue', bgColor: 'bg-blue-100', textColor: 'text-blue-700' };
+                        }
+                      };
+
+                      const statusInfo = getStatusInfo(doc.status);
+
+                      return (
+                        <button
+                          key={doc.id}
+                          onClick={() => {
+                            setSelectedWorkflowDocument(doc);
+                            setShowWorkflowModal(true);
+                          }}
+                          className="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all duration-200"
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 flex-1">
+                              {doc.title || doc.templateName}
+                            </h3>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${statusInfo.bgColor} ${statusInfo.textColor} whitespace-nowrap`}>
+                              {statusInfo.label}
+                            </span>
+                          </div>
+                          {doc.updatedAt && (
+                            <p className="text-xs text-gray-500">
+                              최근 업데이트: {formatRelativeDateTime(new Date(doc.updatedAt))}
+                            </p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* 선택된 필터 표시 */}
-        {!showReviewingCard && selectedFilter && selectedFilter !== 'ALL' && (
-          <div className="mb-4 flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-gray-700">필터:</span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-lg text-sm font-medium shadow-sm">
-              {selectedFilter === 'EDITING' ? '작성 단계' :
-               selectedFilter === 'SIGNING' ? '서명 단계' :
-               selectedFilter === 'REJECTED' ? '반려' : selectedFilter}
-              <button onClick={() => setSelectedFilter('ALL')} className="hover:bg-white/20 rounded-full p-0.5 transition-colors">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </span>
-          </div>
-        )}
-
-        {/* TodoList 섹션 */}
-        <TodoList />
       </div>
+
+      {/* 작업현황 모달 */}
+      <WorkflowModal
+        isOpen={showWorkflowModal}
+        onClose={() => setShowWorkflowModal(false)}
+        document={selectedWorkflowDocument}
+      />
     </div>
   );
 };
