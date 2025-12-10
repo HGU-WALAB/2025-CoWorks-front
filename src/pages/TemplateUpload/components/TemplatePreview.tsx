@@ -51,6 +51,11 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   const [longPressTimers, setLongPressTimers] = useState<Map<string, NodeJS.Timeout>>(new Map());
   const [isLongPressing, setIsLongPressing] = useState<Set<string>>(new Set());
 
+  // 리사이즈 직후 클릭 방지를 위한 ref
+  const justFinishedResizing = useRef(false);
+  // 실제로 이동/리사이즈가 발생했는지 추적
+  const hasMoved = useRef(false);
+
   // 열 이름 입력 모달 상태
   const [columnHeaderModal, setColumnHeaderModal] = useState<{
     isOpen: boolean;
@@ -149,6 +154,9 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
   const handleFieldMouseDown = (field: TemplateField, e: React.MouseEvent, action: 'move' | 'resize') => {
     e.stopPropagation();
     
+    // 이동 추적 초기화
+    hasMoved.current = false;
+    
     // 길게 누르기 감지 시작 (300ms 후)
     const timer = setTimeout(() => {
       setIsLongPressing(prev => new Set([...prev, field.id]));
@@ -206,6 +214,9 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     e.stopPropagation();
     e.preventDefault();
     
+    // 이동 추적 초기화
+    hasMoved.current = false;
+    
     if (!field.tableData?.columnWidths) return;
     
     setResizingColumn({
@@ -259,6 +270,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
     if (!canvasRef.current) return;
     
     if (draggingField) {
+      hasMoved.current = true; // 실제 이동 발생
       const rect = canvasRef.current.getBoundingClientRect();
       const scaledPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       const adjustedScaledPos = {
@@ -272,6 +284,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
         y: Math.max(0, Math.min(PDF_HEIGHT - 20, actualPos.y))
       });
     } else if (resizingField) {
+      hasMoved.current = true; // 실제 리사이즈 발생
       const field = fields.find(f => f.id === resizingField);
       if (!field) return;
       
@@ -285,6 +298,7 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
       
       setDragOffset({ x: e.clientX, y: e.clientY });
     } else if (resizingColumn) {
+      hasMoved.current = true; // 실제 컬럼 리사이즈 발생
       // 테이블 컬럼 너비 조절 처리
       const deltaX = e.clientX - resizingColumn.startX;
       const field = fields.find(f => f.id === resizingColumn.fieldId);
@@ -323,6 +337,14 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
 
   const handleMouseUp = () => {
     if (draggingField || resizingField || resizingColumn) {
+      // 실제로 이동/리사이즈가 발생한 경우에만 클릭 방지
+      if (hasMoved.current) {
+        justFinishedResizing.current = true;
+        setTimeout(() => {
+          justFinishedResizing.current = false;
+        }, 100);
+      }
+      hasMoved.current = false;
       setDraggingField(null);
       setResizingField(null);
       setResizingColumn(null);
@@ -379,7 +401,8 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
           }}
           onClick={(e) => {
             e.stopPropagation();
-            if (isLongPressing.has(field.id)) {
+            // 드래그/리사이즈 중이거나 직후이거나 길게 누른 경우 클릭 무시
+            if (isLongPressing.has(field.id) || draggingField || resizingColumn || justFinishedResizing.current) {
               e.preventDefault();
               return;
             }
@@ -407,7 +430,15 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                           ? `${field.tableData.columnWidths[colIndex] * 100}%`
                           : `${100 / field.tableData!.cols}%`
                       }}
-                      onClick={(e) => handleColumnHeaderClick(field, colIndex, e)}
+                      onClick={(e) => {
+                        // 드래그 중이거나 길게 누른 경우 또는 컬럼 리사이즈 중/직후인 경우 클릭 무시
+                        if (draggingField || resizingColumn || isLongPressing.has(field.id) || justFinishedResizing.current) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          return;
+                        }
+                        handleColumnHeaderClick(field, colIndex, e);
+                      }}
                       title={columnName ? `"${columnName}" - 클릭하여 수정` : '클릭하여 열 이름 설정'}
                     >
                       <span className="truncate px-1">
@@ -450,6 +481,11 @@ const TemplatePreview: React.FC<TemplatePreviewProps> = ({
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
+                            // 드래그 중이거나 길게 누른 경우 또는 리사이즈 직후 클릭 무시
+                            if (draggingField || isLongPressing.has(field.id) || resizingColumn || justFinishedResizing.current) {
+                              e.preventDefault();
+                              return;
+                            }
                             onTableCellClick(field.id, rowIndex, colIndex);
                           }}
                           title={cellContent || '클릭하여 편집'}
