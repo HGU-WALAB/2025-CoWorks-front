@@ -671,7 +671,7 @@ const DocumentNew: React.FC = () => {
                 className="btn btn-primary flex-1"
               >
                 {loading ? '생성 중...' : 
-                 creationMode === 'bulk' && stagingId ? `문서 생성 (${uploadSummary?.valid || 0}개)` : '문서 생성'}
+                 creationMode === 'bulk' && stagingId ? `문서 할당(${uploadSummary?.valid || 0}개)` : '문서 생성'}
               </button>
             </div>
           </form>
