@@ -32,10 +32,10 @@ export const downloadExcelTemplate = () => {
   worksheet['!cols'] = columnWidths;
 
   // 워크시트를 워크북에 추가
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'TA_예시_리스트');
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'TA_템플릿_리스트');
 
   // 파일명 생성
-  const fileName = `TA_예시_리스트.xlsx`;
+  const fileName = `TA_템플릿_리스트.xlsx`;
 
   // 엑셀 파일 다운로드
   XLSX.writeFile(workbook, fileName);
