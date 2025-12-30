@@ -62,6 +62,11 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   const [longPressTimers, setLongPressTimers] = useState<Map<string, NodeJS.Timeout>>(new Map());
   const [isLongPressing, setIsLongPressing] = useState<Set<string>>(new Set());
 
+  // 리사이즈 직후 클릭 방지를 위한 ref
+  const justFinishedResizing = useRef(false);
+  // 실제로 이동/리사이즈가 발생했는지 추적
+  const hasMoved = useRef(false);
+
   // 이미지 로딩 상태 추가
   const [imageLoadErrors, setImageLoadErrors] = useState<Set<number>>(new Set());
 
@@ -212,6 +217,9 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
     if (!isInteractive) return;
     e.stopPropagation();
     
+    // 이동 추적 초기화
+    hasMoved.current = false;
+    
     // 길게 누르기 감지 시작 (300ms 후)
     const timer = setTimeout(() => {
       setIsLongPressing(prev => new Set([...prev, field.id]));
@@ -270,6 +278,9 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
     e.stopPropagation();
     e.preventDefault();
 
+    // 이동 추적 초기화
+    hasMoved.current = false;
+
     if (!field.tableData?.columnWidths) return;
 
     setResizingColumn({
@@ -325,6 +336,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
     if (!canvasRef.current) return;
 
     if (draggingField) {
+      hasMoved.current = true; // 실제 이동 발생
       const rect = canvasRef.current.getBoundingClientRect();
       const scaledPos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       const adjustedScaledPos = {
@@ -338,6 +350,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
         y: Math.max(0, Math.min(PDF_HEIGHT - 20, actualPos.y))
       });
     } else if (resizingField) {
+      hasMoved.current = true; // 실제 리사이즈 발생
       const field = fields.find(f => f.id === resizingField);
       if (!field) return;
 
@@ -351,6 +364,7 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
 
       setDragOffset({ x: e.clientX, y: e.clientY });
     } else if (resizingColumn) {
+      hasMoved.current = true; // 실제 컬럼 리사이즈 발생
       // 테이블 컬럼 너비 조절 처리
       const deltaX = e.clientX - resizingColumn.startX;
       const field = fields.find(f => f.id === resizingColumn.fieldId);
@@ -388,6 +402,14 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
   const handleMouseUp = () => {
     if (!isInteractive) return;
     if (draggingField || resizingField || resizingColumn) {
+      // 실제로 이동/리사이즈가 발생한 경우에만 클릭 방지
+      if (hasMoved.current) {
+        justFinishedResizing.current = true;
+        setTimeout(() => {
+          justFinishedResizing.current = false;
+        }, 100);
+      }
+      hasMoved.current = false;
       setDraggingField(null);
       setResizingField(null);
       setResizingColumn(null);
@@ -447,8 +469,8 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
           onClick={(e) => {
             e.stopPropagation();
             if (!isInteractive) return;
-            // 길게 누른 경우 클릭 무시
-            if (isLongPressing.has(field.id)) {
+            // 드래그/리사이즈 중이거나 직후이거나 길게 누른 경우 클릭 무시
+            if (isLongPressing.has(field.id) || draggingField || resizingColumn || justFinishedResizing.current) {
               e.preventDefault();
               return;
             }
@@ -476,7 +498,15 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
                           ? `${field.tableData.columnWidths[colIndex] * 100}%`
                           : `${100 / field.tableData!.cols}%`
                       }}
-                      onClick={isInteractive ? (e) => handleColumnHeaderClick(field, colIndex, e) : undefined}
+                      onClick={isInteractive ? (e) => {
+                        // 드래그 중이거나 길게 누른 경우 또는 컬럼 리사이즈 중/직후인 경우 클릭 무시
+                        if (draggingField || resizingColumn || isLongPressing.has(field.id) || justFinishedResizing.current) {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          return;
+                        }
+                        handleColumnHeaderClick(field, colIndex, e);
+                      } : undefined}
                       title={isInteractive ? (columnName ? `"${columnName}" - 클릭하여 수정` : '클릭하여 열 이름 설정') : undefined}
                     >
                       <span className="truncate px-1">
@@ -517,6 +547,11 @@ const MultiPageTemplatePreview: React.FC<MultiPageTemplatePreviewProps> = ({
                           }}
                           onClick={isInteractive ? (e) => {
                             e.stopPropagation();
+                            // 드래그 중이거나 길게 누른 경우 또는 리사이즈 직후 클릭 무시
+                            if (draggingField || isLongPressing.has(field.id) || resizingColumn || justFinishedResizing.current) {
+                              e.preventDefault();
+                              return;
+                            }
                             onTableCellClick(field.id, rowIndex, colIndex);
                           } : undefined}
                           title={isInteractive ? (cellContent || '클릭하여 편집') : cellContent || undefined}
